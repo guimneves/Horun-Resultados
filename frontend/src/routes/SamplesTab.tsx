@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { api, errorText } from '../api/client'
-import type { Mode, SampleRow } from '../api/types'
+import type { BulkDeletePreview, BulkDeleteResult, Mode, SampleRow } from '../api/types'
 import { BulkCreate } from '../components/BulkCreate'
 import { Button, card, Empty, ErrorBox, Field, inputClass, inputStyle, Modal, muted, ValidityBadge } from '../components/ui'
 import { useApp } from '../context/AppContext'
@@ -60,9 +60,106 @@ function NewSample({ projectId, onClose, onDone }: { projectId: number; onClose:
   )
 }
 
+/** Caixa de seleção com área de toque de 40 px (Prompt, seção 13). */
+function SelectBox({
+  checked,
+  indeterminate = false,
+  onChange,
+  label,
+}: {
+  checked: boolean
+  indeterminate?: boolean
+  onChange: (on: boolean) => void
+  label: string
+}) {
+  const ref = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate
+  }, [indeterminate])
+  return (
+    <label className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center" onClick={(e) => e.stopPropagation()} title={label}>
+      <input ref={ref} type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} aria-label={label} />
+    </label>
+  )
+}
+
+function BulkDeleteConfirm({
+  projectId,
+  ids,
+  onClose,
+  onDone,
+}: {
+  projectId: number
+  ids: number[]
+  onClose: () => void
+  onDone: (r: BulkDeleteResult) => void
+}) {
+  const [preview, setPreview] = useState<BulkDeletePreview | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    api
+      .post<BulkDeletePreview>(`/projects/${projectId}/samples/bulk-delete`, { sample_ids: ids, dry_run: true })
+      .then(setPreview)
+      .catch((err) => setError(errorText(err)))
+  }, [projectId, ids])
+  const n = ids.length
+  return (
+    <Modal title={`Excluir ${n} amostra(s)`} onClose={onClose}>
+      <div className="space-y-3 text-sm">
+        {!preview && !error && <p style={muted}>Contando as medições…</p>}
+        {preview && (
+          <>
+            <p>
+              Vão sair <strong>para sempre</strong> {preview.total_samples} amostra(s) e{' '}
+              <strong>{preview.total_analyses} medição(ões)</strong> (valores, curvas, nomes lembrados e validação).{' '}
+              <strong>Não dá para desfazer.</strong>
+            </p>
+            <ul className="max-h-60 overflow-y-auto rounded-md border" style={{ borderColor: 'var(--color-border)' }} data-testid="bulk-delete-list">
+              {preview.samples.map((s) => (
+                <li key={s.id} className="flex justify-between gap-2 border-b px-3 py-1.5 last:border-b-0" style={{ borderColor: 'var(--color-border)' }}>
+                  <span className="min-w-0 truncate font-medium">{s.code}</span>
+                  <span className="shrink-0" style={muted}>
+                    {s.analyses} medição(ões)
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p style={muted}>
+              Arquivos originais: os que ainda têm medições de outras amostras continuam guardados
+              {preview.files_kept ? ` (${preview.files_kept})` : ''}; os que ficarem sem nenhuma medição saem do servidor
+              {preview.files_removed ? ` (${preview.files_removed})` : ''} e poderão ser importados de novo.
+            </p>
+          </>
+        )}
+        <ErrorBox message={error} />
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button onClick={onClose}>Cancelar</Button>
+          <Button
+            variant="danger"
+            disabled={!preview || busy}
+            onClick={async () => {
+              setBusy(true)
+              setError(null)
+              try {
+                onDone(await api.post<BulkDeleteResult>(`/projects/${projectId}/samples/bulk-delete`, { sample_ids: ids }))
+              } catch (err) {
+                setError(errorText(err))
+                setBusy(false)
+              }
+            }}
+          >
+            Excluir {n} amostra(s)
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 export function SamplesTab() {
   const { project, readOnly } = useProject()
-  const { catalog, fractions, fractionLabel, paramLabel, techniqueLabel } = useApp()
+  const { catalog, fractions, fractionLabel, paramLabel, techniqueLabel, me } = useApp()
   const mobile = useIsMobile()
   const [mode, setMode] = useState<Mode>('padrao')
   const { samples, error, reload } = useSamples(project.id, mode)
@@ -76,6 +173,13 @@ export function SamplesTab() {
   const [creating, setCreating] = useState(false)
   const [bulk, setBulk] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
+  // Seleção (só coordenadores, projeto aberto): excluir/validar várias de uma vez
+  const canSelect = !!me?.is_coordenador && !readOnly
+  const [selected, setSelected] = useState<Set<number>>(() => new Set())
+  const [confirmDelete, setConfirmDelete] = useState<number[] | null>(null)
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const [bulkMsg, setBulkMsg] = useState<string | null>(null)
+  const [bulkError, setBulkError] = useState<string | null>(null)
 
   const otherFractions = useMemo(() => new Set(fractions.filter((f) => !f.in_series).map((f) => f.code)), [fractions])
 
@@ -97,6 +201,35 @@ export function SamplesTab() {
     return catalog.flatMap((t) => t.params.map((p) => ({ col: `${t.key}.${p.key}`, main: p.main, tech: t.key }))).filter((c) => present.has(c.col))
   }, [catalog, filtered])
   const columns = chosen ?? available.filter((c) => c.main).map((c) => c.col)
+
+  // As ações valem só para as selecionadas que aparecem com os filtros atuais.
+  const selectedIds = useMemo(() => filtered.filter((s) => selected.has(s.id)).map((s) => s.id), [filtered, selected])
+  const allSelected = filtered.length > 0 && selectedIds.length === filtered.length
+  const someSelected = selectedIds.length > 0 && !allSelected
+  const toggle = (id: number, on: boolean) =>
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (on) next.add(id)
+      else next.delete(id)
+      return next
+    })
+  const toggleAll = (on: boolean) => setSelected(on ? new Set(filtered.map((s) => s.id)) : new Set())
+  const clearSelection = () => setSelected(new Set())
+
+  async function bulkValidate(valid: boolean) {
+    setBulkBusy(true)
+    setBulkError(null)
+    setBulkMsg(null)
+    try {
+      const r = await api.post<{ updated: number }>(`/projects/${project.id}/samples/bulk-validation`, { sample_ids: selectedIds, valid })
+      setBulkMsg(`${r.updated} amostra(s) marcada(s) como ${valid ? 'válida(s)' : 'inválida(s)'}.`)
+      await reload()
+    } catch (err) {
+      setBulkError(errorText(err))
+    } finally {
+      setBulkBusy(false)
+    }
+  }
 
   async function exportAs(format: 'csv' | 'xlsx') {
     setExportError(null)
@@ -190,7 +323,12 @@ export function SamplesTab() {
           )}
         </div>
       </div>
-      <ErrorBox message={error ?? exportError} />
+      <ErrorBox message={error ?? exportError ?? bulkError} />
+      {bulkMsg && (
+        <p className="rounded-md border px-3 py-2 text-sm" style={{ borderColor: '#9fd3ae', background: '#eef8f1', color: '#1b6b34' }} role="status">
+          {bulkMsg}
+        </p>
+      )}
 
       {samples === null ? (
         <p style={muted}>Carregando…</p>
@@ -198,8 +336,19 @@ export function SamplesTab() {
         <Empty>{samples.length ? 'Nenhuma amostra com esses filtros.' : 'Nenhuma amostra ainda. Comece pela aba Importar.'}</Empty>
       ) : mobile ? (
         <div className="space-y-2" data-testid="samples-cards">
+          {canSelect && (
+            <div className="flex items-center gap-1 text-sm" style={muted}>
+              <SelectBox checked={allSelected} indeterminate={someSelected} onChange={toggleAll} label="Selecionar todas (filtradas)" />
+              Selecionar todas ({filtered.length})
+            </div>
+          )}
           {filtered.map((s) => (
-            <SampleCard key={s.id} s={s} columns={columns} header={header} fractionLabel={fractionLabel} onOpen={() => setOpenId(s.id)} />
+            <div key={s.id} className="flex items-start gap-1">
+              {canSelect && <SelectBox checked={selected.has(s.id)} onChange={(on) => toggle(s.id, on)} label={`Selecionar ${s.code}`} />}
+              <div className="min-w-0 flex-1">
+                <SampleCard s={s} columns={columns} header={header} fractionLabel={fractionLabel} onOpen={() => setOpenId(s.id)} />
+              </div>
+            </div>
           ))}
         </div>
       ) : (
@@ -207,6 +356,11 @@ export function SamplesTab() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left" style={muted}>
+                {canSelect && (
+                  <th className="w-10 px-1 py-0">
+                    <SelectBox checked={allSelected} indeterminate={someSelected} onChange={toggleAll} label="Selecionar todas (filtradas)" />
+                  </th>
+                )}
                 <th className="px-3 py-2 font-medium">Amostra</th>
                 <th className="px-3 py-2 font-medium">Fração</th>
                 <th className="px-3 py-2 font-medium">Temp.</th>
@@ -222,6 +376,11 @@ export function SamplesTab() {
             <tbody>
               {filtered.map((s) => (
                 <tr key={s.id} className="cursor-pointer border-t hover:bg-[var(--color-surface)]" style={{ borderColor: 'var(--color-border)' }} onClick={() => setOpenId(s.id)}>
+                  {canSelect && (
+                    <td className="w-10 px-1 py-0">
+                      <SelectBox checked={selected.has(s.id)} onChange={(on) => toggle(s.id, on)} label={`Selecionar ${s.code}`} />
+                    </td>
+                  )}
                   <td className="px-3 py-2 font-medium whitespace-nowrap">{s.code}</td>
                   <td className="px-3 py-2 whitespace-nowrap">{fractionLabel(s.fraction)}</td>
                   <td className="px-3 py-2 whitespace-nowrap">{fmtTemp(s.temperature_c)}</td>
@@ -241,6 +400,43 @@ export function SamplesTab() {
         </div>
       )}
 
+      {canSelect && selectedIds.length > 0 && (
+        <div
+          className="sticky bottom-2 z-10 flex flex-wrap items-center gap-2 rounded-lg border p-2 shadow-lg"
+          style={card}
+          role="region"
+          aria-label="Ações nas amostras selecionadas"
+          data-testid="bulk-bar"
+        >
+          <span className="mr-auto px-1 text-sm font-medium">{selectedIds.length} selecionada(s)</span>
+          <Button disabled={bulkBusy} onClick={() => bulkValidate(true)}>
+            Marcar como válida
+          </Button>
+          <Button disabled={bulkBusy} onClick={() => bulkValidate(false)}>
+            Marcar como inválida
+          </Button>
+          <Button variant="danger" disabled={bulkBusy} onClick={() => setConfirmDelete(selectedIds)}>
+            Excluir selecionadas
+          </Button>
+          <Button variant="ghost" onClick={clearSelection}>
+            Limpar seleção
+          </Button>
+        </div>
+      )}
+      {confirmDelete && (
+        <BulkDeleteConfirm
+          projectId={project.id}
+          ids={confirmDelete}
+          onClose={() => setConfirmDelete(null)}
+          onDone={async (r) => {
+            setConfirmDelete(null)
+            clearSelection()
+            setBulkError(null)
+            setBulkMsg(`Excluídas ${r.deleted_samples} amostra(s) e ${r.deleted_analyses} medição(ões).`)
+            await reload()
+          }}
+        />
+      )}
       {openId !== null && <SampleDetailModal projectId={project.id} sampleId={openId} readOnly={readOnly} onClose={() => setOpenId(null)} onChanged={reload} />}
       {bulk && (
         <BulkCreate

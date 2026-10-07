@@ -1,5 +1,22 @@
 # Changelog — Horun · Resultados
 
+## Não lançado — 07/10/2026
+
+### Seleção de várias amostras (pedido do mantenedor)
+- Backend: `POST /api/projects/{id}/samples/bulk-delete` (`{"sample_ids": [...]}`;
+  com `dry_run` devolve a prévia: medições por amostra, arquivos que saem/ficam) e
+  `POST /api/projects/{id}/samples/bulk-validation`. Só coordenador; todos os ids
+  têm de ser do projeto (senão 404 e nada muda); uma transação; registro no Histórico.
+- Exclusão de amostra (uma ou várias) com a mesma lógica (`app/services/deletion.py`):
+  sai tudo o que é só da amostra (medições, valores, curvas, nomes lembrados,
+  validação); o arquivo original fica se outras medições ainda o usam, senão sai
+  do banco e do disco (e pode ser importado de novo).
+- Aba Amostras (tabela e cartões): caixinhas para coordenadores, "Selecionar
+  todas" (filtradas), barra fixa "N selecionada(s) · Marcar como válida ·
+  Marcar como inválida · Excluir selecionadas · Limpar seleção" e confirmação com
+  os códigos e o número de medições. Manual: "Excluir ou validar várias amostras
+  de uma vez".
+
 ## 0.1.0 — 07/10/2026 (primeira versão)
 
 ### Backend

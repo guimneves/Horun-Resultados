@@ -256,3 +256,21 @@ export interface StoredFileOut {
   imported_at: string | null
   imported_by: string | null
 }
+
+/** Prévia de "Excluir selecionadas" (POST samples/bulk-delete com dry_run). */
+export interface BulkDeletePreview {
+  dry_run: true
+  samples: { id: number; code: string; analyses: number }[]
+  total_samples: number
+  total_analyses: number
+  files_removed: number
+  files_kept: number
+}
+
+export interface BulkDeleteResult {
+  dry_run: false
+  deleted_samples: number
+  deleted_analyses: number
+  files_removed: number
+  files_kept: number
+}

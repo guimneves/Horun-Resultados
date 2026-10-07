@@ -43,7 +43,7 @@ temperatura. Backend FastAPI+SQLModel (`backend/`), frontend React+Vite (`fronte
 ## Comandos
 
 ```bash
-cd backend && .venv/Scripts/python -m pytest -q        # 101 passam
+cd backend && .venv/Scripts/python -m pytest -q        # 108 passam
 cd frontend && npx tsc -b && npx oxlint && npm run build
 ```
 

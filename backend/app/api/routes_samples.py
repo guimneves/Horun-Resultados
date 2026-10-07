@@ -18,7 +18,7 @@ from app.core.identity import HorunIdentity, get_identity
 from app.core.permissions import require_coordenador
 from app.db.models import Analysis, AnalysisValue, Experiment, FractionType, Project, Sample, SampleAlias, utcnow
 from app.db.session import get_session
-from app.services import audit, importer, results
+from app.services import audit, deletion, importer, results
 from app.services.codes import normalize_code, parse_experiment_code, parse_sample_code
 
 router = APIRouter(tags=["amostras"])
@@ -279,16 +279,105 @@ def delete_sample(
 ):
     ensure_open(project)
     sample = _get_sample(session, project, sample_id)
-    ids = list(session.exec(select(Analysis.id).where(Analysis.sample_id == sample.id)))
-    if ids:
-        session.exec(sa_delete(AnalysisValue).where(AnalysisValue.analysis_id.in_(ids)))  # type: ignore[union-attr]
-        session.exec(sa_delete(Analysis).where(Analysis.id.in_(ids)))  # type: ignore[union-attr]
-    session.exec(sa_delete(SampleAlias).where(SampleAlias.sample_id == sample.id))  # type: ignore[arg-type]
+    p = deletion.plan(session, [sample])
     code = sample.code
-    session.delete(sample)
-    audit.record(session, identity, "amostra_excluida", f"Excluiu a amostra {code} e {len(ids)} medição(ões).", project.id, "sample", sample_id)
+    digests = deletion.execute(session, p)
+    audit.record(
+        session, identity, "amostra_excluida", f"Excluiu a amostra {code} e {len(p.analysis_ids)} medição(ões).", project.id, "sample", sample_id
+    )
     session.commit()
+    deletion.cleanup_disk(session, digests)
     return Response(status_code=204)
+
+
+# ---------------------------------------------------------------- várias amostras de uma vez
+
+
+class SampleIds(BaseModel):
+    sample_ids: list[int] = Field(min_length=1, max_length=5000)
+
+
+class BulkDelete(SampleIds):
+    dry_run: bool = False  # True = só conta o que sairia (para a confirmação)
+
+
+class BulkValidation(SampleIds, Validation):
+    pass
+
+
+def _get_samples(session: Session, project: Project, ids: list[int]) -> list[Sample]:
+    """Amostras na ordem pedida (sem repetir). Todas têm de ser do projeto."""
+    wanted = list(dict.fromkeys(ids))
+    found: dict[int, Sample] = {}
+    for start in range(0, len(wanted), 500):
+        part = wanted[start : start + 500]
+        found.update({s.id: s for s in session.exec(select(Sample).where(Sample.id.in_(part), Sample.project_id == project.id))})  # type: ignore[union-attr]
+    missing = [i for i in wanted if i not in found]
+    if missing:
+        shown = ", ".join(str(i) for i in missing[:10]) + ("..." if len(missing) > 10 else "")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Amostra(s) não encontrada(s) neste projeto: {shown}. Nada foi alterado.")
+    return [found[i] for i in wanted]
+
+
+@router.post("/projects/{project_id}/samples/bulk-delete")
+def bulk_delete_samples(
+    body: BulkDelete, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_coordenador)
+):
+    """Exclui várias amostras numa transação só. Com `dry_run`, só devolve o
+    que sairia (medições por amostra, arquivos que saem/ficam)."""
+    ensure_open(project)
+    samples = _get_samples(session, project, body.sample_ids)
+    p = deletion.plan(session, samples)
+    preview = p.preview()
+    if body.dry_run:
+        return {**preview, "dry_run": True}
+    codes = [s.code for s in samples]
+    digests = deletion.execute(session, p)
+    audit.record(
+        session,
+        identity,
+        "amostras_excluidas",
+        f"Excluiu {len(codes)} amostra(s) e {len(p.analysis_ids)} medição(ões) de uma vez.",
+        project.id,
+        "sample",
+        details={"codes": codes, "analyses": len(p.analysis_ids), "files_removed": preview["files_removed"]},
+    )
+    session.commit()
+    deletion.cleanup_disk(session, digests)
+    return {
+        "dry_run": False,
+        "deleted_samples": len(codes),
+        "deleted_analyses": len(p.analysis_ids),
+        "files_removed": preview["files_removed"],
+        "files_kept": preview["files_kept"],
+    }
+
+
+@router.post("/projects/{project_id}/samples/bulk-validation")
+def bulk_validate_samples(
+    body: BulkValidation, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_coordenador)
+):
+    ensure_open(project)
+    samples = _get_samples(session, project, body.sample_ids)
+    now = utcnow()
+    for sample in samples:
+        sample.valid = body.valid
+        sample.validated_by = identity.username if body.valid is not None else None
+        sample.validated_at = now if body.valid is not None else None
+        session.add(sample)
+    word = {True: "válidas", False: "inválidas", None: "pendentes"}[body.valid]
+    codes = [s.code for s in samples]
+    audit.record(
+        session,
+        identity,
+        "validacao",
+        f"Marcou {len(codes)} amostra(s) como {word} de uma vez.",
+        project.id,
+        "sample",
+        details={"codes": codes, "note": body.note},
+    )
+    session.commit()
+    return {"updated": len(codes), "valid": body.valid}
 
 
 # ---------------------------------------------------------------- medições

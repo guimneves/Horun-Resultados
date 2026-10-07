@@ -300,6 +300,34 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     ),
   },
   {
+    id: 'varias-amostras',
+    title: 'Excluir ou validar várias amostras de uma vez (coordenador)',
+    body: (
+      <>
+        <Steps>
+          <li>
+            Na aba <strong>Amostras</strong>, marque a caixinha à esquerda de cada amostra. A caixinha do cabeçalho (no celular,{' '}
+            <strong>Selecionar todas</strong>) marca todas as que aparecem com os filtros atuais.
+          </li>
+          <li>
+            Aparece uma barra embaixo: <strong>N selecionada(s)</strong>, <strong>Marcar como válida</strong>,{' '}
+            <strong>Marcar como inválida</strong>, <strong>Excluir selecionadas</strong> e <strong>Limpar seleção</strong>.
+          </li>
+          <li>
+            Em <strong>Excluir selecionadas</strong>, confira a lista com os códigos e quantas medições cada amostra tem, e toque em{' '}
+            <strong>Excluir N amostra(s)</strong>.
+          </li>
+        </Steps>
+        <p>
+          Excluir <strong>não dá para desfazer</strong>: saem as amostras, as medições, os valores, as curvas e os nomes lembrados delas. Um
+          arquivo original que também tem medições de outras amostras continua guardado; um arquivo que fica sem nenhuma medição sai do
+          servidor e pode ser importado de novo. As ações valem só para as amostras selecionadas que estão aparecendo — mudou o filtro,
+          confira o número na barra. Colaboradores não veem as caixinhas.
+        </p>
+      </>
+    ),
+  },
+  {
     id: 'experimentos',
     title: 'Como cuidar dos experimentos',
     body: (
