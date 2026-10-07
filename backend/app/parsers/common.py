@@ -75,7 +75,7 @@ _NUM_RE = re.compile(r"[-+]?\d+(?:[.,]\d+)?(?:[eE][-+]?\d+)?")
 
 
 def to_float(raw) -> float | None:
-    """Número de célula/texto: aceita "21.0 %", "0.2515 g", 3, "1,5".
+    """Número de célula/texto: aceita "12.3 %", "0.2000 g", 3, "1,5".
     Vazio, "-", "NaN", "ND", "NA" → None."""
     if raw is None:
         return None

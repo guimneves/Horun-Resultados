@@ -108,7 +108,7 @@ Derivados úteis: Pristano/Fitano, Pr/n-C17, Fi/n-C18, distribuição de
 n-alcanos, CPI quando houver os pares.
 
 ### 3.6 Tabela de literatura (opcional)
-Planilha "Table_6 ... Artigo Spigolon" = dados publicados (parâmetros por
+Planilha de um artigo de referência = dados publicados (parâmetros por
 temperatura). Suportar, de forma genérica, **importar uma tabela de referência**
 (planilha com 1ª coluna = temperatura/amostra e demais = parâmetros) para
 sobrepor nos gráficos como "referência" — não é prioridade da v1.
