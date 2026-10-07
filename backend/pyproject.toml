@@ -12,18 +12,27 @@ dependencies = [
     "uvicorn[standard]==0.52.3",
     "sqlmodel==0.0.47",
     "pydantic==2.13.4",
+    # envio de arquivos (multipart) e leitores dos formatos dos equipamentos
+    "python-multipart==0.0.32",
+    "pypdf==6.14.2",
+    "openpyxl==3.1.5",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest==9.1.1",
     "httpx==0.28.1",
+    # só para os testes: gera PDFs sintéticos com a estrutura do CHNSO
+    "reportlab==4.5.1",
 ]
 # Fase 2: driver do PostgreSQL — só necessário na imagem Docker do
 # servidor, não no desenvolvimento local (SQLite embutido no Python).
 postgres = [
     "psycopg[binary]==3.3.6",
 ]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

@@ -13,7 +13,7 @@ from __future__ import annotations
 from collections.abc import Generator
 
 from sqlalchemy import inspect
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.core.config import settings
 
@@ -52,18 +52,42 @@ def _ensure_column(table: str, column: str, ddl_type: str, default_sql: str | No
 
 
 def _run_migrations() -> None:
-    # Uma linha por coluna adicionada a um modelo depois do primeiro deploy.
-    # Exemplo:
-    #   _ensure_column("amostra", "observacoes", "VARCHAR")
-    #   _ensure_column("amostra", "conferida", "BOOLEAN", default_sql="0")
+    # Uma linha por coluna adicionada a um modelo DEPOIS do primeiro deploy
+    # (as colunas da v1 já nascem com o create_all). Exemplo:
+    #   _ensure_column("sample", "observacoes", "VARCHAR")
+    #   _ensure_column("sample", "conferida", "BOOLEAN", default_sql="0")
     pass
 
 
+def _seed_fractions() -> None:
+    """Frações padrão (H, E, SE...) — só cria as que faltam; o que o
+    coordenador editou fica como está."""
+    from app.db.models import FractionType
+    from app.services.codes import DEFAULT_FRACTIONS, DEFAULT_SERIES_GROUP, FRACTION_OTHER, FRACTION_STANDARD
+
+    with Session(engine) as session:
+        existing = {f.code for f in session.exec(select(FractionType))}
+        for order, (code, label, description) in enumerate(DEFAULT_FRACTIONS):
+            if code not in existing:
+                session.add(
+                    FractionType(
+                        code=code,
+                        label=label,
+                        description=description,
+                        in_series=code not in (FRACTION_STANDARD, FRACTION_OTHER),
+                        series_group=DEFAULT_SERIES_GROUP.get(code, ""),
+                        sort=order,
+                    )
+                )
+        session.commit()
+
+
 def create_db_and_tables() -> None:
-    # importar os modelos aqui (ex. `from app.db import models  # noqa: F401`)
-    # antes do create_all, para as tabelas estarem registradas
+    from app.db import models  # noqa: F401 — registra as tabelas antes do create_all
+
     SQLModel.metadata.create_all(engine)
     _run_migrations()
+    _seed_fractions()
 
 
 def get_session() -> Generator[Session, None, None]:
