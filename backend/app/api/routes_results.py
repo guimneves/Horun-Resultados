@@ -6,7 +6,7 @@ import csv
 import io
 import logging
 
-from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlmodel import Session
 
@@ -29,11 +29,14 @@ logger = logging.getLogger(__name__)
 @router.post("/projects/{project_id}/imports/preview")
 async def import_preview(
     files: list[UploadFile] = File(...),
+    technique: str = Form(default=""),
     project: Project = Depends(get_project),
     session: Session = Depends(get_session),
     identity: HorunIdentity = Depends(get_identity),
 ):
     ensure_open(project)
+    if technique and technique not in TECHNIQUES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Tipo de análise desconhecido.")
     limit = settings.max_upload_mb * 1024 * 1024
     uploads = []
     for f in files:
@@ -45,11 +48,11 @@ async def import_preview(
         uploads.append(importer.Upload(f.filename or "arquivo", content))
     if not uploads:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Nenhum arquivo enviado.")
-    return importer.preview(session, project, uploads, identity)
+    return importer.preview(session, project, uploads, identity, technique)
 
 
 class Decision(BaseModel):
-    norm: str
+    row: str
     action: str = Field(pattern="^(link|create|skip)$")
     sample_id: int | None = None
     code: str | None = Field(default=None, max_length=80)

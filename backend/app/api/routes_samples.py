@@ -6,6 +6,7 @@ exclui (ESPECIFICACAO.md, seção 7)."""
 from __future__ import annotations
 
 import json
+import re
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field
@@ -15,9 +16,9 @@ from sqlmodel import Session, select
 from app.api.deps import ensure_open, get_project
 from app.core.identity import HorunIdentity, get_identity
 from app.core.permissions import require_coordenador
-from app.db.models import Analysis, AnalysisValue, Experiment, FractionType, Project, Sample, utcnow
+from app.db.models import Analysis, AnalysisValue, Experiment, FractionType, Project, Sample, SampleAlias, utcnow
 from app.db.session import get_session
-from app.services import audit, results
+from app.services import audit, importer, results
 from app.services.codes import normalize_code, parse_experiment_code, parse_sample_code
 
 router = APIRouter(tags=["amostras"])
@@ -282,6 +283,7 @@ def delete_sample(
     if ids:
         session.exec(sa_delete(AnalysisValue).where(AnalysisValue.analysis_id.in_(ids)))  # type: ignore[union-attr]
         session.exec(sa_delete(Analysis).where(Analysis.id.in_(ids)))  # type: ignore[union-attr]
+    session.exec(sa_delete(SampleAlias).where(SampleAlias.sample_id == sample.id))  # type: ignore[arg-type]
     code = sample.code
     session.delete(sample)
     audit.record(session, identity, "amostra_excluida", f"Excluiu a amostra {code} e {len(ids)} medição(ões).", project.id, "sample", sample_id)
@@ -331,5 +333,126 @@ def delete_analysis(
     name = f"{analysis.source_name} ({analysis.technique})"
     session.delete(analysis)
     audit.record(session, identity, "medicao_excluida", f"Excluiu a medição {name}.", project.id, "analysis", analysis_id)
+    session.commit()
+    return Response(status_code=204)
+
+
+# ---------------------------------------------------------------- cadastro em lote e apelidos
+
+
+class BulkCodes(BaseModel):
+    codes: list[str] = Field(max_length=500)
+
+
+def split_codes(codes: list[str]) -> list[str]:
+    """Aceita a lista colada (uma por linha, ou separada por vírgula, ";" ou tab)."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for raw in codes:
+        for part in re.split(r"[\n\r,;\t]+", raw):
+            code = part.strip()
+            if code and normalize_code(code) not in seen:
+                seen.add(normalize_code(code))
+                out.append(code)
+    return out
+
+
+@router.post("/projects/{project_id}/samples/bulk", status_code=201)
+def bulk_samples(
+    body: BulkCodes, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(get_identity)
+):
+    """Cria várias amostras de uma vez (lista de códigos colada). Fração,
+    temperatura e experimento sugeridos pelo código; o experimento é criado
+    se ainda não existir. Códigos já cadastrados são só listados."""
+    ensure_open(project)
+    created, existing = [], []
+    for code in split_codes(body.codes):
+        info = parse_sample_code(code)
+        # "RO-1" ou "HP320E.1" → a amostra é RO / HP320E (réplica e alíquota não são amostras)
+        target = info.base_code if info.recognized and info.base_code else code
+        norm = normalize_code(target)
+        if session.exec(select(Sample).where(Sample.project_id == project.id, Sample.code_norm == norm)).first():
+            existing.append(code)
+            continue
+        exp = importer.get_or_create_experiment(session, project.id, info.experiment_code) if info.experiment_code else None
+        session.add(
+            Sample(
+                project_id=project.id,
+                code=target,
+                code_norm=norm,
+                fraction=info.fraction,
+                temperature_c=info.temperature_c,
+                experiment_id=exp.id if exp else None,
+                kind=info.kind,
+            )
+        )
+        session.flush()
+        created.append(code)
+    if created:
+        audit.record(session, identity, "amostras_em_lote", f"Cadastrou {len(created)} amostra(s) de uma vez.", project.id, details={"codes": created})
+    session.commit()
+    return {"created": created, "existing": existing}
+
+
+@router.post("/projects/{project_id}/experiments/bulk", status_code=201)
+def bulk_experiments(
+    body: BulkCodes, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(get_identity)
+):
+    ensure_open(project)
+    created, existing = [], []
+    for code in split_codes(body.codes):
+        norm = normalize_code(code)
+        if session.exec(select(Experiment).where(Experiment.project_id == project.id, Experiment.code_norm == norm)).first():
+            existing.append(code)
+            continue
+        importer.get_or_create_experiment(session, project.id, code)
+        created.append(code)
+    if created:
+        audit.record(session, identity, "experimentos_em_lote", f"Cadastrou {len(created)} experimento(s) de uma vez.", project.id, details={"codes": created})
+    session.commit()
+    return {"created": created, "existing": existing}
+
+
+class AliasIn(BaseModel):
+    alias: str = Field(min_length=1, max_length=120)
+
+
+@router.post("/projects/{project_id}/samples/{sample_id}/aliases", status_code=201)
+def add_alias(
+    sample_id: int,
+    body: AliasIn,
+    project: Project = Depends(get_project),
+    session: Session = Depends(get_session),
+    identity: HorunIdentity = Depends(get_identity),
+):
+    ensure_open(project)
+    sample = _get_sample(session, project, sample_id)
+    norm = normalize_code(body.alias)
+    if norm == sample.code_norm:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "O nome é igual ao código da amostra.")
+    if session.exec(select(Sample).where(Sample.project_id == project.id, Sample.code_norm == norm)).first() is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, f"\"{body.alias}\" já é o código de outra amostra.")
+    importer.remember_alias(session, project.id, body.alias, sample, identity.username)
+    audit.record(session, identity, "apelido", f"Ligou o nome \"{body.alias}\" à amostra {sample.code}.", project.id, "sample", sample.id)
+    session.commit()
+    return results.sample_detail(session, sample)
+
+
+@router.delete("/projects/{project_id}/samples/{sample_id}/aliases/{alias_id}", status_code=204)
+def delete_alias(
+    sample_id: int,
+    alias_id: int,
+    project: Project = Depends(get_project),
+    session: Session = Depends(get_session),
+    identity: HorunIdentity = Depends(get_identity),
+):
+    ensure_open(project)
+    sample = _get_sample(session, project, sample_id)
+    alias = session.get(SampleAlias, alias_id)
+    if alias is None or alias.sample_id != sample.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nome lembrado não encontrado.")
+    name = alias.alias
+    session.delete(alias)
+    audit.record(session, identity, "apelido", f"Desligou o nome \"{name}\" da amostra {sample.code}.", project.id, "sample", sample.id)
     session.commit()
     return Response(status_code=204)

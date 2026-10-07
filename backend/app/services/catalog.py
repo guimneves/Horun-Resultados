@@ -39,8 +39,8 @@ TECHNIQUES: dict[str, dict] = {
         "label": "LECO",
         "instrument": "LECO SC832",
         "params": [
-            Param("C", "C (LECO)", "%", True),
-            Param("S", "S (LECO)", "%", True),
+            Param("C", "C total", "%", True),
+            Param("S", "S total", "%", True),
             Param("mass", "Massa", "g"),
         ],
     },

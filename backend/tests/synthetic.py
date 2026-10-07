@@ -35,18 +35,20 @@ def _pdf(pages: list[list[str]]) -> bytes:
     return buf.getvalue()
 
 
-def _head(run: str, page: int, total: int) -> list[str]:
-    head = ["01 Jan 2026 - 10:00:00", *HEADER]
+def _head(run: str, page: int, total: int, printed: str = "01 Jan 2026 - 10:00:00") -> list[str]:
+    head = [printed, *HEADER]
     head[2], head[4] = str(page), str(total)
     return [*head, *run.split(" "), "05", "Mar", "2026", "-", "09:30:00", "EVR", "CHNS", "Linear", "evr", "GRP", "1"]
 
 
-def chnso_summary_pdf(rows: list[tuple], run: str = "000001- Teste Sintetico", per_page: int = 6) -> bytes:
+def chnso_summary_pdf(
+    rows: list[tuple], run: str = "000001- Teste Sintetico", per_page: int = 6, printed: str = "01 Jan 2026 - 10:00:00"
+) -> bytes:
     """rows: (posição, tipo Byp/Std/Smp, nome, N, C, H, S, O, W) com None = "-"."""
     pages = []
     chunks = [rows[i : i + per_page] for i in range(0, len(rows), per_page)] or [[]]
     for n, chunk in enumerate(chunks, start=1):
-        tokens = _head(run, n, len(chunks))
+        tokens = _head(run, n, len(chunks), printed)
         if n == 1:
             tokens += ["Results", "Summary", "for", "Element", "%", "#", "Type", "Name", "N", "%", "C", "%", "H", "%", "S", "%", "O", "%", "W", "(mg)"]
         else:

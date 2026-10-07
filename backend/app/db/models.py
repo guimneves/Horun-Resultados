@@ -112,6 +112,7 @@ class ImportBatch(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     project_id: int = Field(foreign_key="project.id", index=True)
     file_ids_json: str = Field(default="[]", sa_column=Column(Text, nullable=False, default="[]"))
+    technique: str = ""  # tipo de análise escolhido pela pessoa ("" = detectar)
     status: str = "preview"  # preview | confirmed
     created_by: str = ""
     created_at: datetime = Field(default_factory=utcnow)
@@ -169,3 +170,19 @@ class AuditEvent(SQLModel, table=True):
     summary: str = ""
     details_json: str = Field(default="{}", sa_column=Column(Text, nullable=False, default="{}"))
     created_at: datetime = Field(default_factory=utcnow, index=True)
+
+
+class SampleAlias(SQLModel, table=True):
+    """Nome como aparece num arquivo → amostra do projeto. Gravado quando a
+    pessoa atribui um nome a uma amostra na importação; na próxima
+    importação, o mesmo nome já vem atribuído (editável na página da amostra)."""
+
+    __table_args__ = (UniqueConstraint("project_id", "alias_norm"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    project_id: int = Field(foreign_key="project.id", index=True)
+    sample_id: int = Field(foreign_key="sample.id", index=True)
+    alias: str
+    alias_norm: str = Field(index=True)
+    created_by: str = ""
+    created_at: datetime = Field(default_factory=utcnow)

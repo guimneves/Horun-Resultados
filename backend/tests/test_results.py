@@ -31,7 +31,7 @@ def loaded(client, project):
     pv = upload(client, project["id"], {"job.htm": htm})
     # HP300NA/HP300NB como rocha: fração "HP" (sem sufixo) → trata como H
     decisions = [
-        {"norm": s["norm"], "action": "create", "fraction": "H"} for s in pv["samples"] if s["code"] in ("HP300NA", "HP300NB")
+        {"row": r["row"], "action": "create", "code": r["name"], "fraction": "H"} for r in pv["rows"] if r["name"] in ("HP300NA", "HP300NB")
     ]
     confirm(client, project["id"], pv, decisions)
     return project

@@ -24,7 +24,7 @@ from dataclasses import dataclass
 
 from sqlmodel import Session, select
 
-from app.db.models import Analysis, AnalysisValue, Experiment, FractionType, Sample, StoredFile
+from app.db.models import Analysis, AnalysisValue, Experiment, FractionType, Sample, SampleAlias, StoredFile
 from app.services.catalog import TECHNIQUES
 
 MODES = ("padrao", "validas", "todas")
@@ -238,11 +238,13 @@ def sample_detail(session: Session, sample: Sample, mode: str = "todas") -> dict
         if aliquot is not None
     ]
     by_sample = _values_by_sample(data, mode)
+    aliases = session.exec(select(SampleAlias).where(SampleAlias.sample_id == sample.id)).all()
     return {
         **sample_row(sample, data.experiments),
         "values": {k: mean_sd(v) for k, v in by_sample.get(sample.id, {}).items()},
         "analyses": analyses,
         "aliquots": aliquots,
+        "aliases": [{"id": a.id, "alias": a.alias, "created_by": a.created_by} for a in aliases],
     }
 
 

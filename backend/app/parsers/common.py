@@ -66,6 +66,9 @@ class ParseResult:
     # Prioridade quando duas fontes trazem a mesma medição no mesmo lote
     # (o resumo do CHNSO vale mais que o PDF de uma amostra só).
     priority: int = 0
+    # Desempate com a mesma prioridade: vale o maior (ex. a data de
+    # impressão do relatório — a impressão mais nova do mesmo relatório).
+    tiebreak: str = ""
 
 
 _NUM_RE = re.compile(r"[-+]?\d+(?:[.,]\d+)?(?:[eE][-+]?\d+)?")

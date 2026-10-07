@@ -66,6 +66,17 @@ def _join_name(tokens: list[str]) -> str:
     return out.strip()
 
 
+def _printed_at(tokens: list[str]) -> str:
+    """Data de impressão (1ª linha do PDF, "28 Sep 2026 - 14:28:16") em ISO."""
+    m = _DATE_RE.match(tokens[0]) if tokens else None
+    if not m:
+        return ""
+    try:
+        return datetime.strptime(m.group(0), "%d %b %Y - %H:%M:%S").isoformat()
+    except ValueError:
+        return ""
+
+
 def _header(tokens: list[str]) -> tuple[str, str]:
     """(nome da corrida AutoRun, data da análise ISO) a partir do cabeçalho."""
     try:
@@ -107,7 +118,7 @@ def parse(content: bytes, filename: str = "") -> ParseResult:
 
 def _parse_summary(pages: list[list[str]]) -> ParseResult:
     run_name, analyzed_at = _header(pages[0])
-    result = ParseResult(TECHNIQUE, "CHNSO — Results Summary for Element %", priority=10)
+    result = ParseResult(TECHNIQUE, "CHNSO — Results Summary for Element %", priority=10, tiebreak=_printed_at(pages[0]))
     body: list[str] = []
     for index, tokens in enumerate(pages):
         start = None
@@ -175,7 +186,7 @@ def _after(tokens: list[str], *seq: str) -> int | None:
 
 def _parse_single(tokens: list[str]) -> ParseResult:
     run_name, analyzed_at = _header(tokens)
-    result = ParseResult(TECHNIQUE, "CHNSO — Single Sample Result", priority=1)
+    result = ParseResult(TECHNIQUE, "CHNSO — Single Sample Result", priority=1, tiebreak=_printed_at(tokens))
     name_start = _after(tokens, "Sample", "Name")
     pos_start = _after(tokens, "Sample", "Position", "#")
     if name_start is None or pos_start is None:

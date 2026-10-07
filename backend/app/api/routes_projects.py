@@ -23,6 +23,7 @@ from app.db.models import (
     ImportBatch,
     Project,
     Sample,
+    SampleAlias,
     StoredFile,
     utcnow,
 )
@@ -203,6 +204,7 @@ def delete_project(
     for start in range(0, len(analysis_ids), 500):
         session.exec(sa_delete(AnalysisValue).where(AnalysisValue.analysis_id.in_(analysis_ids[start : start + 500])))  # type: ignore[union-attr]
     session.exec(sa_delete(Analysis).where(Analysis.project_id == pid))  # type: ignore[arg-type]
+    session.exec(sa_delete(SampleAlias).where(SampleAlias.project_id == pid))  # type: ignore[arg-type]
     session.exec(sa_delete(Sample).where(Sample.project_id == pid))  # type: ignore[arg-type]
     session.exec(sa_delete(Experiment).where(Experiment.project_id == pid))  # type: ignore[arg-type]
     session.exec(sa_delete(ImportBatch).where(ImportBatch.project_id == pid))  # type: ignore[arg-type]
