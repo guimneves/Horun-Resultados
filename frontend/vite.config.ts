@@ -15,4 +15,9 @@ export default defineConfig({
   server: {
     port: 5173,
   },
+  // Recharts sozinho passa de 500 kB; o módulo é uma SPA interna (rede do
+  // laboratório), então um pacote único é aceitável.
+  build: {
+    chunkSizeWarningLimit: 1200,
+  },
 })

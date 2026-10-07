@@ -1,3 +1,58 @@
-/* Tokens específicos deste módulo, se precisar de algum — os tokens
-   compartilhados já vêm de @horun/design-system/src/tokens.css, importado
-   em main.tsx antes deste arquivo. Ver Prompt_Horun_Core.md, seção 2. */
+/* Tokens específicos deste módulo — os compartilhados vêm de
+   @horun/design-system/src/tokens.css (importado antes, em main.tsx). O
+   Resultados mantém o azul-marinho padrão do Horun. */
+
+body {
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Celular (abaixo de `md`, 768 px) — Prompt_Horun_Modulo.md, seção 13:
+   campos com 16 px (o iPhone dá zoom em campos menores) e área de toque
+   de pelo menos 40 px. */
+@media (max-width: 767.98px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='file']),
+  select,
+  textarea {
+    font-size: 16px;
+    min-height: 40px;
+  }
+  button {
+    min-height: 40px;
+  }
+  input[type='checkbox'],
+  input[type='radio'] {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* Janela (modal): largura toda no celular, rolagem por dentro. */
+.modal-panel {
+  max-height: calc(100dvh - 1rem);
+  overflow-y: auto;
+}
+
+/* Tabelas largas rolam dentro do próprio contêiner, nunca a página. */
+.table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: var(--color-bg-elevated) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text);
+}
+
+/* Impressão (Manual → "Imprimir / salvar PDF"): só o conteúdo. */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000;
+  }
+  main {
+    overflow: visible !important;
+  }
+}
