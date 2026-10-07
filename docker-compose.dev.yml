@@ -1,0 +1,27 @@
+# Compose de DESENVOLVIMENTO standalone (sem o Horun Core), modo DEV, só em
+# 127.0.0.1 — uso:  docker compose -f docker-compose.dev.yml up --build
+# O de produção, plugado no Core, é o docker-compose.yml.
+
+services:
+  backend:
+    build: ./backend
+    environment:
+      # DEV_MODE = sem cabeçalhos, toda requisição é o administrador "dev",
+      # SEM login — por isso as portas só escutam na própria máquina.
+      HORUN_DEV_MODE: "true"
+      MODULE_UPLOAD_ROOT: /data/uploads
+    volumes:
+      - resultados_dev_uploads:/data/uploads
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_BASE: /
+    ports:
+      - "127.0.0.1:8080:80"
+
+volumes:
+  resultados_dev_uploads:

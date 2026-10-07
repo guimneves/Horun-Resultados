@@ -5,6 +5,9 @@ WORKDIR /app
 COPY pyproject.toml ./
 COPY app ./app
 
+# Dependências com versão exata (pyproject.toml), incluindo os leitores dos
+# formatos dos equipamentos: pypdf (CHNSO) e openpyxl (GC-FID/TCD, planilha
+# de gás, Py-GC-MS); [postgres] = driver do banco de produção.
 RUN pip install --no-cache-dir ".[postgres]"
 
 EXPOSE 8000

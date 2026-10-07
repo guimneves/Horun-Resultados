@@ -1,31 +1,99 @@
-# Compose para desenvolvimento/teste standalone deste módulo (sem o Horun
-# Core). Quando o módulo for "plugado" na plataforma de verdade, ele passa
-# a entrar na rede `horun-network` (criada pelo Core — ver
-# Prompt_Horun_Core.md, seção 9.2) e ganha `container_name`s previsíveis, sem
-# porta exposta ao host — ver Prompt_Horun_Core.md, seção 8, para o
-# encaixe da interface, e o exemplo real em `RE7S-Horun/docker-compose.yml`.
+# Produção: Horun · Resultados plugado no Horun Core. Antes do primeiro
+# `docker compose up -d --build`:
+#   - a rede compartilhada já existe (criada uma vez pelo Core):
+#       docker network create horun-network
+#   - `.env` preenchido a partir do `.env.example` (nunca versionado).
+#
+# Portas: NENHUMA. O Core alcança "resultados-backend:8000" e
+# "resultados-frontend:80" pela horun-network; a identidade por cabeçalho só é
+# segura porque ninguém alcança o módulo sem passar pelo Core
+# (Prompt_Horun_Modulo.md, seção 9). Para rodar sozinho, em DEV, use o
+# docker-compose.dev.yml.
+
+# Nome fixo do projeto: sem ele, o Docker usa o NOME DA PASTA para nomear os
+# volumes (banco, uploads) — renomear a pasta faria o módulo abrir vazio.
+name: horun-resultados
 
 services:
-  backend:
-    build: ./backend
+  resultados-db:
+    image: postgres:16-alpine
+    container_name: resultados-db
+    restart: unless-stopped
     environment:
-      # DEV_MODE = todo pedido é o usuário "admin" fixo, SEM login — por isso
-      # as portas só escutam na própria máquina (127.0.0.1)
-      HORUN_DEV_MODE: "true"
-    ports:
-      - "127.0.0.1:8000:8000"
+      POSTGRES_DB: resultados
+      POSTGRES_USER: resultados
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      # Volume nomeado: sobrevive a `docker compose down`/rebuild.
+      - resultados_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U resultados -d resultados"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Sem "ports:" — só os containers desta rede falam com o banco.
 
-  frontend:
+  db-backup:
+    # Dump ao subir e a cada BACKUP_INTERVAL_HOURS, verificado, com rotação de
+    # BACKUP_KEEP_DAYS dias, numa pasta FORA do Docker (Prompt, seção 9).
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      resultados-db:
+        condition: service_healthy
+    environment:
+      PGHOST: resultados-db
+      PGUSER: resultados
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: resultados
+      BACKUP_PREFIX: resultados
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-30}
+      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
+    volumes:
+      - ${BACKUP_DIR:-./backups}:/backups
+      - ./deploy/backup/pg_backup.sh:/pg_backup.sh:ro
+    entrypoint: ["/bin/sh", "/pg_backup.sh"]
+
+  resultados-backend:
+    build: ./backend
+    container_name: resultados-backend
+    restart: unless-stopped
+    depends_on:
+      resultados-db:
+        condition: service_healthy
+    environment:
+      HORUN_DEV_MODE: "false"
+      MODULE_DATABASE_URL: postgresql+psycopg://resultados:${POSTGRES_PASSWORD}@resultados-db:5432/resultados
+      # Originais enviados (PDF, CSV, HTM, XLSX) — volume nomeado abaixo.
+      MODULE_UPLOAD_ROOT: /data/uploads
+      MODULE_MAX_UPLOAD_MB: ${MODULE_MAX_UPLOAD_MB:-100}
+      # Avisos pelo Horun Core (sininho) — vazios = sem avisos.
+      HORUN_CORE_URL: ${HORUN_CORE_URL:-}
+      HORUN_NOTIFY_TOKEN: ${HORUN_NOTIFY_TOKEN:-}
+    volumes:
+      - resultados_uploads:/data/uploads
+    networks:
+      - default
+      - horun-network
+
+  resultados-frontend:
     build:
       context: ./frontend
       args:
-        # "/" serve standalone; quando plugado no Core, sobrescrever com
-        # "/m/resultados/" (ver Prompt_Horun_Modulo.md, seção 6).
-        VITE_BASE: /
-    ports:
-      - "127.0.0.1:8080:80"
+        # Sub-caminho sob o qual o Core serve o módulo.
+        VITE_BASE: /m/resultados/
+    container_name: resultados-frontend
+    restart: unless-stopped
+    depends_on:
+      - resultados-backend
+    networks:
+      - default
+      - horun-network
 
-# PRODUÇÃO (plugado no Core) — ver Prompt_Horun_Modulo.md, seção 9: sem
-# "ports:" nenhum, backend e frontend na horun-network com container_name
-# previsível, Postgres com volume nomeado e o serviço db-backup
-# (deploy/backup/pg_backup.sh).
+networks:
+  horun-network:
+    external: true
+
+volumes:
+  resultados_pgdata:
+  resultados_uploads:
