@@ -1,4 +1,4 @@
-import { useEffect, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useRef, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from 'react'
 
 export const card = { borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }
 export const muted = { color: 'var(--color-text-muted)' }
@@ -98,5 +98,76 @@ export function Empty({ children }: { children: ReactNode }) {
     <p className="rounded-md border border-dashed p-4 text-center text-sm" style={{ ...muted, borderColor: 'var(--color-border)' }}>
       {children}
     </p>
+  )
+}
+
+/** Menu suspenso simples ("Mais ▾", "Projeto ▾"): fecha ao escolher um item. */
+export function Dropdown({ label, children, ariaLabel }: { label: ReactNode; children: ReactNode; ariaLabel?: string }) {
+  const ref = useRef<HTMLDetailsElement>(null)
+  useEffect(() => {
+    // fecha ao tocar fora
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current?.open && !ref.current.contains(e.target as Node)) ref.current.removeAttribute('open')
+    }
+    document.addEventListener('click', onDoc)
+    return () => document.removeEventListener('click', onDoc)
+  }, [])
+  return (
+    <details className="relative" ref={ref}>
+      <summary
+        className="flex h-9 cursor-pointer list-none items-center gap-1 rounded-md border px-3 text-sm"
+        style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }}
+        aria-label={ariaLabel}
+      >
+        {label} <span aria-hidden="true">▾</span>
+      </summary>
+      <div className="absolute right-0 z-30 mt-1 w-56 rounded-md border p-1 shadow-lg" style={card} onClick={() => ref.current?.removeAttribute('open')}>
+        {children}
+      </div>
+    </details>
+  )
+}
+
+export function MenuItem({ onClick, disabled, danger, children }: { onClick: () => void; disabled?: boolean; danger?: boolean; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-[var(--color-surface)] disabled:opacity-50"
+      style={danger ? { color: '#c62828' } : undefined}
+    >
+      {children}
+    </button>
+  )
+}
+
+/** Botões de escolha única lado a lado (ex.: eixo X, sinal, visão). */
+export function Segmented<T extends string>({
+  value,
+  options,
+  onChange,
+  label,
+}: {
+  value: T
+  options: { value: T; label: string }[]
+  onChange: (v: T) => void
+  label: string
+}) {
+  return (
+    <div className="inline-flex flex-wrap rounded-md border p-0.5" style={{ borderColor: 'var(--color-border)' }} role="group" aria-label={label}>
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          onClick={() => onChange(o.value)}
+          aria-pressed={value === o.value}
+          className="rounded px-2.5 py-1 text-xs"
+          style={value === o.value ? { background: 'var(--color-primary)', color: 'var(--color-primary-contrast)' } : muted}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
   )
 }

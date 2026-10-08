@@ -42,7 +42,9 @@ export function HiTmaxChart({ samples, fractionLabel }: { samples: SampleRow[]; 
       title="HI × Tmax"
       subtitle="Campos de querogênio aproximados; linhas em Tmax 435 e 470 °C (janela de óleo)"
       empty={points.length ? null : 'Sem amostras com HI e Tmax (Rock-Eval).'}
-      table={<SimpleTable head={['Amostra', 'Fração', 'Tmax (°C)', 'HI']} rows={points.map((p) => [p.code, fractionLabel(p.fraction), fmt(p.tmax), fmt(p.hi)])} />}
+      table={
+        <SimpleTable head={['Amostra', 'Fração', 'Tmax (°C)', 'HI']} rows={points.map((p) => [p.code, fractionLabel(p.fraction), fmt(p.tmax), fmt(p.hi)])} />
+      }
     >
       <ResponsiveContainer width="100%" height="100%">
         <ScatterChart margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
@@ -116,7 +118,9 @@ export function GasCompositionChart({ samples }: { samples: SampleRow[] }) {
   return (
     <ChartCard
       title="Composição do gás por experimento"
-      subtitle={onlyFid ? 'Só hidrocarbonetos (GC-FID, % de área)' : 'Planilha de cálculo de gás, normalizada sem o gás de enchimento (%); GC-FID quando faltar'}
+      subtitle={
+        onlyFid ? 'Só hidrocarbonetos (GC-FID, % de área)' : 'Planilha de cálculo de gás, normalizada sem o gás de enchimento (%); GC-FID quando faltar'
+      }
       empty={rows.length ? null : 'Sem dados de gás (importe a planilha de cálculo de gás ou o GC-FID).'}
       table={
         <SimpleTable
@@ -169,17 +173,40 @@ export function PyrogramChart({ curves, xAxis, signal }: { curves: AnalysisData<
       title={`Pirogramas sobrepostos — ${signal}`}
       subtitle={`Rock-Eval, pirólise · eixo X: ${xAxis === 'Temp' ? 'temperatura (°C)' : 'tempo'} · sinal em µg/g rocha/s`}
       empty={lines.length ? null : 'Escolha amostras com curvas de Rock-Eval.'}
-      table={<SimpleTable head={['Medição', 'Pontos', `Máximo de ${signal}`]} rows={lines.map((l) => [l.name, l.points.length, fmt(Math.max(...l.points.map((p) => p.y)))])} />}
+      table={
+        <SimpleTable
+          head={['Medição', 'Pontos', `Máximo de ${signal}`]}
+          rows={lines.map((l) => [l.name, l.points.length, fmt(Math.max(...l.points.map((p) => p.y)))])}
+        />
+      }
     >
       <ResponsiveContainer width="100%" height="100%">
         <LineChart margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
           <CartesianGrid {...gridProps} />
-          <XAxis type="number" dataKey="x" domain={['dataMin', 'dataMax']} allowDuplicatedCategory={false} {...axisProps} height={36} tickFormatter={(v: number) => fmt(v)} />
+          <XAxis
+            type="number"
+            dataKey="x"
+            domain={['dataMin', 'dataMax']}
+            allowDuplicatedCategory={false}
+            {...axisProps}
+            height={36}
+            tickFormatter={(v: number) => fmt(v)}
+          />
           <YAxis {...axisProps} width={48} tickFormatter={(v: number) => fmt(v)} />
           <Tooltip {...tooltipStyle} labelFormatter={(v) => `${fmt(Number(v))}${xAxis === 'Temp' ? ' °C' : ''}`} formatter={(v) => fmt(Number(v))} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
           {lines.map((l, i) => (
-            <Line key={l.id} name={l.name} data={l.points} dataKey="y" stroke={seriesColor(i)} strokeDasharray={dashFor(i)} strokeWidth={2} dot={false} isAnimationActive={false} />
+            <Line
+              key={l.id}
+              name={l.name}
+              data={l.points}
+              dataKey="y"
+              stroke={seriesColor(i)}
+              strokeDasharray={dashFor(i)}
+              strokeWidth={2}
+              dot={false}
+              isAnimationActive={false}
+            />
           ))}
         </LineChart>
       </ResponsiveContainer>
@@ -203,6 +230,16 @@ export function alkaneDistribution(peaks: PyPeaks['peaks']): { n: number; pct: n
 export function AlkaneChart({ data }: { data: AnalysisData<PyPeaks>[] }) {
   const lines = data.map((d) => ({ id: d.analysis_id, name: d.sample_code, points: alkaneDistribution(d.data.peaks) })).filter((l) => l.points.length)
   const allN = Array.from(new Set(lines.flatMap((l) => l.points.map((p) => p.n)))).sort((a, b) => a - b)
+  // uma linha por n-alcano, uma coluna por medição (barras finas lado a lado)
+  const rows = allN.map((n) => {
+    const row: Record<string, number | string> = { n: `C${n}` }
+    lines.forEach((l) => {
+      const p = l.points.find((x) => x.n === n)
+      if (p) row[`m${l.id}`] = p.pct
+    })
+    return row
+  })
+  const barSize = Math.max(2, Math.min(8, Math.floor(24 / Math.max(1, lines.length))))
   return (
     <ChartCard
       title="Distribuição de n-alcanos (Py-GC-MS)"
@@ -216,16 +253,55 @@ export function AlkaneChart({ data }: { data: AnalysisData<PyPeaks>[] }) {
       }
     >
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
+        <BarChart data={rows} margin={{ top: 8, right: 16, bottom: 8, left: 0 }} barGap={1} barCategoryGap="20%">
           <CartesianGrid {...gridProps} />
-          <XAxis type="number" dataKey="n" domain={['dataMin', 'dataMax']} allowDuplicatedCategory={false} {...axisProps} tickFormatter={(v: number) => `C${v}`} height={36} />
+          <XAxis dataKey="n" {...axisProps} height={36} interval="preserveStartEnd" />
           <YAxis {...axisProps} width={40} unit="%" />
-          <Tooltip {...tooltipStyle} labelFormatter={(v) => `n-C${v}`} formatter={(v) => `${fmt(Number(v))} %`} />
-          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <Tooltip {...tooltipStyle} labelFormatter={(v) => `n-${v}`} formatter={(v) => `${fmt(Number(v))} %`} cursor={{ fill: 'var(--color-surface)' }} />
+          {lines.length > 1 && <Legend wrapperStyle={{ fontSize: 12 }} />}
           {lines.map((l, i) => (
-            <Line key={l.id} name={l.name} data={l.points} dataKey="pct" stroke={seriesColor(i)} strokeDasharray={dashFor(i)} strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} />
+            <Bar key={l.id} dataKey={`m${l.id}`} name={l.name} fill={seriesColor(i)} barSize={barSize} radius={[2, 2, 0, 0]} isAnimationActive={false} />
           ))}
-        </LineChart>
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartCard>
+  )
+}
+
+// ---------------------------------------------------------------- Van Krevelen
+
+export function VanKrevelenChart({ samples, fractionLabel }: { samples: SampleRow[]; fractionLabel: (c: string) => string }) {
+  const points = samples
+    .filter((s) => s.values['chnso.HC_at']?.mean != null && s.values['chnso.OC_at']?.mean != null)
+    .map((s) => ({ code: s.code, fraction: s.fraction, hc: s.values['chnso.HC_at'].mean as number, oc: s.values['chnso.OC_at'].mean as number }))
+  const fractions = Array.from(new Set(points.map((p) => p.fraction)))
+  return (
+    <ChartCard
+      title="Van Krevelen (H/C × O/C)"
+      subtitle="Razões atômicas do CHNSO, por fração"
+      empty={points.length ? null : 'Sem amostras com H/C e O/C (CHNSO com oxigênio).'}
+      table={<SimpleTable head={['Amostra', 'Fração', 'O/C', 'H/C']} rows={points.map((p) => [p.code, fractionLabel(p.fraction), fmt(p.oc), fmt(p.hc)])} />}
+    >
+      <ResponsiveContainer width="100%" height="100%">
+        <ScatterChart margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
+          <CartesianGrid {...gridProps} />
+          <XAxis type="number" dataKey="oc" name="O/C" domain={[0, 'auto']} {...axisProps} height={36} tickFormatter={(v: number) => fmt(v)} />
+          <YAxis type="number" dataKey="hc" name="H/C" domain={[0, 'auto']} {...axisProps} width={48} tickFormatter={(v: number) => fmt(v)} />
+          <ZAxis range={[70, 70]} />
+          <Tooltip {...tooltipStyle} formatter={(v) => fmt(Number(v))} cursor={{ strokeDasharray: '3 3' }} />
+          <Legend wrapperStyle={{ fontSize: 12 }} />
+          {fractions.map((f) => (
+            <Scatter
+              key={f}
+              name={fractionLabel(f)}
+              data={points.filter((p) => p.fraction === f)}
+              fill={fractionColor(f)}
+              stroke="var(--color-bg-elevated)"
+              strokeWidth={2}
+              isAnimationActive={false}
+            />
+          ))}
+        </ScatterChart>
       </ResponsiveContainer>
     </ChartCard>
   )

@@ -2,60 +2,37 @@ import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import type { AnalysisData, Mode, PyPeaks, PyroData, SampleRow, SeriesResponse } from '../api/types'
 import { SeriesChart } from '../charts/SeriesChart'
-import { AlkaneChart, GasCompositionChart, HiTmaxChart, PyrogramChart } from '../charts/MoreCharts'
-import { card, ErrorBox, inputClass, inputStyle, muted } from '../components/ui'
+import { AlkaneChart, GasCompositionChart, HiTmaxChart, PyrogramChart, VanKrevelenChart } from '../charts/MoreCharts'
+import { Button, card, Dropdown, ErrorBox, inputClass, inputStyle, muted, Segmented } from '../components/ui'
 import { useApp } from '../context/AppContext'
 import { useSamples } from '../lib/useSamples'
 import { useProject } from './ProjectLayout'
 import { MODE_OPTIONS } from './SamplesTab'
 
-type ChartSpec =
-  | { kind: 'series'; technique: string; parameter: string }
-  | { kind: 'hi_tmax' }
-  | { kind: 'gas' }
-  | { kind: 'pyro' }
-  | { kind: 'alkanes' }
-
-const PRESETS: { id: string; label: string; charts: ChartSpec[] }[] = [
-  { id: 'custom', label: 'Personalizado (escolha técnica e parâmetro)', charts: [] },
+// Painel de séries: grupos de gráficos (só aparecem os que têm dados no projeto).
+type Extra = 'hi_tmax' | 'vk' | 'gas' | 'alkanes' | 'pyro'
+const SECTIONS: { id: string; label: string; series: string[]; extras: Extra[] }[] = [
   {
-    id: 'cot',
-    label: 'COT × temperatura (Rock-Eval e LECO)',
-    charts: [
-      { kind: 'series', technique: 'rockeval', parameter: 'TOC' },
-      { kind: 'series', technique: 'leco', parameter: 'C' },
-    ],
+    id: 'mo',
+    label: 'Matéria orgânica',
+    series: ['rockeval.TOC', 'leco.C', 'chnso.C', 'rockeval.HI', 'rockeval.OI', 'rockeval.Tmax', 'rockeval.S1', 'rockeval.S2', 'rockeval.PI'],
+    extras: ['hi_tmax'],
   },
-  {
-    id: 'hi_oi',
-    label: 'HI e OI × temperatura',
-    charts: [
-      { kind: 'series', technique: 'rockeval', parameter: 'HI' },
-      { kind: 'series', technique: 'rockeval', parameter: 'OI' },
-    ],
-  },
-  { id: 'hi_tmax', label: 'HI × Tmax (tipo de querogênio)', charts: [{ kind: 'hi_tmax' }] },
-  { id: 'hc', label: 'H/C atômica × temperatura (CHNSO)', charts: [{ kind: 'series', technique: 'chnso', parameter: 'HC_at' }] },
-  {
-    id: 's',
-    label: 'Enxofre × temperatura (CHNSO e LECO)',
-    charts: [
-      { kind: 'series', technique: 'chnso', parameter: 'S' },
-      { kind: 'series', technique: 'leco', parameter: 'S' },
-    ],
-  },
-  { id: 'gas', label: 'Composição do gás por experimento', charts: [{ kind: 'gas' }] },
-  {
-    id: 'gas_mass',
-    label: 'Massa de gás gerada × temperatura',
-    charts: [
-      { kind: 'series', technique: 'gas_balanco', parameter: 'gas_mass_g' },
-      { kind: 'series', technique: 'gas_balanco', parameter: 'gas_yield_mg_g' },
-    ],
-  },
-  { id: 'alkanes', label: 'Distribuição de n-alcanos (Py-GC-MS)', charts: [{ kind: 'alkanes' }] },
-  { id: 'pyro', label: 'Sobreposição de pirogramas (Rock-Eval)', charts: [{ kind: 'pyro' }] },
+  { id: 'el', label: 'Elementar', series: ['chnso.HC_at', 'chnso.OC_at', 'chnso.H', 'chnso.N', 'chnso.S', 'leco.S'], extras: ['vk'] },
+  { id: 'gas', label: 'Gás', series: ['gas_balanco.gas_mass_g', 'gas_balanco.gas_yield_mg_g', 'gc_fid.wetness'], extras: ['gas'] },
+  { id: 'py', label: 'Py-GC-MS', series: ['pygcms.pr_ph', 'pygcms.pr_nc17', 'pygcms.ph_nc18', 'pygcms.cpi'], extras: ['alkanes'] },
+  { id: 'pyro', label: 'Pirogramas', series: [], extras: ['pyro'] },
 ]
+const CUSTOM_KEY = (projectId: number) => `resultados.series.extra.${projectId}`
+
+function readCustom(projectId: number): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(CUSTOM_KEY(projectId)) ?? '[]')
+    return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
 
 function SeriesLoader({ projectId, spec, mode, split }: { projectId: number; spec: { technique: string; parameter: string }; mode: Mode; split: boolean }) {
   const { techniqueLabel } = useApp()
@@ -64,7 +41,9 @@ function SeriesLoader({ projectId, spec, mode, split }: { projectId: number; spe
   useEffect(() => {
     setData(null)
     api
-      .get<SeriesResponse>(`/projects/${projectId}/series?technique=${spec.technique}&parameter=${encodeURIComponent(spec.parameter)}&mode=${mode}&split_replicates=${split}`)
+      .get<SeriesResponse>(
+        `/projects/${projectId}/series?technique=${spec.technique}&parameter=${encodeURIComponent(spec.parameter)}&mode=${mode}&split_replicates=${split}`,
+      )
       .then(setData)
       .catch((err) => setError(String(err.message ?? err)))
   }, [projectId, spec.technique, spec.parameter, mode, split])
@@ -73,7 +52,17 @@ function SeriesLoader({ projectId, spec, mode, split }: { projectId: number; spe
 }
 
 /** Escolha de amostras para os gráficos por amostra (pirogramas, n-alcanos). */
-export function SamplePicker({ samples, selected, onChange, max = 12 }: { samples: SampleRow[]; selected: number[]; onChange: (ids: number[]) => void; max?: number }) {
+export function SamplePicker({
+  samples,
+  selected,
+  onChange,
+  max = 12,
+}: {
+  samples: SampleRow[]
+  selected: number[]
+  onChange: (ids: number[]) => void
+  max?: number
+}) {
   const [q, setQ] = useState('')
   const shown = samples.filter((s) => s.code.toLowerCase().includes(q.trim().toLowerCase()))
   return (
@@ -82,7 +71,14 @@ export function SamplePicker({ samples, selected, onChange, max = 12 }: { sample
         <span>
           Amostras ({selected.length} de {samples.length}; até {max})
         </span>
-        <input className={`${inputClass} max-w-xs`} style={inputStyle} placeholder="Filtrar" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Filtrar amostras" />
+        <input
+          className={`${inputClass} max-w-xs`}
+          style={inputStyle}
+          placeholder="Filtrar"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          aria-label="Filtrar amostras"
+        />
       </div>
       <div className="flex max-h-40 flex-wrap gap-1 overflow-y-auto">
         {shown.map((s) => {
@@ -132,18 +128,17 @@ export function PyroSection({ projectId, samples, mode, initial }: { projectId: 
   return (
     <div className="space-y-2">
       {!initial && <SamplePicker samples={withRe} selected={selected} onChange={setSelected} />}
-      <div className="flex flex-wrap gap-2 text-sm">
-        <select className={`${inputClass} w-auto`} style={inputStyle} value={signal} onChange={(e) => setSignal(e.target.value)} aria-label="Sinal">
-          {(signals.length ? signals : ['HC']).map((s) => (
-            <option key={s} value={s}>
-              Sinal: {s}
-            </option>
-          ))}
-        </select>
-        <select className={`${inputClass} w-auto`} style={inputStyle} value={xAxis} onChange={(e) => setXAxis(e.target.value as 'Temp' | 'Time')} aria-label="Eixo X">
-          <option value="Temp">Eixo X: temperatura</option>
-          <option value="Time">Eixo X: tempo</option>
-        </select>
+      <div className="flex flex-wrap items-center gap-2">
+        <Segmented
+          label="Eixo X"
+          value={xAxis}
+          onChange={setXAxis}
+          options={[
+            { value: 'Temp', label: 'Temperatura' },
+            { value: 'Time', label: 'Tempo' },
+          ]}
+        />
+        <Segmented label="Sinal" value={signal} onChange={setSignal} options={(signals.length ? signals : ['HC']).map((x) => ({ value: x, label: x }))} />
       </div>
       <PyrogramChart curves={curves} xAxis={xAxis} signal={signal} />
     </div>
@@ -177,44 +172,100 @@ export function AlkaneSection({ projectId, samples, mode, initial }: { projectId
 
 export function SeriesTab() {
   const { project } = useProject()
-  const { catalog, fractionLabel } = useApp()
-  const [preset, setPreset] = useState('cot')
+  const { catalog, fractionLabel, paramLabel, techniqueLabel } = useApp()
   const [mode, setMode] = useState<Mode>('padrao')
   const [split, setSplit] = useState(false)
+  const [section, setSection] = useState('todos')
+  const [custom, setCustom] = useState<string[]>(() => readCustom(project.id))
+  const [adding, setAdding] = useState(false)
   const [technique, setTechnique] = useState('rockeval')
   const [parameter, setParameter] = useState('TOC')
   const { samples } = useSamples(project.id, mode)
+  const list = samples ?? []
 
-  const current = PRESETS.find((p) => p.id === preset) ?? PRESETS[0]
-  const charts: ChartSpec[] = preset === 'custom' ? [{ kind: 'series', technique, parameter }] : current.charts
+  const saveCustom = (next: string[]) => {
+    setCustom(next)
+    try {
+      localStorage.setItem(CUSTOM_KEY(project.id), JSON.stringify(next))
+    } catch {
+      /* sem armazenamento: vale só nesta visita */
+    }
+  }
+  const hasSeries = (col: string) => list.some((s) => s.temperature_c != null && s.values[col]?.mean != null)
+  const hasExtra = (e: Extra) =>
+    e === 'hi_tmax'
+      ? list.some((s) => s.values['rockeval.HI'] && s.values['rockeval.Tmax'])
+      : e === 'vk'
+        ? list.some((s) => s.values['chnso.HC_at'] && s.values['chnso.OC_at'])
+        : e === 'gas'
+          ? list.some((s) => s.fraction === 'G')
+          : e === 'alkanes'
+            ? list.some((s) => s.techniques?.includes('pygcms'))
+            : list.some((s) => s.techniques?.includes('rockeval'))
+  const sections = SECTIONS.map((sec) => ({ ...sec, series: sec.series.filter(hasSeries), extras: sec.extras.filter(hasExtra) })).filter(
+    (sec) => sec.series.length || sec.extras.length,
+  )
+  const shown = section === 'todos' ? sections : sections.filter((sec) => sec.id === section)
   const params = catalog.find((t) => t.key === technique)?.params ?? []
+  const chart = (col: string) => {
+    const [t, p] = col.split('.')
+    return <SeriesLoader key={col} projectId={project.id} spec={{ technique: t, parameter: p }} mode={mode} split={split} />
+  }
+  const extra = (e: Extra) => {
+    if (e === 'hi_tmax') return <HiTmaxChart key={e} samples={list} fractionLabel={fractionLabel} />
+    if (e === 'vk') return <VanKrevelenChart key={e} samples={list} fractionLabel={fractionLabel} />
+    if (e === 'gas') return <GasCompositionChart key={e} samples={list} />
+    if (e === 'alkanes')
+      return (
+        <div key={e} className="xl:col-span-2">
+          <AlkaneSection projectId={project.id} samples={list} mode={mode} />
+        </div>
+      )
+    return (
+      <div key={e} className="xl:col-span-2">
+        <PyroSection projectId={project.id} samples={list} mode={mode} />
+      </div>
+    )
+  }
+  const groups = [
+    { value: 'todos', label: 'Todos' },
+    ...sections.map((sec) => ({ value: sec.id, label: sec.label })),
+    ...(custom.length ? [{ value: 'meus', label: 'Meus gráficos' }] : []),
+  ]
 
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-        <select className={inputClass} style={inputStyle} value={preset} onChange={(e) => setPreset(e.target.value)} aria-label="Gráfico">
-          {PRESETS.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.label}
-            </option>
-          ))}
-        </select>
-        <select className={inputClass} style={inputStyle} value={mode} onChange={(e) => setMode(e.target.value as Mode)} aria-label="Validade">
-          {MODE_OPTIONS.map((m) => (
-            <option key={m.value} value={m.value}>
-              {m.label}
-            </option>
-          ))}
-        </select>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={split} onChange={(e) => setSplit(e.target.checked)} />
-          Separar réplicas do experimento (A, B, C)
-        </label>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Segmented label="Grupo de gráficos" value={section} onChange={setSection} options={groups} />
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Button onClick={() => setAdding((v) => !v)}>+ Gráfico</Button>
+          <Dropdown label="Opções" ariaLabel="Opções dos gráficos">
+            <div className="space-y-2 p-2 text-sm" onClick={(e) => e.stopPropagation()}>
+              <label className="block">
+                <span className="mb-1 block text-xs" style={muted}>
+                  Quais medições entram
+                </span>
+                <select className={inputClass} style={inputStyle} value={mode} onChange={(e) => setMode(e.target.value as Mode)} aria-label="Validade">
+                  {MODE_OPTIONS.map((m) => (
+                    <option key={m.value} value={m.value}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={split} onChange={(e) => setSplit(e.target.checked)} />
+                Separar réplicas A, B, C
+              </label>
+            </div>
+          </Dropdown>
+        </div>
       </div>
-      {preset === 'custom' && (
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+
+      {adding && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border p-3" style={card}>
           <select
-            className={inputClass}
+            className={`${inputClass} w-auto`}
             style={inputStyle}
             value={technique}
             onChange={(e) => {
@@ -229,7 +280,7 @@ export function SeriesTab() {
               </option>
             ))}
           </select>
-          <select className={inputClass} style={inputStyle} value={parameter} onChange={(e) => setParameter(e.target.value)} aria-label="Parâmetro">
+          <select className={`${inputClass} w-auto`} style={inputStyle} value={parameter} onChange={(e) => setParameter(e.target.value)} aria-label="Parâmetro">
             {params.map((p) => (
               <option key={p.key} value={p.key}>
                 {p.label}
@@ -237,30 +288,56 @@ export function SeriesTab() {
               </option>
             ))}
           </select>
+          <Button
+            variant="primary"
+            onClick={() => {
+              const col = `${technique}.${parameter}`
+              if (!custom.includes(col)) saveCustom([...custom, col])
+              setAdding(false)
+              setSection('meus')
+            }}
+          >
+            Adicionar
+          </Button>
+          <span className="text-xs" style={muted}>
+            Fica guardado neste navegador, em "Meus gráficos".
+          </span>
         </div>
       )}
-      <p className="text-xs" style={muted}>
-        Cada ponto junta as amostras da mesma fração e temperatura: com várias amostras (ex.: réplicas A, B, C do experimento), média ± desvio
-        entre elas; com uma só, média ± desvio das réplicas de análise. SE (sem extração) entra na mesma linha de H.
-      </p>
-      <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-        {charts.map((spec, i) => {
-          if (spec.kind === 'series') return <SeriesLoader key={`${spec.technique}.${spec.parameter}`} projectId={project.id} spec={spec} mode={mode} split={split} />
-          if (spec.kind === 'hi_tmax') return <HiTmaxChart key={i} samples={samples ?? []} fractionLabel={fractionLabel} />
-          if (spec.kind === 'gas') return <GasCompositionChart key={i} samples={samples ?? []} />
-          if (spec.kind === 'pyro')
-            return (
-              <div key={i} className="xl:col-span-2">
-                <PyroSection projectId={project.id} samples={samples ?? []} mode={mode} />
+
+      {sections.length === 0 && !custom.length && <p style={muted}>Sem resultados com temperatura ainda. Comece por Importar resultados.</p>}
+
+      {(section === 'todos' || section === 'meus') && custom.length > 0 && (
+        <section>
+          <h2 className="mb-2 font-semibold">Meus gráficos</h2>
+          <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+            {custom.map((col) => (
+              <div key={col} className="space-y-1">
+                {chart(col)}
+                <Button variant="ghost" onClick={() => saveCustom(custom.filter((c) => c !== col))}>
+                  Tirar "{techniqueLabel(col.split('.')[0])} {paramLabel(col)}" de Meus gráficos
+                </Button>
               </div>
-            )
-          return (
-            <div key={i} className="xl:col-span-2">
-              <AlkaneSection projectId={project.id} samples={samples ?? []} mode={mode} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {section !== 'meus' &&
+        shown.map((sec) => (
+          <section key={sec.id}>
+            <h2 className="mb-2 font-semibold">{sec.label}</h2>
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+              {sec.series.map(chart)}
+              {sec.extras.map(extra)}
             </div>
-          )
-        })}
-      </div>
+          </section>
+        ))}
+
+      <p className="text-xs" style={muted}>
+        Cada ponto junta as amostras da mesma fração e temperatura: com várias amostras (ex.: réplicas A, B, C do experimento), média ± desvio entre elas; com
+        uma só, média ± desvio das réplicas de análise. SE (sem extração) entra na mesma linha de H.
+      </p>
     </div>
   )
 }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, errorText } from '../api/client'
 import type { AnalysisOut, Experiment, SampleDetail, SampleRow } from '../api/types'
 import { SampleCharts } from '../charts/SampleCharts'
-import { Button, ErrorBox, Field, inputClass, inputStyle, Modal, muted, ValidityBadge } from '../components/ui'
+import { Button, Dropdown, ErrorBox, Field, inputClass, inputStyle, MenuItem, Modal, muted, ValidityBadge } from '../components/ui'
 import { useApp } from '../context/AppContext'
 import { fmt, fmtMeanSd, fmtTemp } from '../lib/format'
 
@@ -297,31 +297,35 @@ export function SampleDetailModal({
                   <Button onClick={() => setEditing(false)}>Cancelar</Button>
                 </>
               ) : (
-                <Button onClick={() => setEditing(true)}>Editar dados</Button>
-              )}
-              {canValidate && !editing && (
-                <ValidationButtons
-                  valid={detail.valid}
-                  onSet={(v) => act(() => api.post(`/projects/${projectId}/samples/${sampleId}/validation`, { valid: v }))}
-                />
-              )}
-              {canValidate && !editing && (
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    if (window.confirm(`Excluir a amostra ${detail.code} e todas as medições dela?`)) {
-                      api
-                        .delete(`/projects/${projectId}/samples/${sampleId}`)
-                        .then(() => {
-                          onChanged()
-                          onClose()
-                        })
-                        .catch((err) => setError(errorText(err)))
-                    }
-                  }}
-                >
-                  Excluir amostra
-                </Button>
+                <>
+                  {canValidate && (
+                    <ValidationButtons
+                      valid={detail.valid}
+                      onSet={(v) => act(() => api.post(`/projects/${projectId}/samples/${sampleId}/validation`, { valid: v }))}
+                    />
+                  )}
+                  <Dropdown label="Mais" ariaLabel="Mais ações da amostra">
+                    <MenuItem onClick={() => setEditing(true)}>Editar dados</MenuItem>
+                    {canValidate && (
+                      <MenuItem
+                        danger
+                        onClick={() => {
+                          if (window.confirm(`Excluir a amostra ${detail.code} e todas as medições dela?`)) {
+                            api
+                              .delete(`/projects/${projectId}/samples/${sampleId}`)
+                              .then(() => {
+                                onChanged()
+                                onClose()
+                              })
+                              .catch((err) => setError(errorText(err)))
+                          }
+                        }}
+                      >
+                        Excluir amostra
+                      </MenuItem>
+                    )}
+                  </Dropdown>
+                </>
               )}
             </div>
           )}

@@ -3,13 +3,13 @@ import { useApp } from '../context/AppContext'
 import { getDevLevel, LEVEL_LABELS, setDevLevel } from '../lib/devIdentity'
 import { UNDER_CORE } from '../lib/underCore'
 
+// Abas do projeto. Importar vira botão no cabeçalho e Histórico fica no menu
+// "Projeto" (ProjectLayout) — menos coisas disputando a atenção.
 export const PROJECT_TABS = [
   { to: 'amostras', label: 'Amostras' },
-  { to: 'experimentos', label: 'Experimentos' },
   { to: 'series', label: 'Séries' },
   { to: 'comparar', label: 'Comparar' },
-  { to: 'importar', label: 'Importar' },
-  { to: 'historico', label: 'Histórico' },
+  { to: 'experimentos', label: 'Condições experimentais' },
 ]
 
 /** "← Voltar ao Horun": link comum (recarrega a página) para a raiz do Core.
@@ -28,7 +28,11 @@ export function DevLevelSwitcher() {
   const current = getDevLevel()
   return (
     <div className="flex items-center gap-1">
-      <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase" style={{ background: '#7c3aed', color: 'white' }} title="Só existe em desenvolvimento">
+      <span
+        className="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase"
+        style={{ background: '#7c3aed', color: 'white' }}
+        title="Só existe em desenvolvimento"
+      >
         dev
       </span>
       <select
@@ -92,7 +96,13 @@ export function AppSidebar({ open, onClose }: { open: boolean; onClose: () => vo
           <span className="px-2 font-semibold" style={{ color: 'var(--color-primary)' }}>
             Horun · Resultados
           </span>
-          <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-md text-lg" style={{ color: 'var(--color-text-muted)' }} aria-label="Fechar menu">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-10 w-10 items-center justify-center rounded-md text-lg"
+            style={{ color: 'var(--color-text-muted)' }}
+            aria-label="Fechar menu"
+          >
             ✕
           </button>
         </div>
@@ -130,27 +140,6 @@ export function AppSidebar({ open, onClose }: { open: boolean; onClose: () => vo
                   <span className="truncate">{p.name}</span>
                   {p.archived_at && <span className="text-xs">(arquivado)</span>}
                 </Link>
-                {isCurrent && (
-                  <div className="mb-2 ml-2 mt-0.5 flex flex-col gap-0.5 border-l pl-2" style={{ borderColor: 'var(--color-border)' }}>
-                    {PROJECT_TABS.map((tab) => {
-                      const to = `/projects/${p.id}/${tab.to}`
-                      const active = location.pathname.startsWith(to)
-                      return (
-                        <Link
-                          key={tab.to}
-                          to={to}
-                          className="rounded-md px-2 py-2.5 text-sm md:py-1"
-                          style={{
-                            background: active ? 'var(--color-primary)' : 'transparent',
-                            color: active ? 'var(--color-primary-contrast)' : 'var(--color-text-muted)',
-                          }}
-                        >
-                          {tab.label}
-                        </Link>
-                      )
-                    })}
-                  </div>
-                )}
               </div>
             )
           })}

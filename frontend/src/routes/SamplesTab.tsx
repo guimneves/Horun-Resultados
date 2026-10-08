@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { api, errorText } from '../api/client'
 import type { BulkDeletePreview, BulkDeleteResult, Mode, SampleRow } from '../api/types'
 import { BulkCreate } from '../components/BulkCreate'
-import { Button, card, Empty, ErrorBox, Field, inputClass, inputStyle, Modal, muted, ValidityBadge } from '../components/ui'
+import { Button, card, Dropdown, Empty, ErrorBox, Field, inputClass, inputStyle, MenuItem, Modal, muted, ValidityBadge } from '../components/ui'
 import { useApp } from '../context/AppContext'
 import { fmtMeanSd, fmtTemp } from '../lib/format'
 import { useIsMobile } from '../lib/useIsMobile'
@@ -71,19 +71,6 @@ function readView(): View {
   } catch {
     return 'lista'
   }
-}
-
-function MenuItem({ onClick, disabled, children }: { onClick: () => void; disabled?: boolean; children: ReactNode }) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-[var(--color-surface)] disabled:opacity-50"
-    >
-      {children}
-    </button>
-  )
 }
 
 /** Caixa de seleção com área de toque de 40 px (Prompt, seção 13). */
@@ -212,7 +199,6 @@ export function SamplesTab() {
   const [showFilters, setShowFilters] = useState(false)
   const [view, setView] = useState<View>(readView)
   const [selecting, setSelecting] = useState(false)
-  const moreRef = useRef<HTMLDetailsElement>(null)
   const changeView = (v: View) => {
     setView(v)
     try {
@@ -350,31 +336,18 @@ export function SamplesTab() {
             + Nova amostra
           </Button>
         )}
-        <details className="relative" ref={moreRef}>
-          <summary
-            className="flex h-9 cursor-pointer list-none items-center rounded-md border px-3 text-sm"
-            style={{ borderColor: 'var(--color-border)' }}
-            aria-label="Mais ações"
-          >
-            Mais ▾
-          </summary>
-          <div
-            className="absolute right-0 z-20 mt-1 w-56 rounded-md border p-1 shadow-lg"
-            style={card}
-            onClick={() => moreRef.current?.removeAttribute('open')}
-          >
-            {canSelect && (
-              <MenuItem onClick={() => (selecting ? stopSelecting() : setSelecting(true))}>{selecting ? 'Parar de selecionar' : 'Selecionar várias'}</MenuItem>
-            )}
-            {!readOnly && <MenuItem onClick={() => setBulk(true)}>Criar várias</MenuItem>}
-            <MenuItem disabled={!filtered.length} onClick={() => exportAs('csv')}>
-              Exportar CSV
-            </MenuItem>
-            <MenuItem disabled={!filtered.length} onClick={() => exportAs('xlsx')}>
-              Exportar XLSX
-            </MenuItem>
-          </div>
-        </details>
+        <Dropdown label="Mais" ariaLabel="Mais ações">
+          {canSelect && (
+            <MenuItem onClick={() => (selecting ? stopSelecting() : setSelecting(true))}>{selecting ? 'Parar de selecionar' : 'Selecionar várias'}</MenuItem>
+          )}
+          {!readOnly && <MenuItem onClick={() => setBulk(true)}>Criar várias</MenuItem>}
+          <MenuItem disabled={!filtered.length} onClick={() => exportAs('csv')}>
+            Exportar CSV
+          </MenuItem>
+          <MenuItem disabled={!filtered.length} onClick={() => exportAs('xlsx')}>
+            Exportar XLSX
+          </MenuItem>
+        </Dropdown>
       </div>
 
       {showFilters && (

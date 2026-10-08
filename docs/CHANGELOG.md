@@ -1,6 +1,19 @@
 # Changelog — Horun · Resultados
 
 ## Não lançado — 08/10/2026
+### Layout mais limpo e mais gráficos (pedido do mantenedor)
+- Cabeçalho do projeto: só **Importar resultados** e o menu **Projeto ▾**
+  (Histórico, Editar, Arquivar, Excluir). Abas leves (sublinhado): Amostras,
+  Séries, Comparar, **Condições experimentais** (era "Experimentos"). A barra
+  lateral lista só os projetos (sem repetir as abas).
+- **Séries** virou um painel: todos os gráficos com dados aparecem juntos, em
+  grupos (Matéria orgânica, Elementar, Gás, Py-GC-MS, Pirogramas), com botões
+  para ver um grupo só; Van Krevelen do projeto; **+ Gráfico** guarda gráficos
+  extras em "Meus gráficos" (no navegador); validade e réplicas em **Opções**.
+- Pirograma com escolha do eixo X (temperatura × tempo) também no detalhe da
+  amostra. n-alcanos em **barras finas** (uma por amostra, lado a lado).
+- Detalhe da amostra: Editar e Excluir no menu **Mais**.
+
 ### Aba Amostras mais simples (pedido do mantenedor)
 - Lista enxuta por padrão: amostra, fração, temperatura, técnicas com resultado
   (etiquetas) e validade — sem colunas de números.

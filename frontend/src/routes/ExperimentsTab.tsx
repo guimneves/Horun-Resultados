@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, errorText } from '../api/client'
 import type { Experiment } from '../api/types'
 import { BulkCreate } from '../components/BulkCreate'
-import { Button, card, Empty, ErrorBox, Field, inputClass, inputStyle, Modal, muted } from '../components/ui'
+import { Button, card, Dropdown, Empty, ErrorBox, Field, inputClass, inputStyle, MenuItem, Modal, muted } from '../components/ui'
 import { useApp } from '../context/AppContext'
 import { fmt, fmtTemp } from '../lib/format'
 import { useIsMobile } from '../lib/useIsMobile'
@@ -177,15 +177,16 @@ export function ExperimentsTab() {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm" style={muted}>
-          Cada experimento é uma corrida de hidropirólise (ex.: HP300NA = 300 °C, atmosfera de nitrogênio, réplica A). A importação da
-          cromatografia cria e completa os experimentos sozinha.
+          Condições de cada corrida de hidropirólise (temperatura, atmosfera, réplica, reator, massa). A importação da cromatografia preenche sozinha.
         </p>
         {!readOnly && (
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => setBulk(true)}>Criar vários</Button>
             <Button variant="primary" onClick={() => setEditing('new')}>
-              + Novo experimento
+              + Nova corrida
             </Button>
+            <Dropdown label="Mais" ariaLabel="Mais ações">
+              <MenuItem onClick={() => setBulk(true)}>Criar várias</MenuItem>
+            </Dropdown>
           </div>
         )}
       </div>
@@ -193,7 +194,7 @@ export function ExperimentsTab() {
       {list === null ? (
         <p style={muted}>Carregando…</p>
       ) : list.length === 0 ? (
-        <Empty>Nenhum experimento ainda.</Empty>
+        <Empty>Nenhuma condição experimental ainda.</Empty>
       ) : mobile ? (
         <div className="space-y-2">
           {list.map((e) => (
@@ -250,7 +251,7 @@ export function ExperimentsTab() {
       )}
       {bulk && (
         <BulkCreate
-          title="Criar vários experimentos"
+          title="Criar várias corridas"
           path={`/projects/${project.id}/experiments/bulk`}
           hint="Cole os códigos, um por linha (ex.: HP300NA, HP300NB, HP320NC). Temperatura, atmosfera e réplica são lidas do código."
           onClose={() => setBulk(false)}

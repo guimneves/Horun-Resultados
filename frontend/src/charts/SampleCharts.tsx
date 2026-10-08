@@ -18,7 +18,7 @@ import {
 } from 'recharts'
 import { api } from '../api/client'
 import type { AnalysisData, PyPeaks, PyroData, SampleDetail, SampleRow } from '../api/types'
-import { inputClass, inputStyle } from '../components/ui'
+import { inputClass, inputStyle, Segmented } from '../components/ui'
 import { useApp } from '../context/AppContext'
 import { fractionColor } from '../lib/colors'
 import { fmt, fmtTemp } from '../lib/format'
@@ -288,6 +288,7 @@ export function SampleCharts({ projectId, detail, samples }: { projectId: number
   const [curves, setCurves] = useState<AnalysisData<PyroData>[]>([])
   const [peaks, setPeaks] = useState<AnalysisData<PyPeaks>[]>([])
   const [signal, setSignal] = useState('HC')
+  const [xAxis, setXAxis] = useState<'Temp' | 'Time'>('Temp')
 
   useEffect(() => {
     // modo "todas": no detalhe, mostra também medições invalidadas da própria amostra
@@ -311,31 +312,26 @@ export function SampleCharts({ projectId, detail, samples }: { projectId: number
   )
   const signals = Array.from(new Set(curves.flatMap((c) => Object.keys(c.data.pyro?.series ?? {})))).filter((k) => !['Time', 'Temp', 'T°'].includes(k))
   const hasCurves = curves.some((c) => c.data.pyro)
+  const activeSignal = signals.includes(signal) ? signal : (signals[0] ?? 'HC')
 
   const charts = [
     hasCurves && (
       <div key="pyro" className="space-y-2">
-        {signals.length > 1 && (
-          <div className="flex flex-wrap gap-1" role="group" aria-label="Sinal do pirograma">
-            {signals.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setSignal(s)}
-                aria-pressed={signal === s}
-                className="rounded-md border px-2 py-1 text-xs"
-                style={
-                  signal === s
-                    ? { background: 'var(--color-primary)', color: 'var(--color-primary-contrast)', borderColor: 'var(--color-primary)' }
-                    : { borderColor: 'var(--color-border)' }
-                }
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        )}
-        <PyrogramChart curves={curves} xAxis="Temp" signal={signals.includes(signal) ? signal : (signals[0] ?? 'HC')} />
+        <div className="flex flex-wrap items-center gap-2">
+          <Segmented
+            label="Eixo X do pirograma"
+            value={xAxis}
+            onChange={setXAxis}
+            options={[
+              { value: 'Temp', label: 'Temperatura' },
+              { value: 'Time', label: 'Tempo' },
+            ]}
+          />
+          {signals.length > 1 && (
+            <Segmented label="Sinal do pirograma" value={activeSignal} onChange={setSignal} options={signals.map((x) => ({ value: x, label: x }))} />
+          )}
+        </div>
+        <PyrogramChart curves={curves} xAxis={xAxis} signal={activeSignal} />
       </div>
     ),
     peaks.length > 0 && <AlkaneChart key="alk" data={peaks} />,

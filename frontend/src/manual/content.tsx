@@ -161,8 +161,8 @@ export const MANUAL_SECTIONS: ManualSection[] = [
           </li>
         </Steps>
         <p>
-          Para uma só, use <strong>+ Nova amostra</strong>. Experimentos: aba <strong>Experimentos</strong>, botões{' '}
-          <strong>Criar vários</strong> ou <strong>+ Novo experimento</strong>.
+          Para uma só, use <strong>+ Nova amostra</strong>. Corridas de hidropirólise: aba <strong>Condições experimentais</strong>,{' '}
+          <strong>+ Nova corrida</strong> ou <strong>Mais</strong> → <strong>Criar várias</strong>.
         </p>
       </>
     ),
@@ -174,7 +174,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
       <>
         <Steps>
           <li>
-            Abra o projeto e vá na aba <strong>Importar</strong>.
+            Abra o projeto e toque em <strong>Importar resultados</strong> (no alto, à direita).
           </li>
           <li>
             Em <strong>1. Qual análise você vai importar?</strong>, toque no tipo: <strong>CHNSO</strong>, <strong>LECO</strong>,{' '}
@@ -262,10 +262,11 @@ export const MANUAL_SECTIONS: ManualSection[] = [
           </li>
           <li>
             Toque numa amostra para ver os detalhes. Primeiro vêm os <strong>Gráficos</strong> (só os que a amostra tem dados para):
-            pirograma do Rock-Eval (escolha o sinal: HC, CO, CO2...), distribuição de n-alcanos (Py-GC-MS), composição do gás, composição
-            elementar do CHNSO, <strong>HI × Tmax</strong> e <strong>Van Krevelen</strong> com a amostra em destaque entre as outras do
-            projeto, <strong>Na série</strong> (o parâmetro escolhido nas amostras da mesma fração, por temperatura) e{' '}
-            <strong>Réplicas</strong> (cada medição e a média). Todo gráfico tem <strong>Ver tabela</strong> e <strong>Baixar PNG</strong>.
+            pirograma do Rock-Eval (escolha o eixo X — <strong>Temperatura</strong> ou <strong>Tempo</strong> — e o sinal: HC, CO, CO2...),
+            distribuição de n-alcanos (Py-GC-MS), composição do gás, composição elementar do CHNSO, <strong>HI × Tmax</strong> e{' '}
+            <strong>Van Krevelen</strong> com a amostra em destaque entre as outras do projeto, <strong>Na série</strong> (o parâmetro
+            escolhido nas amostras da mesma fração, por temperatura) e <strong>Réplicas</strong> (cada medição e a média). Todo gráfico tem{' '}
+            <strong>Ver tabela</strong> e <strong>Baixar PNG</strong>.
           </li>
           <li>
             No final ficam os <strong>Valores principais</strong> de cada técnica (média ± desvio-padrão de todas as réplicas e alíquotas)
@@ -298,7 +299,8 @@ export const MANUAL_SECTIONS: ManualSection[] = [
             Na aba <strong>Amostras</strong>, toque na amostra.
           </li>
           <li>
-            Toque em <strong>Válida</strong> ou <strong>Inválida</strong>. Para desfazer, <strong>Voltar a pendente</strong>.
+            Toque em <strong>Válida</strong> ou <strong>Inválida</strong>. Para desfazer, <strong>Voltar a pendente</strong>. Editar os
+            dados e excluir a amostra ficam em <strong>Mais</strong>, no detalhe da amostra.
           </li>
           <li>
             Uma medição ruim (ex.: uma réplica fora) pode ser tirada sozinha: no cartão da medição, <strong>Invalidar</strong> (e{' '}
@@ -344,20 +346,20 @@ export const MANUAL_SECTIONS: ManualSection[] = [
   },
   {
     id: 'experimentos',
-    title: 'Como cuidar dos experimentos',
+    title: 'Como cuidar das condições experimentais',
     body: (
       <>
         <p>
-          A aba <strong>Experimentos</strong> lista as corridas de hidropirólise (código, temperatura, atmosfera, réplica A/B/C, reator,
-          massa inicial e as amostras ligadas). A importação da planilha de cálculo de gás cria o experimento e guarda as condições (reator,
-          massa, pressões...) — toque em <strong>Ver condições lidas da planilha de gás</strong>.
+          A aba <strong>Condições experimentais</strong> lista as corridas de hidropirólise (código, temperatura, atmosfera, réplica A/B/C,
+          reator, massa inicial e as amostras ligadas). A importação da planilha de cálculo de gás cria o experimento e guarda as condições
+          (reator, massa, pressões...) — toque em <strong>Ver condições lidas da planilha de gás</strong>.
         </p>
         <Steps>
           <li>
-            Para criar à mão: <strong>+ Novo experimento</strong>, digite o código (ex.: HP300NA) e confira o que foi sugerido.
+            Para criar à mão: <strong>+ Nova corrida</strong>, digite o código (ex.: HP300NA) e confira o que foi sugerido.
           </li>
           <li>
-            Para corrigir: <strong>Editar</strong>. Para ligar uma amostra a um experimento, abra a amostra e use{' '}
+            Para corrigir: <strong>Editar</strong>. Para ligar uma amostra a uma corrida, abra a amostra e use <strong>Mais</strong> →{' '}
             <strong>Editar dados</strong>.
           </li>
         </Steps>
@@ -371,20 +373,28 @@ export const MANUAL_SECTIONS: ManualSection[] = [
       <>
         <Steps>
           <li>
-            Na aba <strong>Séries</strong>, escolha um gráfico pronto (ex.: <strong>COT × temperatura</strong>, <strong>HI × Tmax</strong>,{' '}
-            <strong>Composição do gás por experimento</strong>, <strong>Sobreposição de pirogramas</strong>) ou{' '}
-            <strong>Personalizado</strong> para escolher técnica e parâmetro.
+            Na aba <strong>Séries</strong>, os gráficos aparecem todos juntos, em grupos: <strong>Matéria orgânica</strong> (COT, C total,
+            HI, OI, Tmax, S1, S2, HI × Tmax), <strong>Elementar</strong> (H/C, O/C, N, S, Van Krevelen), <strong>Gás</strong>,{' '}
+            <strong>Py-GC-MS</strong> e <strong>Pirogramas</strong>. Só aparecem os que têm dados no projeto. Use os botões do alto para ver
+            um grupo só.
+          </li>
+          <li>
+            Falta algum? <strong>+ Gráfico</strong>: escolha a técnica e o parâmetro e toque em <strong>Adicionar</strong>. Ele vai para{' '}
+            <strong>Meus gráficos</strong> (guardado neste navegador).
           </li>
           <li>Cada linha é uma fração (hidropirolisada, extraída...). Cada ponto é a média ± desvio (barra) na temperatura.</li>
           <li>
-            Réplicas do experimento (A, B, C) na mesma temperatura entram juntas no ponto. Para ver cada uma separada, marque{' '}
-            <strong>Separar réplicas do experimento (A, B, C)</strong> — cada réplica ganha um tipo de traço.
+            Réplicas do experimento (A, B, C) na mesma temperatura entram juntas no ponto. Para ver cada uma separada, em{' '}
+            <strong>Opções</strong> marque <strong>Separar réplicas A, B, C</strong> — cada réplica ganha um tipo de traço.
           </li>
           <li>
             <strong>Ver tabela</strong> mostra os números do gráfico; <strong>Baixar PNG</strong> salva a imagem.
           </li>
         </Steps>
-        <Tip>Pirogramas e n-alcanos: toque nas amostras (até 12) para escolher quais sobrepor.</Tip>
+        <Tip>
+          Pirogramas e n-alcanos: toque nas amostras (até 12) para escolher quais sobrepor. No pirograma, escolha o eixo X (temperatura ou
+          tempo) e o sinal.
+        </Tip>
       </>
     ),
   },
@@ -407,8 +417,9 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     body: (
       <>
         <p>
-          <strong>Arquivar</strong> (coordenador): o projeto sai da lista e fica só para leitura; nada é apagado.{' '}
-          <strong>Desarquivar</strong> devolve. Para ver os arquivados, marque <strong>Mostrar arquivados</strong> na tela de projetos.
+          No projeto, toque em <strong>Projeto ▾</strong> (no alto, à direita). <strong>Arquivar</strong> (coordenador): o projeto sai da
+          lista e fica só para leitura; nada é apagado. <strong>Desarquivar</strong> devolve. Para ver os arquivados, marque{' '}
+          <strong>Mostrar arquivados</strong> na tela de projetos.
         </p>
         <p>
           <strong>Excluir</strong> (só administrador máximo): apaga para sempre o projeto e tudo dentro dele. É preciso digitar o nome do
@@ -422,8 +433,8 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     title: 'Histórico e arquivos originais',
     body: (
       <p>
-        A aba <strong>Histórico</strong> mostra quem importou, validou, editou ou excluiu, e quando. Ao lado, a lista de arquivos importados
-        — toque no nome para baixar o original.
+        Em <strong>Projeto ▾</strong> → <strong>Histórico</strong> você vê quem importou, validou, editou ou excluiu, e quando. Ao lado, a
+        lista de arquivos importados — toque no nome para baixar o original.
       </p>
     ),
   },

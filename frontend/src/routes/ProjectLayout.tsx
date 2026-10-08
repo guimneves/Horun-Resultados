@@ -3,7 +3,7 @@ import { Link, Outlet, useLocation, useNavigate, useOutletContext, useParams } f
 import { api, errorText } from '../api/client'
 import type { Project } from '../api/types'
 import { PROJECT_TABS } from '../components/Shell'
-import { Button, ErrorBox, Field, inputClass, inputStyle, Modal, muted } from '../components/ui'
+import { Button, Dropdown, ErrorBox, Field, inputClass, inputStyle, MenuItem, Modal, muted } from '../components/ui'
 import { useApp } from '../context/AppContext'
 import { ProjectForm } from './ProjectListPage'
 
@@ -25,8 +25,8 @@ function DeleteProject({ project, onClose }: { project: Project; onClose: () => 
     <Modal title="Excluir projeto" onClose={onClose}>
       <div className="space-y-3 text-sm">
         <p>
-          Isto apaga <strong>para sempre</strong> o projeto, todas as amostras, experimentos, medições e os arquivos importados nele. Não
-          dá para desfazer. Se a ideia é só tirar da lista, use <strong>Arquivar</strong>.
+          Isto apaga <strong>para sempre</strong> o projeto, todas as amostras, experimentos, medições e os arquivos importados nele. Não dá para desfazer. Se a
+          ideia é só tirar da lista, use <strong>Arquivar</strong>.
         </p>
         <Field label={`Para confirmar, digite o nome do projeto: ${project.name}`}>
           <input className={inputClass} style={inputStyle} value={typed} onChange={(e) => setTyped(e.target.value)} />
@@ -59,12 +59,18 @@ export function ProjectLayout() {
   const { projectId } = useParams()
   const { projects, me, reloadProjects } = useApp()
   const location = useLocation()
+  const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const project = projects?.find((p) => p.id === Number(projectId))
 
-  if (projects === null) return <p className="p-6" style={muted}>Carregando…</p>
+  if (projects === null)
+    return (
+      <p className="p-6" style={muted}>
+        Carregando…
+      </p>
+    )
   if (!project) return <p className="p-6">Projeto não encontrado.</p>
   const readOnly = project.archived_at !== null
 
@@ -81,38 +87,49 @@ export function ProjectLayout() {
 
   return (
     <div className="p-3 md:p-6">
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+      {/* Cabeçalho enxuto: nome à esquerda; à direita só Importar e o menu do projeto. */}
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <h1 className="flex items-center gap-2 text-xl font-semibold md:text-2xl">
             <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: project.color }} />
             <span className="truncate">{project.name}</span>
+            {readOnly && (
+              <span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: '#fff3e0', color: '#a15c00' }}>
+                arquivado · só leitura
+              </span>
+            )}
           </h1>
           {project.description && (
-            <p className="text-sm" style={muted}>
+            <p className="truncate text-sm" style={muted} title={project.description}>
               {project.description}
             </p>
           )}
-          {readOnly && (
-            <p className="mt-1 text-sm font-medium" style={{ color: '#a15c00' }}>
-              Projeto arquivado — só leitura.
-            </p>
-          )}
         </div>
-        {me?.is_coordenador && (
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={() => setEditing(true)}>Editar</Button>
-            <Button onClick={toggleArchive}>{project.archived_at ? 'Desarquivar' : 'Arquivar'}</Button>
-            {me.can_delete_projects && (
-              <Button variant="danger" onClick={() => setDeleting(true)}>
-                Excluir
-              </Button>
+        <div className="flex items-center gap-2">
+          {!readOnly && (
+            <Link
+              to={`/projects/${project.id}/importar`}
+              className="inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium"
+              style={{ background: 'var(--color-primary)', color: 'var(--color-primary-contrast)', borderColor: 'var(--color-primary)' }}
+            >
+              Importar resultados
+            </Link>
+          )}
+          <Dropdown label="Projeto" ariaLabel="Ações do projeto">
+            <MenuItem onClick={() => navigate(`/projects/${project.id}/historico`)}>Histórico</MenuItem>
+            {me?.is_coordenador && <MenuItem onClick={() => setEditing(true)}>Editar projeto</MenuItem>}
+            {me?.is_coordenador && <MenuItem onClick={toggleArchive}>{project.archived_at ? 'Desarquivar' : 'Arquivar'}</MenuItem>}
+            {me?.can_delete_projects && (
+              <MenuItem danger onClick={() => setDeleting(true)}>
+                Excluir projeto
+              </MenuItem>
             )}
-          </div>
-        )}
+          </Dropdown>
+        </div>
       </div>
       <ErrorBox message={error} />
 
-      <nav className="mb-4 flex flex-wrap gap-1 border-b pb-2" style={{ borderColor: 'var(--color-border)' }} aria-label="Abas do projeto">
+      <nav className="mb-4 flex gap-1 overflow-x-auto overflow-y-hidden border-b" style={{ borderColor: 'var(--color-border)' }} aria-label="Abas do projeto">
         {PROJECT_TABS.map((tab) => {
           const to = `/projects/${project.id}/${tab.to}`
           const active = location.pathname.startsWith(to)
@@ -120,16 +137,25 @@ export function ProjectLayout() {
             <Link
               key={tab.to}
               to={to}
-              className="rounded-md px-3 py-2 text-sm md:py-1.5"
+              className="whitespace-nowrap border-b-2 px-3 py-2 text-sm"
               style={{
-                background: active ? 'var(--color-primary)' : 'var(--color-surface)',
-                color: active ? 'var(--color-primary-contrast)' : 'var(--color-text)',
+                borderColor: active ? 'var(--color-primary)' : 'transparent',
+                color: active ? 'var(--color-text)' : 'var(--color-text-muted)',
+                fontWeight: active ? 600 : 400,
               }}
+              aria-current={active ? 'page' : undefined}
             >
               {tab.label}
             </Link>
           )
         })}
+        {['importar', 'historico'].map((extra) =>
+          location.pathname.startsWith(`/projects/${project.id}/${extra}`) ? (
+            <span key={extra} className="whitespace-nowrap border-b-2 px-3 py-2 text-sm font-semibold" style={{ borderColor: 'var(--color-primary)' }}>
+              {extra === 'importar' ? 'Importar' : 'Histórico'}
+            </span>
+          ) : null,
+        )}
       </nav>
 
       <Outlet context={{ project, readOnly } satisfies ProjectCtx} />
