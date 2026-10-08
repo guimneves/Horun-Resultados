@@ -42,3 +42,16 @@ export function seriesColor(i: number): string {
 export function dashFor(i: number): string | undefined {
   return i < PALETTE.length ? undefined : '5 3'
 }
+
+// Massas do balanço (gráficos de massa × temperatura): uma cor por massa;
+// o gás usa a mesma cor da fração G.
+export const MASS_COLORS: Record<string, string> = {
+  oil_mass_g: PALETTE[3],
+  gas_mass_g: PALETTE[2],
+  bitumen_mass_g: PALETTE[6],
+}
+
+/** Atmosferas diferentes no mesmo gráfico de massa: mesmo tom, traço diferente. */
+export function atmosphereDash(i: number): string | undefined {
+  return [undefined, '6 3', '2 3', '8 3 2 3'][i % 4]
+}

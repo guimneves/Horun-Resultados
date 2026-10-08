@@ -19,7 +19,7 @@ from app.core.identity import HorunIdentity, get_identity
 from app.core.permissions import require_editor
 from app.db.models import Analysis, AnalysisValue, Experiment, FractionType, Project, Sample, SampleAlias, utcnow
 from app.db.session import get_session
-from app.services import audit, deletion, importer, results
+from app.services import audit, deletion, importer, masses, results
 from app.services.codes import normalize_code, parse_experiment_code, parse_sample_code
 
 router = APIRouter(tags=["amostras"])
@@ -50,12 +50,19 @@ class ExperimentPatch(BaseModel):
     initial_mass_g: float | None = None
     date: str | None = Field(default=None, max_length=20)
     notes: str | None = Field(default=None, max_length=4000)
+    # Massas da réplica (g). null limpa: no gás, volta a valer a planilha.
+    gas_mass_g: float | None = Field(default=None, ge=0, le=masses.MAX_MASS_G)
+    oil_mass_g: float | None = Field(default=None, ge=0, le=masses.MAX_MASS_G)
+    bitumen_mass_g: float | None = Field(default=None, ge=0, le=masses.MAX_MASS_G)
 
 
-def _experiment_out(session: Session, exp: Experiment) -> dict:
+def _experiment_out(session: Session, exp: Experiment, sheet_gas: dict[int, float] | None = None) -> dict:
     samples = session.exec(select(Sample).where(Sample.experiment_id == exp.id)).all()
+    if sheet_gas is None:
+        sheet_gas = masses.sheet_gas_masses(session, [exp])
     return {
         **exp.model_dump(exclude={"conditions_json"}),
+        **masses.experiment_masses(exp, sheet_gas.get(exp.id)),  # type: ignore[arg-type]
         "conditions": json.loads(exp.conditions_json or "{}"),
         "samples": [{"id": s.id, "code": s.code, "fraction": s.fraction, "valid": s.valid} for s in samples],
     }
@@ -70,8 +77,16 @@ def _get_experiment(session: Session, project: Project, experiment_id: int) -> E
 
 @router.get("/projects/{project_id}/experiments")
 def list_experiments(project: Project = Depends(get_project), session: Session = Depends(get_session), _i: HorunIdentity = Depends(get_identity)):
-    exps = session.exec(select(Experiment).where(Experiment.project_id == project.id)).all()
-    return [_experiment_out(session, e) for e in sorted(exps, key=lambda e: (e.temperature_c or 0, e.code))]
+    exps = list(session.exec(select(Experiment).where(Experiment.project_id == project.id)))
+    sheet = masses.sheet_gas_masses(session, exps)
+    return [_experiment_out(session, e, sheet) for e in sorted(exps, key=lambda e: (e.temperature_c or 0, e.code))]
+
+
+@router.get("/projects/{project_id}/experiments/masses")
+def get_experiment_masses(project: Project = Depends(get_project), session: Session = Depends(get_session), _i: HorunIdentity = Depends(get_identity)):
+    """Massas (gás, óleo, betume) por réplica e média ± desvio (n) por amostra
+    (mesma temperatura e atmosfera), sem os valores 0 ou vazios."""
+    return masses.groups(session, project.id)
 
 
 @router.post("/projects/{project_id}/experiments", status_code=201)
@@ -111,6 +126,7 @@ def patch_experiment(
     ensure_open(project)
     exp = _get_experiment(session, project, experiment_id)
     changes = body.model_dump(exclude_unset=True)
+    before = {k: getattr(exp, k) for k in changes}
     if "code" in changes:
         norm = normalize_code(changes["code"])
         other = session.exec(
@@ -122,7 +138,16 @@ def patch_experiment(
     for k, v in changes.items():
         setattr(exp, k, v.strip() if isinstance(v, str) else v)
     session.add(exp)
-    audit.record(session, identity, "experimento_editado", f"Editou o experimento {exp.code}.", project.id, "experiment", exp.id, changes)
+    mass_changes = {k: {"antes": before[k], "depois": changes[k]} for k in masses.MASS_FIELDS if k in changes and before[k] != changes[k]}
+    if mass_changes:
+        labels = dict(masses.MASSES)
+        what = ", ".join(labels[k].lower() for k in mass_changes)
+        audit.record(
+            session, identity, "massas_editadas", f"Editou {what} do experimento {exp.code}.", project.id, "experiment", exp.id, mass_changes
+        )
+    other = {k: v for k, v in changes.items() if k not in masses.MASS_FIELDS}
+    if other or not mass_changes:
+        audit.record(session, identity, "experimento_editado", f"Editou o experimento {exp.code}.", project.id, "experiment", exp.id, other)
     session.commit()
     session.refresh(exp)
     return _experiment_out(session, exp)

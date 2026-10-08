@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, errorText } from '../api/client'
-import type { Experiment, SampleRow } from '../api/types'
+import type { Experiment, MassesResponse, MassGroup, MassKey, SampleRow } from '../api/types'
 import { GasCompositionChart } from '../charts/MoreCharts'
 import { Button, card, Dropdown, Empty, ErrorBox, Field, inputClass, inputStyle, MenuItem, Modal, muted } from '../components/ui'
 import { useApp } from '../context/AppContext'
-import { fmt, fmtTemp } from '../lib/format'
+import { fmt, fmtMeanSd, fmtTemp } from '../lib/format'
 import { useIsMobile } from '../lib/useIsMobile'
 import { useSamples } from '../lib/useSamples'
 import { useProject } from './ProjectLayout'
@@ -100,6 +100,201 @@ function ExperimentForm({ projectId, initial, onClose, onDone }: { projectId: nu
   )
 }
 
+// ---------------------------------------------------------------- massas (gás, óleo, betume)
+// Pedido do mantenedor (08/10/2026): pesquisadores e coordenadores digitam as
+// massas de cada réplica; o gás vem da planilha e pode ser corrigido.
+
+const MASS_LABELS: Record<MassKey, string> = { gas_mass_g: 'Gás gerado', oil_mass_g: 'Óleo', bitumen_mass_g: 'Betume' }
+const MASS_KEYS: MassKey[] = ['gas_mass_g', 'oil_mass_g', 'bitumen_mass_g']
+const MAX_MASS = 10000
+
+function SourceBadge({ source }: { source: 'planilha' | 'editado' | null }) {
+  if (!source) return null
+  const edited = source === 'editado'
+  return (
+    <span
+      className="ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap"
+      style={edited ? { background: '#fdf0d5', color: '#7a4b00' } : { background: '#e3f4e8', color: '#1b6b34' }}
+      title={edited ? 'Valor digitado — substitui o da planilha de cálculo de gás' : 'Valor da planilha de cálculo de gás'}
+    >
+      {source}
+    </span>
+  )
+}
+
+function MassForm({ projectId, exp, onClose, onDone }: { projectId: number; exp: Experiment; onClose: () => void; onDone: () => void }) {
+  const str = (v: number | null) => (v == null ? '' : String(v).replace('.', ','))
+  const [gas, setGas] = useState(str(exp.gas_mass_manual_g))
+  const [oil, setOil] = useState(str(exp.oil_mass_g))
+  const [bitumen, setBitumen] = useState(str(exp.bitumen_mass_g))
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function save() {
+    const body = { gas_mass_g: num(gas), oil_mass_g: num(oil), bitumen_mass_g: num(bitumen) }
+    const bad = Object.values(body).some((v) => v !== null && (Number.isNaN(v) || v < 0 || v > MAX_MASS))
+    if (bad) {
+      setError(`Use números entre 0 e ${MAX_MASS} g (vírgula ou ponto).`)
+      return
+    }
+    setBusy(true)
+    try {
+      await api.patch(`/projects/${projectId}/experiments/${exp.id}`, body)
+      onDone()
+    } catch (err) {
+      setError(errorText(err))
+      setBusy(false)
+    }
+  }
+
+  const sheet = exp.gas_mass_sheet_g
+  return (
+    <Modal title={`Massas de ${exp.code}`} onClose={onClose}>
+      <div className="space-y-3">
+        <Field
+          label="Massa de gás gerada (g)"
+          hint={
+            sheet != null
+              ? `Planilha: ${fmt(sheet)} g. Deixe vazio para usar o valor da planilha; o valor digitado substitui o da planilha, mesmo se ela for importada de novo.`
+              : 'Sem valor da planilha de cálculo de gás para esta corrida.'
+          }
+        >
+          <div className="flex gap-2">
+            <input
+              className={inputClass}
+              style={inputStyle}
+              inputMode="decimal"
+              value={gas}
+              onChange={(e) => setGas(e.target.value)}
+              placeholder={sheet != null ? `${fmt(sheet)} (planilha)` : ''}
+              aria-label="Massa de gás gerada (g)"
+            />
+            {gas.trim() !== '' && sheet != null && (
+              <Button onClick={() => setGas('')} title="Apaga o valor digitado e volta a valer o da planilha">
+                Usar planilha
+              </Button>
+            )}
+          </div>
+        </Field>
+        <Field label="Massa de óleo (g)">
+          <input className={inputClass} style={inputStyle} inputMode="decimal" value={oil} onChange={(e) => setOil(e.target.value)} />
+        </Field>
+        <Field label="Massa de betume (g)">
+          <input className={inputClass} style={inputStyle} inputMode="decimal" value={bitumen} onChange={(e) => setBitumen(e.target.value)} />
+        </Field>
+        <p className="text-xs" style={muted}>
+          Valor 0 ou vazio não entra na média da amostra.
+        </p>
+        <ErrorBox message={error} />
+        <div className="flex justify-end gap-2">
+          <Button onClick={onClose}>Cancelar</Button>
+          <Button variant="primary" disabled={busy} onClick={save}>
+            Salvar
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+const massValue = (exp: Experiment, k: MassKey) => (k === 'gas_mass_g' ? exp.gas_mass_effective_g : exp[k])
+
+function MassesBlock({ exp, canEdit, onEdit }: { exp: Experiment; canEdit: boolean; onEdit: () => void }) {
+  return (
+    <section className="min-w-0">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-xs font-semibold tracking-wide uppercase" style={muted}>
+          Massas
+        </h3>
+        {canEdit && (
+          <Button variant="ghost" onClick={onEdit}>
+            Editar massas
+          </Button>
+        )}
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {MASS_KEYS.map((k) => {
+          const v = massValue(exp, k)
+          return (
+            <div key={k} className="min-w-0 rounded-lg border px-3 py-2" style={card} data-testid={`mass-${k}`}>
+              <div className="flex flex-wrap items-center text-xs" style={muted}>
+                {MASS_LABELS[k]}
+                {k === 'gas_mass_g' && <SourceBadge source={exp.gas_mass_source} />}
+              </div>
+              <div className="text-lg font-semibold tabular-nums">
+                {v != null ? fmt(v) : '—'}
+                <span className="ml-1 text-xs font-normal" style={muted}>
+                  g
+                </span>
+              </div>
+              {k === 'gas_mass_g' && exp.gas_mass_source === 'editado' && exp.gas_mass_sheet_g != null && (
+                <div className="text-[11px]" style={muted}>
+                  planilha: {fmt(exp.gas_mass_sheet_g)} g
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+const statText = (s: { mean: number | null; sd: number | null; n: number }) => (s.n ? `${fmtMeanSd(s)} (n = ${s.n})` : '—')
+
+/** Média da amostra (réplicas A, B, C da mesma temperatura e atmosfera). */
+function SampleMean({ group, currentId }: { group: MassGroup; currentId: number }) {
+  return (
+    <section className="min-w-0">
+      <h3 className="mb-1 text-xs font-semibold tracking-wide uppercase" style={muted}>
+        Média da amostra ({group.label})
+      </h3>
+      <div className="table-wrap rounded-lg border" style={{ borderColor: 'var(--color-border)' }}>
+        <table className="w-full text-sm">
+          <thead>
+            <tr style={muted}>
+              <th className="px-3 py-1 text-left text-xs font-medium">Réplica</th>
+              {MASS_KEYS.map((k) => (
+                <th key={k} className="px-2 py-1 text-right text-xs font-medium whitespace-nowrap">
+                  {MASS_LABELS[k]} (g)
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {group.replicates.map((r) => (
+              <tr
+                key={r.experiment_id}
+                className="border-t"
+                style={{ borderColor: 'var(--color-border)', fontWeight: r.experiment_id === currentId ? 600 : undefined }}
+              >
+                <td className="px-3 py-1 whitespace-nowrap">{r.code}</td>
+                {MASS_KEYS.map((k) => (
+                  <td key={k} className="px-2 py-1 text-right tabular-nums whitespace-nowrap">
+                    {r[k] != null ? fmt(r[k]) : '—'}
+                    {k === 'gas_mass_g' && r.gas_mass_source === 'editado' && <SourceBadge source="editado" />}
+                  </td>
+                ))}
+              </tr>
+            ))}
+            <tr className="border-t" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
+              <td className="px-3 py-1 font-semibold whitespace-nowrap">Média ± desvio</td>
+              {MASS_KEYS.map((k) => (
+                <td key={k} className="px-2 py-1 text-right font-semibold tabular-nums whitespace-nowrap">
+                  {statText(group.stats[k])}
+                </td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-1 text-xs" style={muted}>
+        Valores 0 ou vazios não entram na média.
+      </p>
+    </section>
+  )
+}
+
 // ---------------------------------------------------------------- ficha da corrida
 // Espelha a "Planilha cálculo gás": blocos DADOS EXPERIMENTO (coluna A),
 // REATOR / INICIAL / FINAL (coluna I) e a verificação da cromatografia.
@@ -186,14 +381,18 @@ function RunSheet({
   canEdit,
   canDelete,
   onEdit,
+  onEditMasses,
   onDelete,
+  group,
 }: {
   exp: Experiment
   samples: SampleRow[]
   canEdit: boolean
   canDelete: boolean
   onEdit: () => void
+  onEditMasses: () => void
   onDelete: () => void
+  group?: MassGroup
 }) {
   const { fractionLabel } = useApp()
   const cond = exp.conditions.condicoes as Record<string, Entry> | undefined
@@ -236,13 +435,17 @@ function RunSheet({
         )}
       </div>
 
+      <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2">
+        <MassesBlock exp={exp} canEdit={canEdit} onEdit={onEditMasses} />
+        {group && <SampleMean group={group} currentId={exp.id} />}
+      </div>
+
       {!hasSheet ? (
         <Empty>A planilha de cálculo de gás desta corrida ainda não foi importada (Importar resultados → Balanço de gás).</Empty>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
             <Highlight label="Massa inicial de amostra" entry={findEntry(cond, 'massa', 'inicial', 'amostra')} unit="g" />
-            <Highlight label="Massa de gás gerada" entry={findEntry(res, 'massa de gas gerada')} unit="g" />
             <Highlight label="Gás gerado por massa de rocha" entry={yieldStat ? { value: yieldStat.mean } : undefined} unit="mg/g" />
             <Highlight label="Fechamento do balanço de pressão" entry={findEntry(res, 'fechamento')} unit="%" />
           </div>
@@ -290,12 +493,19 @@ export function ExperimentsTab() {
   const [list, setList] = useState<Experiment[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState<Experiment | null>(null)
+  const [editingMasses, setEditingMasses] = useState<Experiment | null>(null)
+  const [massData, setMassData] = useState<MassesResponse | null>(null)
   const [openId, setOpenId] = useState<number | null>(null)
   const { samples } = useSamples(project.id, 'todas')
 
   const load = useCallback(async () => {
     try {
-      setList(await api.get<Experiment[]>(`/projects/${project.id}/experiments`))
+      const [exps, m] = await Promise.all([
+        api.get<Experiment[]>(`/projects/${project.id}/experiments`),
+        api.get<MassesResponse>(`/projects/${project.id}/experiments/masses`),
+      ])
+      setList(exps)
+      setMassData(m)
     } catch (err) {
       setError(errorText(err))
     }
@@ -323,6 +533,8 @@ export function ExperimentsTab() {
     byTemp.set(k, [...(byTemp.get(k) ?? []), e])
   })
   const current = sorted.find((e) => e.id === openId) ?? (mobile ? undefined : sorted[0])
+  const groupOf = (id: number) => massData?.groups.find((g) => g.replicates.some((r) => r.experiment_id === id))
+  const tempGroups = (exps: Experiment[]) => (massData?.groups ?? []).filter((g) => g.replicates.some((r) => exps.some((e) => e.id === r.experiment_id)))
   const hasSheet = (e: Experiment) => Object.keys(e.conditions.condicoes ?? {}).length > 0
 
   const listView = (
@@ -332,6 +544,17 @@ export function ExperimentsTab() {
           <div className="mb-1 px-1 text-xs font-semibold" style={muted}>
             {temp}
           </div>
+          {tempGroups(exps)
+            .filter((g) => MASS_KEYS.some((k) => g.stats[k].n > 0))
+            .map((g) => (
+              <div key={g.key} className="mb-1 px-1 text-[11px] leading-snug" style={muted} data-testid="group-mean">
+                <span className="font-semibold">Média da amostra ({g.label}):</span>{' '}
+                {MASS_KEYS.filter((k) => g.stats[k].n > 0)
+                  .map((k) => `${MASS_LABELS[k].toLowerCase()} ${fmtMeanSd(g.stats[k])} g (n = ${g.stats[k].n})`)
+                  .join(' · ')}
+                <span title="Valores 0 ou vazios não entram na média"> · zeros ignorados</span>
+              </div>
+            ))}
           <div className="space-y-1">
             {exps.map((e) => {
               const active = current?.id === e.id
@@ -391,7 +614,9 @@ export function ExperimentsTab() {
               canEdit={canEdit}
               canDelete={canEdit}
               onEdit={() => setEditing(current)}
+              onEditMasses={() => setEditingMasses(current)}
               onDelete={() => remove(current)}
+              group={groupOf(current.id)}
             />
           </div>
         ) : (
@@ -408,11 +633,24 @@ export function ExperimentsTab() {
                 canEdit={canEdit}
                 canDelete={canEdit}
                 onEdit={() => setEditing(current)}
+                onEditMasses={() => setEditingMasses(current)}
                 onDelete={() => remove(current)}
+                group={groupOf(current.id)}
               />
             )}
           </div>
         </div>
+      )}
+      {editingMasses && (
+        <MassForm
+          projectId={project.id}
+          exp={editingMasses}
+          onClose={() => setEditingMasses(null)}
+          onDone={() => {
+            setEditingMasses(null)
+            load()
+          }}
+        />
       )}
       {editing && (
         <ExperimentForm

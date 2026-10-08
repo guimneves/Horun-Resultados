@@ -118,7 +118,14 @@ sobrepor nos gráficos como "referência" — não é prioridade da v1.
 - **Projeto**: nome, descrição, cor, arquivado (sem código/vigência — pedido do mantenedor).
 - **Experimento** (por projeto): código (`HP300NA`), temperatura (°C), tempo (h),
   reator, massa inicial, data, observações, condições extras (JSON) lidas da
-  planilha de gás.
+  planilha de gás. **Massas da réplica** (08/10/2026, `gas_mass_g`,
+  `oil_mass_g`, `bitumen_mass_g`, em g, 0 a 10 000): digitadas por níveis 1–3.
+  Gás: o valor digitado substitui o da planilha (medição `gas_balanco`, ou as
+  condições da corrida); vazio = vale a planilha; reimportar não mexe no
+  digitado. A API devolve o valor efetivo e a origem (`planilha`/`editado`).
+  **Média da amostra** = réplicas com a mesma temperatura e atmosfera
+  (HP300NA/NB/NC → HP300N): média, desvio e n de cada massa **sem os valores 0
+  ou vazios** (`app/services/masses.py`, `GET /projects/{id}/experiments/masses`).
 - **Amostra** (por projeto): código, experimento (opcional), fração/tipo
   (original, hidropirolisada H, extraída E, gás, padrão, outra), temperatura
   (herdada do experimento ou do código), réplica do material (`.1`, `.2`),
@@ -161,6 +168,11 @@ sobrepor nos gráficos como "referência" — não é prioridade da v1.
   (CHNSO); S × temperatura; composição do gás (C1–C5+, H2, CO2) empilhada por
   experimento; massa de gás gerada × temperatura; distribuição de n-alcanos
   (Py-GC-MS) por amostra; **sobreposição de pirogramas** Rock-Eval.
+- **Séries → Balanço de massas** (08/10/2026): massas de óleo, gás e betume ×
+  temperatura, três gráficos separados (média ± desvio por amostra, réplicas
+  como pontos, uma linha por atmosfera quando há mais de uma), mais os
+  gráficos do balanço de gás (massa de gás gerada, gás por massa de rocha,
+  wetness, composição).
 - **Comparar**: escolher amostras/experimentos livres e ver tabela + gráficos lado a lado.
 - **Exportar**: tabela (CSV/XLSX) do que está filtrado; gráfico em PNG.
 

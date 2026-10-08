@@ -366,9 +366,23 @@ export const MANUAL_SECTIONS: ManualSection[] = [
             <strong>planilha</strong> indica que a planilha já foi importada; <strong>sem planilha</strong>, que ainda não.
           </li>
           <li>
-            Toque numa corrida para ver a ficha, organizada como a planilha: no alto, massa inicial, massa de gás gerada, gás por massa de
-            rocha e fechamento do balanço; depois os blocos <strong>Dados do experimento</strong>, <strong>Reator</strong>,{' '}
-            <strong>Inicial</strong>, <strong>Final</strong> e <strong>Verificação da cromatografia</strong>, e a composição do gás.
+            Toque numa corrida para ver a ficha. No alto, o bloco <strong>Massas</strong> da réplica: <strong>gás gerado</strong> (com a
+            etiqueta <strong>planilha</strong>, quando vem da planilha de cálculo de gás, ou <strong>editado</strong>, quando alguém digitou
+            outro valor), <strong>óleo</strong> e <strong>betume</strong>. Ao lado, a <strong>Média da amostra</strong> (ex.: HP300NA, NB e
+            NC → <strong>HP300N</strong>): o valor de cada réplica e a média ± desvio (n) de cada massa.{' '}
+            <strong>Valores 0 ou vazios não entram na média.</strong> A mesma média aparece, resumida, abaixo da temperatura na lista de
+            corridas.
+          </li>
+          <li>
+            Pesquisadores e coordenadores tocam em <strong>Editar massas</strong> e digitam as massas em gramas (vírgula ou ponto). No gás,
+            o campo vazio usa o valor da planilha; o valor digitado substitui o da planilha, mesmo se ela for importada de novo. Para voltar
+            ao valor da planilha, toque em <strong>Usar planilha</strong> e salve. Cada mudança fica no Histórico. Técnicos e ICs veem as
+            massas, mas não editam.
+          </li>
+          <li>
+            Mais abaixo, a ficha organizada como a planilha: massa inicial, gás por massa de rocha e fechamento do balanço; depois os blocos{' '}
+            <strong>Dados do experimento</strong>, <strong>Reator</strong>, <strong>Inicial</strong>, <strong>Final</strong> e{' '}
+            <strong>Verificação da cromatografia</strong>, e a composição do gás.
           </li>
           <li>
             Algo veio errado? Em <strong>Mais</strong> → <strong>Corrigir dados</strong>. Para ligar uma amostra a uma corrida, abra a
@@ -387,8 +401,17 @@ export const MANUAL_SECTIONS: ManualSection[] = [
           <li>
             Na aba <strong>Séries</strong>, os gráficos aparecem todos juntos, em grupos: <strong>Matéria orgânica</strong> (COT, C total,
             HI, OI, Tmax, S1, S2, HI × Tmax e <strong>COT (Rock-Eval) × C total (LECO)</strong>, com a reta ajustada e o <strong>R²</strong>
-            ), <strong>Elementar</strong> (H/C, O/C, N, S, Van Krevelen), <strong>Gás</strong>, <strong>Py-GC-MS</strong> e{' '}
-            <strong>Pirogramas</strong>. Só aparecem os que têm dados no projeto. Use os botões do alto para ver um grupo só.
+            ), <strong>Elementar</strong> (H/C, O/C, N, S, Van Krevelen), <strong>Py-GC-MS</strong> e <strong>Pirogramas</strong>. Só
+            aparecem os que têm dados no projeto. Use os botões do alto para ver um grupo só.
+          </li>
+          <li>
+            No alto da aba, troque <strong>Parâmetros</strong> por <strong>Balanço de massas</strong> (a escolha fica guardada neste
+            navegador). Lá ficam três gráficos separados, em gramas × temperatura: <strong>Massa de óleo</strong>,{' '}
+            <strong>Massa de gás</strong> e <strong>Massa de betume</strong>, com a média ± desvio das réplicas de cada amostra (pontos
+            cheios) e cada réplica (pontos vazados); valores 0 ou vazios não entram. Com mais de uma atmosfera, cada uma ganha uma linha com
+            traço diferente. Os dados vêm de <strong>Condições experimentais</strong> (gás: planilha ou valor editado). Abaixo, os gráficos
+            do gás que antes ficavam no grupo Gás: massa de gás gerada (só o valor da planilha), gás por massa de rocha, wetness e
+            composição do gás.
           </li>
           <li>
             Falta algum? <strong>+ Gráfico</strong>: escolha a técnica e o parâmetro e toque em <strong>Adicionar</strong>. Ele vai para{' '}

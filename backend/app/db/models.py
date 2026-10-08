@@ -65,6 +65,12 @@ class Experiment(SQLModel, table=True):
     initial_mass_g: float | None = None
     date: str = ""  # texto livre (AAAA-MM-DD quando conhecido)
     notes: str = ""
+    # Massas por réplica, editáveis por pesquisadores e coordenadores
+    # (app/services/masses.py). Gás: valor digitado que SUBSTITUI o da
+    # planilha (None = vale o da planilha; reimportar nunca mexe aqui).
+    gas_mass_g: float | None = None
+    oil_mass_g: float | None = None
+    bitumen_mass_g: float | None = None
     # Condições lidas da "Planilha cálculo gás" (rótulo → valor/unidade)
     conditions_json: str = Field(default="{}", sa_column=Column(Text, nullable=False, default="{}"))
     created_at: datetime = Field(default_factory=utcnow)

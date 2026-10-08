@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
-import type { AnalysisData, Mode, PyPeaks, PyroData, SampleRow, SeriesResponse } from '../api/types'
+import type { AnalysisData, MassesResponse, MassKey, Mode, PyPeaks, PyroData, SampleRow, SeriesResponse } from '../api/types'
 import { SourceChips } from '../charts/ChartCard'
+import { hasMassData, MassChart } from '../charts/MassCharts'
 import { SeriesChart } from '../charts/SeriesChart'
 import { AlkaneChart, CorrelationChart, GasCompositionChart, HiTmaxChart, PyrogramChart, VanKrevelenChart } from '../charts/MoreCharts'
 import { Button, card, Dropdown, ErrorBox, inputClass, inputStyle, muted, Segmented } from '../components/ui'
@@ -21,11 +22,37 @@ const SECTIONS: { id: string; label: string; series: string[]; extras: Extra[] }
     extras: ['toc_leco', 'hi_tmax'],
   },
   { id: 'el', label: 'Elementar', series: ['chnso.HC_at', 'chnso.OC_at', 'chnso.H', 'chnso.N', 'chnso.S', 'leco.S'], extras: ['vk'] },
-  { id: 'gas', label: 'Gás', series: ['gas_balanco.gas_mass_g', 'gas_balanco.gas_yield_mg_g', 'gc_fid.wetness'], extras: ['gas'] },
   { id: 'py', label: 'Py-GC-MS', series: ['pygcms.pr_ph', 'pygcms.pr_nc17', 'pygcms.ph_nc18', 'pygcms.cpi'], extras: ['alkanes'] },
   { id: 'pyro', label: 'Pirogramas', series: [], extras: ['pyro'] },
 ]
+// Aba "Balanço de massas" (pedido do mantenedor, 08/10/2026): massas de óleo,
+// gás e betume das corridas + os gráficos do balanço de gás.
+const GAS_SERIES = ['gas_balanco.gas_mass_g', 'gas_balanco.gas_yield_mg_g', 'gc_fid.wetness']
+const MASS_ORDER: MassKey[] = ['oil_mass_g', 'gas_mass_g', 'bitumen_mass_g']
+type View = 'parametros' | 'massas'
+const VIEW_KEY = 'resultados.series.view'
 const CUSTOM_KEY = (projectId: number) => `resultados.series.extra.${projectId}`
+
+function readView(): View {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'massas' ? 'massas' : 'parametros'
+  } catch {
+    return 'parametros'
+  }
+}
+
+function useMasses(projectId: number) {
+  const [data, setData] = useState<MassesResponse | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    setData(null)
+    api
+      .get<MassesResponse>(`/projects/${projectId}/experiments/masses`)
+      .then(setData)
+      .catch((err) => setError(String(err.message ?? err)))
+  }, [projectId])
+  return { data, error }
+}
 
 function readCustom(projectId: number): string[] {
   try {
@@ -194,6 +221,16 @@ export function SeriesTab() {
   const [adding, setAdding] = useState(false)
   const [technique, setTechnique] = useState('rockeval')
   const [parameter, setParameter] = useState('TOC')
+  const [view, setViewState] = useState<View>(readView)
+  const setView = (v: View) => {
+    setViewState(v)
+    try {
+      localStorage.setItem(VIEW_KEY, v)
+    } catch {
+      /* sem armazenamento: vale só nesta visita */
+    }
+  }
+  const masses = useMasses(project.id)
   const { samples } = useSamples(project.id, mode)
   const keepFraction = (f: string) => fractionAllowed(f, onlyFraction)
   const list = (samples ?? []).filter((s) => keepFraction(s.fraction))
@@ -269,6 +306,16 @@ export function SeriesTab() {
       </div>
     )
   }
+  const massCharts = MASS_ORDER.filter((m) => hasMassData(masses.data, m))
+  const gasSeries = GAS_SERIES.filter(hasSeries)
+  const gasComposition = hasExtra('gas')
+  const balanceSources = Array.from(
+    new Set([
+      ...(massCharts.length ? ['Condições experimentais'] : []),
+      ...gasSeries.map((c) => c.split('.')[0]),
+      ...(gasComposition ? EXTRA_SOURCES.gas : []),
+    ]),
+  )
   const groups = [
     { value: 'todos', label: 'Todos' },
     ...sections.map((sec) => ({ value: sec.id, label: sec.label })),
@@ -277,10 +324,19 @@ export function SeriesTab() {
 
   return (
     <div className="space-y-4">
+      <Segmented
+        label="Vista"
+        value={view}
+        onChange={setView}
+        options={[
+          { value: 'parametros', label: 'Parâmetros' },
+          { value: 'massas', label: 'Balanço de massas' },
+        ]}
+      />
       <div className="flex flex-wrap items-center gap-2">
-        <Segmented label="Grupo de gráficos" value={section} onChange={setSection} options={groups} />
+        {view === 'parametros' && <Segmented label="Grupo de gráficos" value={section} onChange={setSection} options={groups} />}
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <Button onClick={() => setAdding((v) => !v)}>+ Gráfico</Button>
+          {view === 'parametros' && <Button onClick={() => setAdding((v) => !v)}>+ Gráfico</Button>}
           <Dropdown label={`Opções${optionsActive ? ` (${optionsActive})` : ''}`} ariaLabel="Opções dos gráficos">
             <div className="space-y-2 p-2 text-sm" onClick={(e) => e.stopPropagation()}>
               <label className="block">
@@ -328,7 +384,37 @@ export function SeriesTab() {
         </p>
       )}
 
-      {adding && (
+      {view === 'massas' && (
+        <section>
+          <div className="mb-2 flex flex-wrap items-center gap-x-3">
+            <h2 className="font-semibold">Balanço de massas</h2>
+            <SourceChips sources={balanceSources} />
+          </div>
+          <ErrorBox message={masses.error} />
+          {masses.data === null && !masses.error ? (
+            <p style={muted}>Carregando…</p>
+          ) : massCharts.length === 0 && gasSeries.length === 0 && !gasComposition ? (
+            <p style={muted}>
+              Sem massas nem dados de gás ainda. Digite as massas de óleo, gás e betume em Condições experimentais, ou importe a planilha de cálculo de gás.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+              {massCharts.map((m) => (
+                <MassChart key={m} data={masses.data as MassesResponse} mass={m} />
+              ))}
+              {gasSeries.map(chart)}
+              {gasComposition && extra('gas')}
+            </div>
+          )}
+          <p className="mt-2 text-xs" style={muted}>
+            Massas de óleo, gás e betume: digitadas por réplica em Condições experimentais (gás: o da planilha de cálculo de gás, ou o valor editado). Cada
+            ponto cheio é a média ± desvio das réplicas da amostra (ex.: HP300NA, NB, NC → HP300N); valores 0 ou vazios não entram. "Massa de gás gerada ×
+            temperatura" usa só o valor importado da planilha.
+          </p>
+        </section>
+      )}
+
+      {view === 'parametros' && adding && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border p-3" style={card}>
           <select
             className={`${inputClass} w-auto`}
@@ -371,9 +457,11 @@ export function SeriesTab() {
         </div>
       )}
 
-      {sections.length === 0 && !custom.length && <p style={muted}>Sem resultados com temperatura ainda. Comece por Importar resultados.</p>}
+      {view === 'parametros' && sections.length === 0 && !custom.length && (
+        <p style={muted}>Sem resultados com temperatura ainda. Comece por Importar resultados.</p>
+      )}
 
-      {(section === 'todos' || section === 'meus') && custom.length > 0 && (
+      {view === 'parametros' && (section === 'todos' || section === 'meus') && custom.length > 0 && (
         <section>
           <h2 className="mb-2 font-semibold">Meus gráficos</h2>
           <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
@@ -389,7 +477,8 @@ export function SeriesTab() {
         </section>
       )}
 
-      {section !== 'meus' &&
+      {view === 'parametros' &&
+        section !== 'meus' &&
         shown.map((sec) => (
           <section key={sec.id}>
             <div className="mb-2 flex flex-wrap items-center gap-x-3">
@@ -403,7 +492,7 @@ export function SeriesTab() {
           </section>
         ))}
 
-      <p className="text-xs" style={muted}>
+      <p className="text-xs" style={muted} hidden={view !== 'parametros'}>
         Cada ponto junta as amostras da mesma fração e temperatura: com várias amostras (ex.: réplicas A, B, C do experimento), média ± desvio entre elas; com
         uma só, média ± desvio das réplicas de análise. SE (sem extração) entra na mesma linha de H.
       </p>

@@ -142,6 +142,41 @@ export interface Experiment {
     gas_enchimento?: string
   }
   samples: { id: number; code: string; fraction: string; valid: boolean | null }[]
+  // massas da réplica (g) — gás: valor digitado substitui o da planilha
+  gas_mass_g: number | null
+  oil_mass_g: number | null
+  bitumen_mass_g: number | null
+  gas_mass_effective_g: number | null
+  gas_mass_source: 'planilha' | 'editado' | null
+  gas_mass_sheet_g: number | null
+  gas_mass_manual_g: number | null
+}
+
+export type MassKey = 'gas_mass_g' | 'oil_mass_g' | 'bitumen_mass_g'
+
+export interface MassReplicate {
+  experiment_id: number
+  code: string
+  replicate_letter: string
+  gas_mass_g: number | null
+  gas_mass_source: 'planilha' | 'editado' | null
+  oil_mass_g: number | null
+  bitumen_mass_g: number | null
+}
+
+export interface MassGroup {
+  key: string
+  label: string
+  temperature_c: number | null
+  atmosphere: string
+  replicates: MassReplicate[]
+  stats: Record<MassKey, Stat>
+}
+
+export interface MassesResponse {
+  masses: { key: MassKey; label: string; unit: string }[]
+  atmospheres: string[]
+  groups: MassGroup[]
 }
 
 export interface SeriesPoint extends Stat {

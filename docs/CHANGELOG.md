@@ -1,6 +1,29 @@
 # Changelog — Horun · Resultados
 
 ## Não lançado — 08/10/2026
+### Massas de gás, óleo e betume por réplica; Séries → Balanço de massas (pedido do mantenedor)
+- `Experiment` ganhou `gas_mass_g`, `oil_mass_g` e `bitumen_mass_g` (g, nulos;
+  migração `_ensure_column`). Pesquisadores e coordenadores editam pelo PATCH
+  do experimento (0 a 10 000 g); a mudança vai para o Histórico
+  (`massas_editadas`, com antes/depois).
+- Gás gerado: o valor digitado substitui o da planilha (medição `gas_balanco`
+  mais recente e não invalidada; sem ela, `conditions_json["resultados"]`);
+  `null` volta ao valor da planilha; reimportar a planilha não mexe no
+  digitado. O experimento devolve `gas_mass_effective_g`, `gas_mass_source`
+  (`planilha`/`editado`), `gas_mass_sheet_g` e `gas_mass_manual_g`.
+- `app/services/masses.py` e `GET /projects/{id}/experiments/masses`: réplicas
+  agrupadas por amostra (temperatura + atmosfera, ex. HP300N) com média,
+  desvio e n de cada massa, **sem valores 0 ou vazios**.
+- Condições experimentais: bloco **Massas** na ficha (etiqueta
+  planilha/editado no gás), **Editar massas** (janela) para quem edita,
+  tabela **Média da amostra (HP300N)** e o resumo da média abaixo de cada
+  temperatura na lista.
+- Séries: nova vista **Balanço de massas** (seletor Parâmetros | Balanço de
+  massas, lembrado no navegador) com os gráficos Massa de óleo, Massa de gás e
+  Massa de betume × temperatura e os gráficos do gás, que saíram do painel
+  principal (o grupo "Gás" deixou de existir lá).
+- Testes: `tests/test_masses.py`. Manual atualizado.
+
 ### Acesso por projeto: Pessoas do projeto (pedido do mantenedor)
 - Coordenadores e o administrador máximo (níveis 1–2) seguem vendo todos os
   projetos. Pesquisadores, técnicos e ICs (3–5) só veem e abrem os projetos em
