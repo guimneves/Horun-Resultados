@@ -14,7 +14,12 @@ Financeiro (`module_mode()/core_role()`), sem cadastro de membros nem senha:
 * coordenador: além disso cria/edita/arquiva projetos e edita a tabela de
   frações;
 * histórico (quem fez o quê): administrador máximo e coordenadores (níveis 1–2);
-* excluir projeto: só o administrador máximo (nível 1), digitando o nome.
+* excluir projeto: só o administrador máximo (nível 1), digitando o nome;
+* acesso por projeto (pedido do mantenedor, 08/10/2026): níveis 1–2 veem e
+  abrem TODOS os projetos; níveis 3–5 só os projetos em que são membros
+  (`ProjectMember`). Coordenadores adicionam pesquisadores, técnicos e ICs;
+  pesquisadores (dentro dos projetos em que estão) adicionam e removem
+  técnicos e ICs. A regra usa sempre o cargo ATUAL (X-Horun-Level).
 
 No desenvolvimento (HORUN_DEV_MODE=true) vale a mesma regra; o seletor
 "Ver como" do frontend troca o nível mandando os cabeçalhos.
@@ -77,3 +82,23 @@ def require_history_access(identity: HorunIdentity = Depends(get_identity)) -> H
     if not can_see_history(identity):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Só o administrador máximo e os coordenadores veem o histórico.")
     return identity
+
+
+def sees_all_projects(identity: HorunIdentity) -> bool:
+    """Administrador máximo e coordenadores veem e abrem todos os projetos."""
+    return identity.level <= LEVEL_COORDENADOR
+
+
+def member_levels_manageable(identity: HorunIdentity) -> tuple[int, ...]:
+    """Cargos que esta pessoa pode adicionar/remover como membro de um projeto:
+    coordenadores → pesquisadores, técnicos e ICs; pesquisadores → técnicos e
+    ICs; técnicos e ICs → ninguém."""
+    if identity.level <= LEVEL_COORDENADOR:
+        return (3, 4, 5)
+    if identity.level == LEVEL_PESQUISADOR:
+        return (4, 5)
+    return ()
+
+
+def can_manage_members(identity: HorunIdentity) -> bool:
+    return bool(member_levels_manageable(identity))

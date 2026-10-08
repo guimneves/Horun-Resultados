@@ -138,7 +138,7 @@ def test_delete_project_only_level_1_with_typed_name(client, project):
     assert client.get(f"projects/{pid}", headers=ADMIN).status_code == 404
     # o mesmo arquivo pode ser importado de novo num projeto novo
     new = client.post("projects", json={"name": "Novo"}, headers=ADMIN).json()
-    pv = upload(client, new["id"], {"run.pdf": syn.chnso_summary_pdf(ROWS)})
+    pv = upload(client, new["id"], {"run.pdf": syn.chnso_summary_pdf(ROWS)}, headers=ADMIN)
     assert pv["files"][0]["status"] == "ok"
 
 
@@ -156,6 +156,12 @@ def test_dev_mode_view_as_level_switcher(client, monkeypatch):
     assert me["level"] == 4 and me["role"] == "colaborador" and me["can_edit"] is False
     assert client.post("projects", json={"name": "P"}, headers=person("dev-nivel-4", 4)).status_code == 403
     pid = client.post("projects", json={"name": "P"}).json()["id"]
+    # diretório de faz de conta do desenvolvimento: as pessoas do "Ver como" já estão na lista
+    choices = {p["user_id"] for p in client.get(f"projects/{pid}/members/candidates").json()}
+    assert {"dev-nivel-3", "dev-nivel-4", "dev-nivel-5"} <= choices
+    assert client.get(f"projects/{pid}/samples", headers=person("dev-nivel-4", 4)).status_code == 404
+    for uid in ("dev-nivel-3", "dev-nivel-4"):
+        assert client.post(f"projects/{pid}/members", json={"user_id": uid}).status_code == 201
     assert client.post(f"projects/{pid}/samples", json={"code": "HP300H"}, headers=person("dev-nivel-4", 4)).status_code == 403
     assert client.get("me", headers=person("dev-nivel-3", 3)).json()["can_edit"] is True
     assert client.post(f"projects/{pid}/samples", json={"code": "HP300H"}, headers=person("dev-nivel-3", 3)).status_code == 201

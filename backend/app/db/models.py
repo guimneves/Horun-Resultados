@@ -189,3 +189,36 @@ class SampleAlias(SQLModel, table=True):
     alias_norm: str = Field(index=True)
     created_by: str = ""
     created_at: datetime = Field(default_factory=utcnow)
+
+
+class ProjectMember(SQLModel, table=True):
+    """Pessoa com acesso a um projeto (pedido do mantenedor, 08/10/2026).
+
+    Coordenadores e o administrador máximo (níveis 1–2) veem todos os
+    projetos; pesquisadores, técnicos e ICs (3–5) só os projetos em que são
+    membros. `user_id` é o id da pessoa no Horun Core (X-Horun-User-Id).
+    `level_at_add` é só registro: a regra usa sempre o cargo ATUAL, que vem
+    no cabeçalho X-Horun-Level."""
+
+    __table_args__ = (UniqueConstraint("project_id", "user_id"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    project_id: int = Field(foreign_key="project.id", index=True)
+    user_id: str = Field(index=True)
+    username: str = ""
+    display_name: str = ""
+    level_at_add: int | None = None
+    added_by: str = ""
+    added_at: datetime = Field(default_factory=utcnow)
+
+
+class KnownUser(SQLModel, table=True):
+    """Pessoa do Horun que já abriu este módulo — a lista para escolher
+    "Pessoas do projeto". O Core não tem (ainda) uma rota que liste os
+    usuários para os módulos; como no Financeiro, o módulo anota quem chega
+    (cabeçalhos X-Horun-* que o Core injeta), com o cargo da última visita."""
+
+    user_id: str = Field(primary_key=True)
+    username: str = ""
+    level: int = 5
+    last_seen_at: datetime = Field(default_factory=utcnow)

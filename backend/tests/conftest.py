@@ -63,10 +63,21 @@ def sent(monkeypatch):
     return calls
 
 
+def add_members(client, project_id: int, *people: dict, by: dict | None = None) -> None:
+    """Põe pessoas no projeto (acesso por projeto, níveis 3–5). Cada uma abre
+    o módulo antes (GET /me) — é assim que entra na lista do Horun."""
+    for who in people:
+        assert client.get("me", headers=who).status_code == 200
+        r = client.post(f"projects/{project_id}/members", json={"user_id": who["X-Horun-User-Id"]}, headers=by or COORD)
+        assert r.status_code == 201, r.text
+
+
 @pytest.fixture
 def project(client):
     r = client.post("projects", json={"name": "Projeto Teste", "description": "sintético"}, headers=COORD)
     assert r.status_code == 201, r.text
+    # pesquisador(a), técnico(a) e IC das simulações têm acesso ao projeto de teste
+    add_members(client, r.json()["id"], PESQ, TEC, IC)
     return r.json()
 
 

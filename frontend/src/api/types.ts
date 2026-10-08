@@ -11,6 +11,10 @@ export interface Me {
   can_edit: boolean
   can_delete_projects: boolean
   can_see_history: boolean
+  /** Níveis 1–2 veem todos os projetos; os demais, só aqueles em que são membros. */
+  sees_all_projects: boolean
+  /** Pode cuidar de "Pessoas do projeto" (níveis 1–3; pesquisador só técnicos e ICs). */
+  can_manage_members: boolean
   dev_mode: boolean
 }
 
@@ -48,6 +52,30 @@ export interface Project {
   created_at: string
   created_by: string
   counts: { samples: number; analyses: number; experiments: number }
+  can_manage_members: boolean
+}
+
+/** Pessoa com acesso a um projeto (níveis 3–5; níveis 1–2 veem todos). */
+export interface ProjectMember {
+  id: number
+  project_id: number
+  user_id: string
+  username: string
+  display_name: string
+  level_at_add: number | null
+  /** Cargo atual no Horun (ou o da hora em que foi adicionada, se o Core não respondeu). */
+  level: number | null
+  added_by: string
+  added_at: string
+  can_remove: boolean
+}
+
+/** Pessoa do Horun que pode ser adicionada a um projeto. */
+export interface DirectoryPerson {
+  user_id: string
+  username: string
+  display_name: string
+  level: number
 }
 
 export interface Stat {

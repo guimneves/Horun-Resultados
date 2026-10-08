@@ -9,7 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import routes_projects, routes_results, routes_samples
+from app.api import routes_members, routes_projects, routes_results, routes_samples
 from app.core.identity import DEV_MODE
 from app.db.session import create_db_and_tables
 
@@ -59,7 +59,7 @@ if DEV_MODE:
 
 # Toda a API vive sob /api: plugado no Core, o gateway só encaminha ao backend
 # o que começa com /m/resultados/api/... (Prompt_Horun_Modulo.md, seção 6).
-for _router in (routes_projects.router, routes_samples.router, routes_results.router):
+for _router in (routes_projects.router, routes_members.router, routes_samples.router, routes_results.router):
     app.include_router(_router, prefix="/api")
 
 

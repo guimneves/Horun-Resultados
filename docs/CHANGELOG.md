@@ -1,6 +1,31 @@
 # Changelog — Horun · Resultados
 
 ## Não lançado — 08/10/2026
+### Acesso por projeto: Pessoas do projeto (pedido do mantenedor)
+- Coordenadores e o administrador máximo (níveis 1–2) seguem vendo todos os
+  projetos. Pesquisadores, técnicos e ICs (3–5) só veem e abrem os projetos em
+  que são membros: `GET /projects` filtra e toda rota por projeto
+  (`get_project`) responde 404 a quem não é membro.
+- Tabela nova `ProjectMember` (projeto, id no Core, usuário, nome, cargo na
+  entrada, quem adicionou, quando) e `KnownUser` (quem já abriu o módulo, com
+  o cargo da última visita) — criadas pelo `create_all`.
+- Rotas `GET/POST /projects/{id}/members`, `DELETE .../members/{id}` e
+  `GET .../members/candidates`: coordenadores adicionam/removem pesquisadores,
+  técnicos e ICs; pesquisadores, só técnicos e ICs; técnicos e ICs só
+  consultam. A regra usa o cargo atual (cabeçalho). Entradas e saídas no
+  Histórico (`membro_adicionado`, `membro_removido`).
+- `/me` ganhou `sees_all_projects` e `can_manage_members`; cada projeto,
+  `can_manage_members`.
+- Lista de pessoas: o Core não tem rota que liste usuários para os módulos;
+  como no Financeiro, o módulo anota quem o abre (a cada `GET /me`). Quem
+  nunca abriu o Resultados ainda não aparece. No desenvolvimento há um
+  diretório de faz de conta (pessoas do "Ver como").
+- Frontend: **Projeto ▾ → Pessoas do projeto** (janela com a lista, busca e
+  "Adicionar pessoa", remover); visível para todos, só leitura para técnicos e
+  ICs. Lista de projetos vazia explica a quem pedir acesso. Manual atualizado.
+- Testes: `tests/test_members.py`; o projeto dos testes já traz PESQ, TEC e IC
+  como membros.
+
 ### Pesquisadores validam; coordenadores veem o histórico (pedido do mantenedor)
 - Validar/invalidar amostras e medições (uma a uma e em lote) passou a
   `require_editor` (níveis 1–3): pesquisadores marcam válidas e inválidas.

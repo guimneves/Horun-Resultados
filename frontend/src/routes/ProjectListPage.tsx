@@ -79,7 +79,11 @@ export function ProjectListPage() {
       {list === null ? (
         <p style={muted}>Carregando…</p>
       ) : list.length === 0 ? (
-        <Empty>{me?.is_coordenador ? 'Nenhum projeto ainda. Crie o primeiro em + Novo projeto.' : 'Nenhum projeto ainda. Peça a um coordenador para criar.'}</Empty>
+        <Empty>
+          {me?.is_coordenador
+            ? 'Nenhum projeto ainda. Crie o primeiro em + Novo projeto.'
+            : 'Nenhum projeto para você ainda. Peça a um(a) coordenador(a) para adicionar você em Projeto ▾ → Pessoas do projeto.'}
+        </Empty>
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {list.map((p) => (

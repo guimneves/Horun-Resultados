@@ -66,7 +66,7 @@ def test_ids_from_other_project_or_unknown_are_rejected_and_nothing_changes(clie
     assert client.post(f"projects/{pid}/samples/bulk-delete", json={"sample_ids": []}, headers=COORD).status_code == 422
     codes = {s["code"] for s in client.get(f"projects/{pid}/samples", headers=PESQ).json()["samples"]}
     assert {"HP300H", "HP320E"} <= codes
-    assert client.get(f"projects/{other['id']}/samples/{foreign}", headers=PESQ).status_code == 200
+    assert client.get(f"projects/{other['id']}/samples/{foreign}", headers=COORD).status_code == 200
 
 
 def test_preview_counts_analyses_per_sample_without_deleting(client, project):

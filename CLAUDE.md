@@ -41,13 +41,20 @@ temperatura. Backend FastAPI+SQLModel (`backend/`), frontend React+Vite (`fronte
   1–3** (`require_editor`, `can_edit` no /me) — técnico (4) e IC (5) só
   visualizam; excluir projeto só nível 1, digitando o nome; histórico níveis
   1–2. Sem senha. Rota nova que altera dados → `require_editor` (ou mais).
+- **Acesso por projeto** (`ProjectMember`): níveis 1–2 veem todos os projetos;
+  3–5 só aqueles em que são membros. Toda rota `/projects/{id}/...` usa
+  `Depends(get_project)` (`app/api/deps.py`), que dá 404 a quem não é membro —
+  **rota nova por projeto tem de passar por `get_project`**. Pessoas do
+  projeto: coordenadores põem/tiram pesquisadores, técnicos e ICs;
+  pesquisadores só técnicos e ICs. Lista para escolher = quem já abriu o
+  módulo (`KnownUser`, `services/directory.py`; o Core não lista usuários).
 - Gráficos: cores por significado (`frontend/src/lib/colors.ts`, paleta validada),
   sempre com legenda e "Ver tabela"; nada de eixo duplo.
 
 ## Comandos
 
 ```bash
-cd backend && .venv/Scripts/python -m pytest -q        # 122 passam
+cd backend && .venv/Scripts/python -m pytest -q        # 132 passam
 cd frontend && npx tsc -b && npx oxlint && npm run build
 ```
 

@@ -133,6 +133,12 @@ sobrepor nos gráficos como "referência" — não é prioridade da v1.
   composição de gás, picos Py-GC-MS).
 - **Arquivo**: original enviado (guardado no volume do módulo), sha256 (evita
   importar duas vezes), técnica detectada, relatório da importação.
+- **Pessoa do projeto** (`ProjectMember`, 08/10/2026): projeto, id da pessoa no
+  Core (texto), usuário, nome, cargo na hora em que entrou (só registro),
+  quem adicionou e quando.
+- **Pessoa conhecida** (`KnownUser`): id no Core, usuário e cargo da última
+  visita de quem já abriu o módulo — a lista para escolher pessoas (o Core não
+  tem rota que liste usuários para os módulos).
 
 ## 5. Importação
 
@@ -170,6 +176,23 @@ toda rota que altera, inclusive **validar/invalidar**. Coordenador: tudo isso
 + criar/editar/arquivar projetos, tabela de frações e o **histórico**. Excluir projeto: só administrador máximo, com
 confirmação digitando o nome. Sem senhas próprias do módulo (no modo de
 desenvolvimento, seletor "Ver como" para trocar o nível).
+
+**Acesso por projeto** (pedido do mantenedor, 08/10/2026): níveis 1–2 veem e
+abrem **todos** os projetos; níveis 3–5 só os projetos em que são membros
+(`ProjectMember`). `GET /projects` filtra; toda rota `/projects/{id}/...`
+(amostras, séries, comparar, experimentos, importação, exportação, arquivos,
+histórico, pessoas) responde **404** a quem não é membro (`get_project` em
+`api/deps.py`). Dentro do projeto, cada um mantém os direitos do cargo
+(pesquisador importa, edita, exclui, valida; técnico e IC só veem).
+"Pessoas do projeto" (`/projects/{id}/members`, `.../members/candidates`):
+coordenadores adicionam/removem pesquisadores, técnicos e ICs; pesquisadores
+adicionam/removem só técnicos e ICs; técnicos e ICs só consultam (403 ao
+alterar). Vale sempre o cargo **atual** do cabeçalho; o cargo guardado na
+entrada é só registro. `/me` e cada projeto trazem `can_manage_members`; `/me`
+traz `sees_all_projects`. Entradas e saídas vão para o histórico
+(`membro_adicionado`, `membro_removido`). A lista para escolher = quem já abriu
+o módulo (`KnownUser`, anotado a cada `GET /me`); no desenvolvimento, mais um
+diretório de faz de conta (`services/directory.py`).
 
 ## 8. Regras do Horun que o módulo segue
 `Horun Core/Prompt_Horun_Modulo.md` inteiro: API sob `/api`, `/health`,

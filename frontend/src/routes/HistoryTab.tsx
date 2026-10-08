@@ -27,8 +27,8 @@ export function HistoryTab() {
       .catch(() => setFiles([]))
   }, [project.id, allowed])
 
-  // Histórico só para o administrador máximo (08/10/2026)
-  if (!allowed) return <Empty>Só o administrador máximo do Horun vê o histórico.</Empty>
+  // Histórico para o administrador máximo e coordenadores (08/10/2026)
+  if (!allowed) return <Empty>Só o administrador máximo e os coordenadores veem o histórico.</Empty>
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

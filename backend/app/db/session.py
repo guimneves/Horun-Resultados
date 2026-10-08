@@ -57,6 +57,8 @@ def _run_migrations() -> None:
     #   _ensure_column("sample", "observacoes", "VARCHAR")
     #   _ensure_column("sample", "conferida", "BOOLEAN", default_sql="0")
     _ensure_column("project", "profile_json", "TEXT", default_sql="''")  # 08/10/2026 — perfil do projeto
+    # 08/10/2026 — tabelas novas `projectmember` e `knownuser` (acesso por
+    # projeto): nascem inteiras pelo create_all, sem coluna a acrescentar.
 
 
 def _seed_fractions() -> None:

@@ -13,7 +13,17 @@ from sqlmodel import Session, func, select
 from app.api.deps import get_project
 from app.core import identity as identity_module
 from app.core.identity import HorunIdentity, get_identity
-from app.core.permissions import COORDENADOR, can_edit, can_see_history, core_role, require_coordenador, require_history_access, require_super_admin
+from app.core.permissions import (
+    COORDENADOR,
+    can_edit,
+    can_manage_members,
+    can_see_history,
+    core_role,
+    require_coordenador,
+    require_history_access,
+    require_super_admin,
+    sees_all_projects,
+)
 from app.db.models import (
     Analysis,
     AnalysisValue,
@@ -22,20 +32,23 @@ from app.db.models import (
     FractionType,
     ImportBatch,
     Project,
+    ProjectMember,
     Sample,
     SampleAlias,
     StoredFile,
     utcnow,
 )
 from app.db.session import get_session
-from app.services import audit, profiles, storage
+from app.services import audit, directory, profiles, storage
 from app.services.catalog import catalog_json
 
 router = APIRouter(tags=["projetos"])
 
 
 @router.get("/me")
-def me(identity: HorunIdentity = Depends(get_identity)):
+def me(identity: HorunIdentity = Depends(get_identity), session: Session = Depends(get_session)):
+    # anota quem abriu o módulo — é a lista de "Pessoas do projeto" (services/directory.py)
+    directory.remember(session, identity)
     role = core_role(identity)
     return {
         "user_id": identity.user_id,
@@ -47,6 +60,10 @@ def me(identity: HorunIdentity = Depends(get_identity)):
         "can_edit": can_edit(identity),
         "can_delete_projects": identity.level == 1,
         "can_see_history": can_see_history(identity),
+        # vê todos os projetos (níveis 1–2) ou só aqueles em que é membro
+        "sees_all_projects": sees_all_projects(identity),
+        # pode cuidar de "Pessoas do projeto" (níveis 1–3; pesquisador só técnicos e ICs)
+        "can_manage_members": can_manage_members(identity),
         "dev_mode": identity_module.DEV_MODE,
     }
 
@@ -130,7 +147,7 @@ def _checked_profile(data: dict | None) -> profiles.ProjectProfile:
         raise HTTPException(422, str(err)) from err
 
 
-def _project_out(session: Session, project: Project) -> dict:
+def _project_out(session: Session, project: Project, identity: HorunIdentity) -> dict:
     samples = session.exec(select(func.count()).select_from(Sample).where(Sample.project_id == project.id)).one()
     analyses = session.exec(select(func.count()).select_from(Analysis).where(Analysis.project_id == project.id)).one()
     experiments = session.exec(select(func.count()).select_from(Experiment).where(Experiment.project_id == project.id)).one()
@@ -138,6 +155,8 @@ def _project_out(session: Session, project: Project) -> dict:
         **project.model_dump(exclude={"profile_json"}),
         "profile": profiles.load(project.profile_json).resolved(),
         "counts": {"samples": samples, "analyses": analyses, "experiments": experiments},
+        # pode abrir "Pessoas do projeto" e adicionar/remover? (quem chega aqui já abre o projeto)
+        "can_manage_members": can_manage_members(identity),
     }
 
 
@@ -145,10 +164,14 @@ def _project_out(session: Session, project: Project) -> dict:
 def list_projects(
     include_archived: bool = False,
     session: Session = Depends(get_session),
-    _identity: HorunIdentity = Depends(get_identity),
+    identity: HorunIdentity = Depends(get_identity),
 ):
-    projects = session.exec(select(Project).order_by(Project.name)).all()
-    return [_project_out(session, p) for p in projects if include_archived or p.archived_at is None]
+    query = select(Project).order_by(Project.name)
+    if not sees_all_projects(identity):
+        # pesquisadores, técnicos e ICs: só os projetos em que são membros
+        query = query.where(Project.id.in_(select(ProjectMember.project_id).where(ProjectMember.user_id == str(identity.user_id))))  # type: ignore[union-attr]
+    projects = session.exec(query).all()
+    return [_project_out(session, p, identity) for p in projects if include_archived or p.archived_at is None]
 
 
 @router.post("/projects", status_code=201)
@@ -165,12 +188,12 @@ def create_project(body: ProjectIn, session: Session = Depends(get_session), ide
     audit.record(session, identity, "projeto_criado", f"Criou o projeto \"{name}\".", project_id=project.id)
     session.commit()
     session.refresh(project)
-    return _project_out(session, project)
+    return _project_out(session, project, identity)
 
 
 @router.get("/projects/{project_id}")
-def get_one(project: Project = Depends(get_project), session: Session = Depends(get_session), _identity: HorunIdentity = Depends(get_identity)):
-    return _project_out(session, project)
+def get_one(project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(get_identity)):
+    return _project_out(session, project, identity)
 
 
 @router.patch("/projects/{project_id}")
@@ -197,7 +220,7 @@ def patch_project(
     audit.record(session, identity, "projeto_editado", "Editou os dados do projeto.", project_id=project.id, details=changes)
     session.commit()
     session.refresh(project)
-    return _project_out(session, project)
+    return _project_out(session, project, identity)
 
 
 @router.post("/projects/{project_id}/archive")
@@ -206,7 +229,7 @@ def archive(project: Project = Depends(get_project), session: Session = Depends(
     session.add(project)
     audit.record(session, identity, "projeto_arquivado", "Arquivou o projeto.", project_id=project.id)
     session.commit()
-    return _project_out(session, project)
+    return _project_out(session, project, identity)
 
 
 @router.post("/projects/{project_id}/unarchive")
@@ -215,7 +238,7 @@ def unarchive(project: Project = Depends(get_project), session: Session = Depend
     session.add(project)
     audit.record(session, identity, "projeto_desarquivado", "Desarquivou o projeto.", project_id=project.id)
     session.commit()
-    return _project_out(session, project)
+    return _project_out(session, project, identity)
 
 
 @router.delete("/projects/{project_id}", status_code=204)
@@ -236,6 +259,7 @@ def delete_project(
     session.exec(sa_delete(Sample).where(Sample.project_id == pid))  # type: ignore[arg-type]
     session.exec(sa_delete(Experiment).where(Experiment.project_id == pid))  # type: ignore[arg-type]
     session.exec(sa_delete(ImportBatch).where(ImportBatch.project_id == pid))  # type: ignore[arg-type]
+    session.exec(sa_delete(ProjectMember).where(ProjectMember.project_id == pid))  # type: ignore[arg-type]
     digests = list(session.exec(select(StoredFile.sha256).where(StoredFile.project_id == pid)))
     session.exec(sa_delete(StoredFile).where(StoredFile.project_id == pid))  # type: ignore[arg-type]
     name = project.name

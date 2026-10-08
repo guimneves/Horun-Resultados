@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useNavigate, useOutletContext, useParams } f
 import { api, errorText } from '../api/client'
 import type { Project } from '../api/types'
 import { PROJECT_TABS } from '../components/Shell'
+import { ProjectMembersModal } from '../components/ProjectMembers'
 import { Button, Dropdown, ErrorBox, Field, inputClass, inputStyle, MenuItem, Modal, muted } from '../components/ui'
 import { useApp } from '../context/AppContext'
 import { ProjectForm } from './ProjectListPage'
@@ -65,6 +66,7 @@ export function ProjectLayout() {
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [members, setMembers] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const project = projects?.find((p) => p.id === Number(projectId))
 
@@ -119,8 +121,10 @@ export function ProjectLayout() {
               Importar resultados
             </Link>
           )}
-          {(me?.is_coordenador || me?.can_see_history) && (
+          {/* "Pessoas do projeto" para todos: quem cuida adiciona/remove, os demais só consultam */}
+          {me && (
             <Dropdown label="Projeto" ariaLabel="Ações do projeto">
+              <MenuItem onClick={() => setMembers(true)}>Pessoas do projeto</MenuItem>
               {me?.can_see_history && <MenuItem onClick={() => navigate(`/projects/${project.id}/historico`)}>Histórico</MenuItem>}
               {me?.is_coordenador && <MenuItem onClick={() => setEditing(true)}>Editar projeto</MenuItem>}
               {me?.is_coordenador && <MenuItem onClick={toggleArchive}>{project.archived_at ? 'Desarquivar' : 'Arquivar'}</MenuItem>}
@@ -179,6 +183,7 @@ export function ProjectLayout() {
         </Modal>
       )}
       {deleting && <DeleteProject project={project} onClose={() => setDeleting(false)} />}
+      {members && <ProjectMembersModal project={project} onClose={() => setMembers(false)} />}
     </div>
   )
 }

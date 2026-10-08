@@ -54,8 +54,9 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     body: (
       <>
         <p>
-          O seu papel vem do seu <strong>cargo no Horun</strong> e vale em todos os projetos. Ele aparece no alto da tela, ao lado do seu
-          nome.
+          O seu papel vem do seu <strong>cargo no Horun</strong> e vale em todos os projetos que você vê. Ele aparece no alto da tela, ao
+          lado do seu nome. Coordenadores e o administrador máximo veem <strong>todos</strong> os projetos; pesquisadores, técnicos e ICs só
+          veem os projetos em que foram adicionados (veja <strong>Pessoas do projeto</strong>).
         </p>
         <Bullets>
           <li>
@@ -66,11 +67,11 @@ export const MANUAL_SECTIONS: ManualSection[] = [
           <li>
             <strong>Colaborador(a)</strong> (pesquisador): vê tudo, importa arquivos, cria amostras e experimentos, corrige os dados deles,
             liga nomes lembrados, marca amostras e medições como <strong>válidas</strong> ou <strong>inválidas</strong> e exclui medições,
-            amostras e experimentos (uma a uma ou várias de uma vez).
+            amostras e experimentos (uma a uma ou várias de uma vez). Nos projetos em que está, adiciona e remove técnicos e ICs.
           </li>
           <li>
             <strong>Coordenador(a)</strong> (administrador máximo e coordenadores do Horun): tudo isso e mais — cria, edita e arquiva
-            projetos e vê o <strong>Histórico</strong> (quem fez o quê).
+            projetos, escolhe quem acessa cada projeto e vê o <strong>Histórico</strong> (quem fez o quê).
           </li>
           <li>
             <strong>Administrador máximo</strong>: é o único que pode <strong>Excluir</strong> um projeto inteiro (digitando o nome do
@@ -449,13 +450,53 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     ),
   },
   {
+    id: 'pessoas',
+    title: 'Pessoas do projeto (quem acessa cada projeto)',
+    body: (
+      <>
+        <p>
+          Coordenadores e o administrador máximo veem e abrem todos os projetos. Pesquisadores, técnicos e ICs só veem os projetos em que
+          estão na lista de <strong>Pessoas do projeto</strong> — quem não está nem vê o projeto.
+        </p>
+        <Steps>
+          <li>
+            No projeto, toque em <strong>Projeto ▾</strong> → <strong>Pessoas do projeto</strong>.
+          </li>
+          <li>
+            Toque em <strong>+ Adicionar pessoa</strong>, busque pelo nome, usuário ou cargo e toque em <strong>Adicionar</strong>. A pessoa
+            passa a ver o projeto na hora.
+          </li>
+          <li>
+            Para tirar alguém, toque em <strong>Remover</strong> ao lado do nome.
+          </li>
+        </Steps>
+        <Bullets>
+          <li>
+            <strong>Coordenadores</strong> adicionam e removem pesquisadores, técnicos e ICs.
+          </li>
+          <li>
+            <strong>Pesquisadores</strong>, nos projetos em que estão, adicionam e removem <strong>técnicos e ICs</strong> (não outros
+            pesquisadores).
+          </li>
+          <li>
+            <strong>Técnicos e ICs</strong> só consultam a lista.
+          </li>
+        </Bullets>
+        <p>
+          Só aparece na busca quem já abriu o Resultados pelo Horun ao menos uma vez. Se a pessoa não aparece, peça para ela abrir o módulo
+          uma vez e tente de novo. Quem entrou e quem saiu fica no <strong>Histórico</strong>.
+        </p>
+      </>
+    ),
+  },
+  {
     id: 'historico',
     title: 'Histórico e arquivos originais',
     body: (
       <p>
         Para o <strong>administrador máximo</strong> e os <strong>coordenadores</strong>: em <strong>Projeto ▾</strong> →{' '}
-        <strong>Histórico</strong> veem quem importou, validou, editou ou excluiu, e quando. Ao lado, a lista de arquivos importados — toque
-        no nome para baixar o original.
+        <strong>Histórico</strong> veem quem importou, validou, editou ou excluiu, quem entrou ou saiu do projeto, e quando. Ao lado, a
+        lista de arquivos importados — toque no nome para baixar o original.
       </p>
     ),
   },
