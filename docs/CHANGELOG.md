@@ -1,6 +1,20 @@
 # Changelog — Horun · Resultados
 
 ## Não lançado — 08/10/2026
+### Técnicos e ICs só visualizam (pedido do mantenedor)
+- Pesquisadores e coordenadores importam, criam, editam e excluem resultados;
+  técnicos (nível 4) e ICs (nível 5) veem tudo (tabelas, séries, gráficos,
+  fichas, exportar CSV/XLSX) mas não importam nem alteram nada.
+- Backend: `require_editor` (níveis 1–3) em importar (prévia/confirmação),
+  criar/editar/excluir amostra e experimento, cadastro em lote, excluir
+  medição, excluir várias amostras e nomes lembrados — 403 "Técnicos e ICs
+  só visualizam os resultados."; `/me` ganhou `can_edit`.
+- Excluir amostras/medições/experimentos (uma a uma ou várias) passou a valer
+  também para pesquisadores; validar/invalidar, projetos e frações seguem
+  só com coordenadores; excluir projeto e histórico, só nível 1.
+- Frontend: botões de alterar somem para quem não pode; /importar mostra um
+  aviso; o selo do papel mostra "Somente leitura". Manual atualizado.
+
 ### Origem dos dados, filtro de frações, ficha da corrida e perfis (fundação)
 - Etiquetas de **análise · equipamento** em cada gráfico e em cada grupo de
   Séries (`SourceChips`; `/catalog` devolve `instrument`).

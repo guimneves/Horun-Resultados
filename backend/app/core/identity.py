@@ -25,6 +25,7 @@ DEV_MODE = os.environ.get("HORUN_DEV_MODE", "false").lower() == "true"
 # Cargos do Horun Core — Prompt_Horun_Modulo.md, seção 5.
 LEVEL_ADMIN = 1  # administrador máximo
 LEVEL_COORDENADOR = 2  # coordenador(a)
+LEVEL_PESQUISADOR = 3  # pesquisador(a) — o último nível que altera resultados
 LEVEL_IC = 5  # iniciação científica (ou sem posição) — o menor nível
 LEVEL_NAMES = {1: "admin", 2: "coordenador", 3: "pesquisador", 4: "tecnico", 5: "ic"}
 

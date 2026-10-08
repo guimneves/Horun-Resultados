@@ -7,6 +7,8 @@ export interface Me {
   level_name: string
   role: 'coordenador' | 'colaborador'
   is_coordenador: boolean
+  /** Pode importar e alterar resultados (níveis 1–3); técnico(a) e IC só visualizam. */
+  can_edit: boolean
   can_delete_projects: boolean
   can_see_history: boolean
   dev_mode: boolean

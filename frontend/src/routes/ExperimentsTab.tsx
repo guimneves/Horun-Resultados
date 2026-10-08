@@ -285,8 +285,7 @@ function RunSheet({
 }
 
 export function ExperimentsTab() {
-  const { project, readOnly } = useProject()
-  const { me } = useApp()
+  const { project, canEdit } = useProject()
   const mobile = useIsMobile()
   const [list, setList] = useState<Experiment[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -389,8 +388,8 @@ export function ExperimentsTab() {
             <RunSheet
               exp={current}
               samples={samples ?? []}
-              canEdit={!readOnly}
-              canDelete={!!me?.is_coordenador}
+              canEdit={canEdit}
+              canDelete={canEdit}
               onEdit={() => setEditing(current)}
               onDelete={() => remove(current)}
             />
@@ -406,8 +405,8 @@ export function ExperimentsTab() {
               <RunSheet
                 exp={current}
                 samples={samples ?? []}
-                canEdit={!readOnly}
-                canDelete={!!me?.is_coordenador}
+                canEdit={canEdit}
+                canDelete={canEdit}
                 onEdit={() => setEditing(current)}
                 onDelete={() => remove(current)}
               />

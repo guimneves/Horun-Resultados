@@ -59,13 +59,17 @@ export const MANUAL_SECTIONS: ManualSection[] = [
         </p>
         <Bullets>
           <li>
-            <strong>Colaborador(a)</strong> (pesquisador, técnico, IC): vê tudo, cria amostras e experimentos, corrige os dados deles e
-            importa arquivos.
+            <strong>Somente leitura</strong> (técnico e IC): vê tudo — tabelas, séries, gráficos, detalhe das amostras, condições
+            experimentais — e exporta CSV/XLSX, mas não importa nem altera nada. Os botões de importar, criar, editar e excluir não
+            aparecem.
+          </li>
+          <li>
+            <strong>Colaborador(a)</strong> (pesquisador): vê tudo, importa arquivos, cria amostras e experimentos, corrige os dados deles,
+            liga nomes lembrados e exclui medições, amostras e experimentos (uma a uma ou várias de uma vez).
           </li>
           <li>
             <strong>Coordenador(a)</strong> (administrador máximo e coordenadores do Horun): tudo isso e mais — cria, edita e arquiva
-            projetos, marca amostras e medições como <strong>válidas</strong> ou <strong>inválidas</strong>, e exclui medições, amostras e
-            experimentos.
+            projetos e marca amostras e medições como <strong>válidas</strong> ou <strong>inválidas</strong>.
           </li>
           <li>
             <strong>Administrador máximo</strong>: é o único que pode <strong>Excluir</strong> um projeto inteiro (digitando o nome do
@@ -174,7 +178,8 @@ export const MANUAL_SECTIONS: ManualSection[] = [
       <>
         <Steps>
           <li>
-            Abra o projeto e toque em <strong>Importar resultados</strong> (no alto, à direita).
+            Abra o projeto e toque em <strong>Importar resultados</strong> (no alto, à direita). Técnicos e ICs não veem esse botão — só
+            pesquisadores e coordenadores importam.
           </li>
           <li>
             Em <strong>1. Qual análise você vai importar?</strong>, toque no tipo: <strong>CHNSO</strong>, <strong>LECO</strong>,{' '}
@@ -300,7 +305,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
           </li>
           <li>
             Toque em <strong>Válida</strong> ou <strong>Inválida</strong>. Para desfazer, <strong>Voltar a pendente</strong>. Editar os
-            dados e excluir a amostra ficam em <strong>Mais</strong>, no detalhe da amostra.
+            dados e excluir a amostra ficam em <strong>Mais</strong>, no detalhe da amostra (pesquisadores também podem).
           </li>
           <li>
             Uma medição ruim (ex.: uma réplica fora) pode ser tirada sozinha: no cartão da medição, <strong>Invalidar</strong> (e{' '}
@@ -316,7 +321,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
   },
   {
     id: 'varias-amostras',
-    title: 'Excluir ou validar várias amostras de uma vez (coordenador)',
+    title: 'Excluir ou validar várias amostras de uma vez',
     body: (
       <>
         <Steps>
@@ -327,7 +332,8 @@ export const MANUAL_SECTIONS: ManualSection[] = [
           </li>
           <li>
             Aparece uma barra embaixo: <strong>N selecionada(s)</strong>, <strong>Marcar como válida</strong>,{' '}
-            <strong>Marcar como inválida</strong>, <strong>Excluir selecionadas</strong> e <strong>Limpar seleção</strong>.
+            <strong>Marcar como inválida</strong> (só coordenadores), <strong>Excluir selecionadas</strong> e{' '}
+            <strong>Limpar seleção</strong>.
           </li>
           <li>
             Em <strong>Excluir selecionadas</strong>, confira a lista com os códigos e quantas medições cada amostra tem, e toque em{' '}
@@ -338,7 +344,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
           Excluir <strong>não dá para desfazer</strong>: saem as amostras, as medições, os valores, as curvas e os nomes lembrados delas. Um
           arquivo original que também tem medições de outras amostras continua guardado; um arquivo que fica sem nenhuma medição sai do
           servidor e pode ser importado de novo. As ações valem só para as amostras selecionadas que estão aparecendo — mudou o filtro,
-          confira o número na barra. Para sair, <strong>Mais</strong> → <strong>Parar de selecionar</strong>. Colaboradores não veem essa
+          confira o número na barra. Para sair, <strong>Mais</strong> → <strong>Parar de selecionar</strong>. Técnicos e ICs não veem essa
           opção.
         </p>
       </>

@@ -13,7 +13,7 @@ from sqlmodel import Session, func, select
 from app.api.deps import get_project
 from app.core import identity as identity_module
 from app.core.identity import HorunIdentity, get_identity
-from app.core.permissions import COORDENADOR, core_role, require_coordenador, require_history_access, require_super_admin
+from app.core.permissions import COORDENADOR, can_edit, core_role, require_coordenador, require_history_access, require_super_admin
 from app.db.models import (
     Analysis,
     AnalysisValue,
@@ -44,6 +44,7 @@ def me(identity: HorunIdentity = Depends(get_identity)):
         "level_name": identity.level_name,
         "role": role,
         "is_coordenador": role == COORDENADOR,
+        "can_edit": can_edit(identity),
         "can_delete_projects": identity.level == 1,
         "can_see_history": identity.level == 1,
         "dev_mode": identity_module.DEV_MODE,

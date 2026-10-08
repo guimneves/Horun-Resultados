@@ -173,7 +173,7 @@ function BulkDeleteConfirm({
 }
 
 export function SamplesTab() {
-  const { project, readOnly } = useProject()
+  const { project, canEdit } = useProject()
   const { catalog, fractions, fractionLabel, paramLabel, techniqueLabel, me } = useApp()
   const mobile = useIsMobile()
   const [mode, setMode] = useState<Mode>('padrao')
@@ -188,8 +188,9 @@ export function SamplesTab() {
   const [creating, setCreating] = useState(false)
   const [bulk, setBulk] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
-  // Seleção (só coordenadores, projeto aberto): excluir/validar várias de uma vez
-  const canSelect = !!me?.is_coordenador && !readOnly
+  // Seleção (quem pode alterar, projeto aberto): excluir várias de uma vez; validar só coordenadores
+  const canSelect = canEdit
+  const canValidate = !!me?.is_coordenador
   const [selected, setSelected] = useState<Set<number>>(() => new Set())
   const [confirmDelete, setConfirmDelete] = useState<number[] | null>(null)
   const [bulkBusy, setBulkBusy] = useState(false)
@@ -331,7 +332,7 @@ export function SamplesTab() {
             </button>
           ))}
         </div>
-        {!readOnly && (
+        {canEdit && (
           <Button variant="primary" onClick={() => setCreating(true)}>
             + Nova amostra
           </Button>
@@ -340,7 +341,7 @@ export function SamplesTab() {
           {canSelect && (
             <MenuItem onClick={() => (selecting ? stopSelecting() : setSelecting(true))}>{selecting ? 'Parar de selecionar' : 'Selecionar várias'}</MenuItem>
           )}
-          {!readOnly && <MenuItem onClick={() => setBulk(true)}>Criar várias</MenuItem>}
+          {canEdit && <MenuItem onClick={() => setBulk(true)}>Criar várias</MenuItem>}
           <MenuItem disabled={!filtered.length} onClick={() => exportAs('csv')}>
             Exportar CSV
           </MenuItem>
@@ -543,12 +544,16 @@ export function SamplesTab() {
           data-testid="bulk-bar"
         >
           <span className="mr-auto px-1 text-sm font-medium">{selectedIds.length} selecionada(s)</span>
-          <Button disabled={bulkBusy} onClick={() => bulkValidate(true)}>
-            Marcar como válida
-          </Button>
-          <Button disabled={bulkBusy} onClick={() => bulkValidate(false)}>
-            Marcar como inválida
-          </Button>
+          {canValidate && (
+            <>
+              <Button disabled={bulkBusy} onClick={() => bulkValidate(true)}>
+                Marcar como válida
+              </Button>
+              <Button disabled={bulkBusy} onClick={() => bulkValidate(false)}>
+                Marcar como inválida
+              </Button>
+            </>
+          )}
           <Button variant="danger" disabled={bulkBusy} onClick={() => setConfirmDelete(selectedIds)}>
             Excluir selecionadas
           </Button>
@@ -576,7 +581,7 @@ export function SamplesTab() {
           samples={samples ?? []}
           projectId={project.id}
           sampleId={openId}
-          readOnly={readOnly}
+          readOnly={!canEdit}
           onClose={() => setOpenId(null)}
           onChanged={reload}
         />

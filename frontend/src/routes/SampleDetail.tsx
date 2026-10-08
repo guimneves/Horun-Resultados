@@ -27,12 +27,14 @@ function ValidationButtons({ valid, onSet }: { valid: boolean | null; onSet: (v:
 function AnalysisCard({
   a,
   canValidate,
+  canDelete,
   onValidate,
   onDelete,
   projectId,
 }: {
   a: AnalysisOut
   canValidate: boolean
+  canDelete: boolean
   onValidate: (v: boolean | null) => void
   onDelete: () => void
   projectId: number
@@ -61,13 +63,11 @@ function AnalysisCard({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <ValidityBadge valid={a.valid} />
-          {canValidate && (
-            <>
-              <Button onClick={() => onValidate(a.valid === false ? null : false)}>{a.valid === false ? 'Reativar' : 'Invalidar'}</Button>
-              <Button variant="ghost" onClick={onDelete}>
-                Excluir
-              </Button>
-            </>
+          {canValidate && <Button onClick={() => onValidate(a.valid === false ? null : false)}>{a.valid === false ? 'Reativar' : 'Invalidar'}</Button>}
+          {canDelete && (
+            <Button variant="ghost" onClick={onDelete}>
+              Excluir
+            </Button>
           )}
         </div>
       </div>
@@ -306,24 +306,22 @@ export function SampleDetailModal({
                   )}
                   <Dropdown label="Mais" ariaLabel="Mais ações da amostra">
                     <MenuItem onClick={() => setEditing(true)}>Editar dados</MenuItem>
-                    {canValidate && (
-                      <MenuItem
-                        danger
-                        onClick={() => {
-                          if (window.confirm(`Excluir a amostra ${detail.code} e todas as medições dela?`)) {
-                            api
-                              .delete(`/projects/${projectId}/samples/${sampleId}`)
-                              .then(() => {
-                                onChanged()
-                                onClose()
-                              })
-                              .catch((err) => setError(errorText(err)))
-                          }
-                        }}
-                      >
-                        Excluir amostra
-                      </MenuItem>
-                    )}
+                    <MenuItem
+                      danger
+                      onClick={() => {
+                        if (window.confirm(`Excluir a amostra ${detail.code} e todas as medições dela?`)) {
+                          api
+                            .delete(`/projects/${projectId}/samples/${sampleId}`)
+                            .then(() => {
+                              onChanged()
+                              onClose()
+                            })
+                            .catch((err) => setError(errorText(err)))
+                        }
+                      }}
+                    >
+                      Excluir amostra
+                    </MenuItem>
                   </Dropdown>
                 </>
               )}
@@ -415,6 +413,7 @@ export function SampleDetailModal({
                             a={a}
                             projectId={projectId}
                             canValidate={canValidate}
+                            canDelete={!readOnly}
                             onValidate={(v) => act(() => api.post(`/projects/${projectId}/analyses/${a.id}/validation`, { valid: v }))}
                             onDelete={() => {
                               if (window.confirm(`Excluir a medição ${a.source_name}?`)) act(() => api.delete(`/projects/${projectId}/analyses/${a.id}`))

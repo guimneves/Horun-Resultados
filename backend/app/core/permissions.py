@@ -4,9 +4,13 @@ Financeiro (`module_mode()/core_role()`), sem cadastro de membros nem senha:
 * o papel vem do CARGO no Horun (`X-Horun-Level`): níveis 1 (administrador
   máximo) e 2 (coordenador/a) = **coordenador**; qualquer outra pessoa que
   chegou ao módulo (o Core já conferiu o acesso) = **colaborador**;
-* colaborador: vê tudo, cria amostras/experimentos, importa arquivos;
-* coordenador: tudo isso + cria/edita/arquiva projetos, valida/invalida,
-  exclui análises/amostras/experimentos;
+* quem pode MODIFICAR (`can_edit`, decisão de 08/10/2026): níveis 1–3
+  (administrador, coordenador/a, pesquisador/a) importam, criam/editam e
+  excluem amostras, experimentos e medições, ligam nomes lembrados;
+* técnico(a) (nível 4) e IC (nível 5): só visualizam (tabelas, séries,
+  gráficos, fichas, exportar CSV/XLSX) — nada de importar nem alterar;
+* coordenador: além disso cria/edita/arquiva projetos, valida/invalida e
+  edita a tabela de frações;
 * excluir projeto: só o administrador máximo (nível 1), digitando o nome.
 
 No desenvolvimento (HORUN_DEV_MODE=true) vale a mesma regra; o seletor
@@ -18,7 +22,7 @@ from __future__ import annotations
 from fastapi import Depends, HTTPException, status
 
 from app.core import identity as identity_module
-from app.core.identity import LEVEL_ADMIN, LEVEL_COORDENADOR, HorunIdentity, get_identity
+from app.core.identity import LEVEL_ADMIN, LEVEL_COORDENADOR, LEVEL_PESQUISADOR, HorunIdentity, get_identity
 
 COORDENADOR = "coordenador"
 COLABORADOR = "colaborador"
@@ -33,6 +37,17 @@ def module_mode() -> bool:
 def core_role(identity: HorunIdentity) -> str:
     """Papel no módulo pelo cargo no Horun: níveis 1–2 coordenam, o resto colabora."""
     return COORDENADOR if identity.level <= LEVEL_COORDENADOR else COLABORADOR
+
+
+def can_edit(identity: HorunIdentity) -> bool:
+    """Pode importar e alterar resultados? Níveis 1–3; técnico(a) e IC só veem."""
+    return identity.level <= LEVEL_PESQUISADOR
+
+
+def require_editor(identity: HorunIdentity = Depends(get_identity)) -> HorunIdentity:
+    if not can_edit(identity):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Técnicos e ICs só visualizam os resultados.")
+    return identity
 
 
 def require_coordenador(identity: HorunIdentity = Depends(get_identity)) -> HorunIdentity:

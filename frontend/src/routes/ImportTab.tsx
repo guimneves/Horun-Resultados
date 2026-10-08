@@ -54,17 +54,7 @@ const SOURCE_LABEL: Record<string, string> = {
   branco: 'branco',
 }
 
-function RowEditor({
-  row,
-  d,
-  samples,
-  onChange,
-}: {
-  row: PreviewRow
-  d: Decision
-  samples: SampleRow[]
-  onChange: (patch: Partial<Decision>) => void
-}) {
+function RowEditor({ row, d, samples, onChange }: { row: PreviewRow; d: Decision; samples: SampleRow[]; onChange: (patch: Partial<Decision>) => void }) {
   const { fractions } = useApp()
   return (
     <div className="space-y-2">
@@ -82,7 +72,13 @@ function RowEditor({
       {d.action === 'link' && <SampleCombo samples={samples} value={d.sample_id} onChange={(id) => onChange({ sample_id: id })} />}
       {d.action === 'create' && (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <input className={inputClass} style={inputStyle} value={d.code} onChange={(e) => onChange({ code: e.target.value })} aria-label="Código da nova amostra" />
+          <input
+            className={inputClass}
+            style={inputStyle}
+            value={d.code}
+            onChange={(e) => onChange({ code: e.target.value })}
+            aria-label="Código da nova amostra"
+          />
           <select className={inputClass} style={inputStyle} value={d.fraction} onChange={(e) => onChange({ fraction: e.target.value })} aria-label="Fração">
             {fractions.map((f) => (
               <option key={f.code} value={f.code}>
@@ -114,7 +110,7 @@ function RowEditor({
 }
 
 export function ImportTab() {
-  const { project, readOnly } = useProject()
+  const { project, readOnly, canEdit } = useProject()
   const { techniqueLabel, paramLabel, reloadProjects } = useApp()
   const mobile = useIsMobile()
   const { samples: existing, reload } = useSamples(project.id)
@@ -132,6 +128,7 @@ export function ImportTab() {
   const samples = useMemo(() => [...(existing ?? [])].sort((a, b) => a.code.localeCompare(b.code)), [existing])
 
   if (readOnly) return <Empty>Projeto arquivado — não recebe importações.</Empty>
+  if (!canEdit) return <Empty>Seu cargo permite ver os resultados, mas não importar. Peça a um(a) pesquisador(a) ou coordenador(a).</Empty>
 
   async function send() {
     setBusy(true)
@@ -230,7 +227,9 @@ export function ImportTab() {
         {list.map((r) => (
           <div key={r.row} className="rounded-md border p-3" style={{ borderColor: 'var(--color-border)' }}>
             <div className="flex items-start gap-2">
-              {withCheck && <input type="checkbox" className="mt-1" checked={selected.includes(r.row)} onChange={() => toggle(r.row)} aria-label={`Selecionar ${r.name}`} />}
+              {withCheck && (
+                <input type="checkbox" className="mt-1" checked={selected.includes(r.row)} onChange={() => toggle(r.row)} aria-label={`Selecionar ${r.name}`} />
+              )}
               <div className="min-w-0 flex-1">
                 {rowInfo(r)}
                 <div className="text-xs tabular-nums">{valuesText(r)}</div>
@@ -359,15 +358,18 @@ export function ImportTab() {
           <section className="rounded-lg border p-3 md:p-4" style={card}>
             <h2 className="mb-1 font-semibold">3. Arquivos lidos</h2>
             <p className="mb-2 text-sm" style={muted}>
-              {preview.counts.ok} lido(s) · {preview.counts.ignored} ignorado(s) · {preview.counts.errors} com erro · {preview.counts.duplicates}{' '}
-              já importado(s)
+              {preview.counts.ok} lido(s) · {preview.counts.ignored} ignorado(s) · {preview.counts.errors} com erro · {preview.counts.duplicates} já
+              importado(s)
             </p>
             <ul className="max-h-64 space-y-1 overflow-y-auto text-sm">
               {preview.files
                 .filter((f) => f.status !== 'ok' || f.warnings.length)
                 .map((f, i) => (
                   <li key={`${f.filename}-${i}`} className="border-t py-1" style={{ borderColor: 'var(--color-border)' }}>
-                    <span className="mr-2 rounded px-1.5 py-0.5 text-xs font-medium" style={{ color: STATUS[f.status].color, background: 'var(--color-surface)' }}>
+                    <span
+                      className="mr-2 rounded px-1.5 py-0.5 text-xs font-medium"
+                      style={{ color: STATUS[f.status].color, background: 'var(--color-surface)' }}
+                    >
                       {STATUS[f.status].label}
                     </span>
                     <span className="break-all">{f.filename}</span>
@@ -395,8 +397,8 @@ export function ImportTab() {
           <section className="rounded-lg border p-3 md:p-4" style={card}>
             <h2 className="mb-1 font-semibold">4. Atribua os resultados às amostras</h2>
             <p className="mb-2 text-sm" style={muted}>
-              Uma linha por nome escrito no arquivo (as réplicas -1, -2... já vêm juntas). Atribua cada linha a uma amostra do projeto,
-              crie uma nova ou ignore. O que você atribuir fica lembrado para a próxima importação.
+              Uma linha por nome escrito no arquivo (as réplicas -1, -2... já vêm juntas). Atribua cada linha a uma amostra do projeto, crie uma nova ou ignore.
+              O que você atribuir fica lembrado para a próxima importação.
             </p>
             <p className="mb-2 text-sm" data-testid="import-counts">
               <strong>{counts.assigned}</strong> atribuída(s) · <strong>{counts.create}</strong> a criar · <strong>{counts.skip}</strong> ignorada(s)
@@ -438,9 +440,7 @@ export function ImportTab() {
 
             {others.length > 0 && (
               <details className="mt-3 rounded-md border p-2" style={{ borderColor: 'var(--color-border)' }}>
-                <summary className="cursor-pointer text-sm font-medium">
-                  Padrões e brancos ({others.length}) — ignorados, a não ser que você mude
-                </summary>
+                <summary className="cursor-pointer text-sm font-medium">Padrões e brancos ({others.length}) — ignorados, a não ser que você mude</summary>
                 <div className="mt-2">{rowList(others, false)}</div>
               </details>
             )}

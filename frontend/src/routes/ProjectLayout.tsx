@@ -9,7 +9,10 @@ import { ProjectForm } from './ProjectListPage'
 
 export interface ProjectCtx {
   project: Project
+  /** Projeto arquivado (só leitura para todos). */
   readOnly: boolean
+  /** Pode importar e alterar: projeto aberto e cargo de pesquisador(a) para cima. */
+  canEdit: boolean
 }
 
 export function useProject(): ProjectCtx {
@@ -73,6 +76,7 @@ export function ProjectLayout() {
     )
   if (!project) return <p className="p-6">Projeto não encontrado.</p>
   const readOnly = project.archived_at !== null
+  const canEdit = !readOnly && !!me?.can_edit
 
   async function toggleArchive() {
     if (!project) return
@@ -106,7 +110,7 @@ export function ProjectLayout() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          {!readOnly && (
+          {canEdit && (
             <Link
               to={`/projects/${project.id}/importar`}
               className="inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium"
@@ -160,7 +164,7 @@ export function ProjectLayout() {
         )}
       </nav>
 
-      <Outlet context={{ project, readOnly } satisfies ProjectCtx} />
+      <Outlet context={{ project, readOnly, canEdit } satisfies ProjectCtx} />
 
       {editing && (
         <Modal title="Editar projeto" onClose={() => setEditing(false)}>

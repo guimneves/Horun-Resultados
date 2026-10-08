@@ -14,6 +14,7 @@ from app.api.deps import ensure_open, get_project
 from app.core import notify as notify_module
 from app.core.config import settings
 from app.core.identity import HorunIdentity, get_identity
+from app.core.permissions import require_editor
 from app.db.models import ImportBatch, Project
 from app.db.session import get_session
 from app.services import importer, results
@@ -32,7 +33,7 @@ async def import_preview(
     technique: str = Form(default=""),
     project: Project = Depends(get_project),
     session: Session = Depends(get_session),
-    identity: HorunIdentity = Depends(get_identity),
+    identity: HorunIdentity = Depends(require_editor),
 ):
     ensure_open(project)
     if technique and technique not in TECHNIQUES:
@@ -71,7 +72,7 @@ def import_confirm(
     body: ConfirmBody,
     project: Project = Depends(get_project),
     session: Session = Depends(get_session),
-    identity: HorunIdentity = Depends(get_identity),
+    identity: HorunIdentity = Depends(require_editor),
 ):
     ensure_open(project)
     batch = session.get(ImportBatch, batch_id)

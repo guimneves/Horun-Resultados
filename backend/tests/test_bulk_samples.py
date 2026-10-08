@@ -10,7 +10,7 @@ from app.core.config import settings
 from app.db.models import Analysis, AnalysisValue, SampleAlias, StoredFile
 from app.db.session import engine
 from tests import synthetic as syn
-from tests.conftest import ADMIN, COORD, IC, PESQ, confirm, upload
+from tests.conftest import ADMIN, COORD, IC, PESQ, TEC, confirm, upload
 from tests.test_parsers import ROWS
 
 ONLY_HP320 = [(1, "Smp", "HP320E-1", 0.5, 30.0, 3.0, 2.0, None, 1.0), (2, "Smp", "HP320E-2", 0.5, 31.0, 3.1, 2.1, None, 1.0)]
@@ -33,14 +33,24 @@ def _files(pid):
         return {f.filename: f.sha256 for f in session.exec(select(StoredFile).where(StoredFile.project_id == pid))}
 
 
-def test_colaborador_cannot_bulk_delete_or_validate(client, project):
+def test_tecnico_and_ic_cannot_bulk_delete_pesquisador_cannot_validate(client, project):
     pid = project["id"]
     ids = _setup(client, pid)
     body = {"sample_ids": [ids["HP300H"]]}
-    assert client.post(f"projects/{pid}/samples/bulk-delete", json=body, headers=PESQ).status_code == 403
-    assert client.post(f"projects/{pid}/samples/bulk-delete", json={**body, "dry_run": True}, headers=IC).status_code == 403
-    assert client.post(f"projects/{pid}/samples/bulk-validation", json={**body, "valid": True}, headers=IC).status_code == 403
+    for who in (TEC, IC):
+        assert client.post(f"projects/{pid}/samples/bulk-delete", json=body, headers=who).status_code == 403
+        assert client.post(f"projects/{pid}/samples/bulk-delete", json={**body, "dry_run": True}, headers=who).status_code == 403
+        assert client.post(f"projects/{pid}/samples/bulk-validation", json={**body, "valid": True}, headers=who).status_code == 403
+    assert client.post(f"projects/{pid}/samples/bulk-validation", json={**body, "valid": True}, headers=PESQ).status_code == 403
     assert "HP300H" in {s["code"] for s in client.get(f"projects/{pid}/samples", headers=PESQ).json()["samples"]}
+
+
+def test_pesquisador_bulk_deletes(client, project):
+    pid = project["id"]
+    ids = _setup(client, pid)
+    r = client.post(f"projects/{pid}/samples/bulk-delete", json={"sample_ids": [ids["HP300H"]]}, headers=PESQ)
+    assert r.status_code == 200 and r.json()["deleted_samples"] == 1
+    assert "HP300H" not in {s["code"] for s in client.get(f"projects/{pid}/samples", headers=TEC).json()["samples"]}
 
 
 def test_ids_from_other_project_or_unknown_are_rejected_and_nothing_changes(client, project):

@@ -6,7 +6,7 @@ from __future__ import annotations
 import pytest
 
 from tests import synthetic as syn
-from tests.conftest import ADMIN, COORD, IC, PESQ, confirm, person, upload
+from tests.conftest import ADMIN, COORD, IC, PESQ, TEC, confirm, person, upload
 from tests.test_parsers import ROWS
 
 
@@ -15,10 +15,13 @@ def test_identity_is_required_outside_dev_mode(client):
     assert client.get("http://testserver/health").json() == {"status": "ok", "module": "resultados"}
 
 
-@pytest.mark.parametrize("headers, role", [(ADMIN, "coordenador"), (COORD, "coordenador"), (PESQ, "colaborador"), (IC, "colaborador")])
-def test_me_reports_role_from_core_level(client, headers, role):
+@pytest.mark.parametrize(
+    "headers, role, edit",
+    [(ADMIN, "coordenador", True), (COORD, "coordenador", True), (PESQ, "colaborador", True), (TEC, "colaborador", False), (IC, "colaborador", False)],
+)
+def test_me_reports_role_from_core_level(client, headers, role, edit):
     me = client.get("me", headers=headers).json()
-    assert me["role"] == role and me["dev_mode"] is False
+    assert me["role"] == role and me["dev_mode"] is False and me["can_edit"] is edit
     assert me["can_delete_projects"] is (headers is ADMIN)
 
 
@@ -27,23 +30,68 @@ def test_admin_role_without_level_header_counts_as_coordinator(client):
     assert client.get("me", headers=old_core).json()["role"] == "coordenador"
 
 
-def test_colaborador_can_view_create_and_import_but_not_validate_or_delete(client, project):
+def test_pesquisador_imports_edits_and_deletes_but_not_validates(client, project):
     pid = project["id"]
     assert client.post("projects", json={"name": "Outro"}, headers=PESQ).status_code == 403
-    assert client.get("projects", headers=IC).status_code == 200
-    exp = client.post(f"projects/{pid}/experiments", json={"code": "HP300NA"}, headers=IC)
+    exp = client.post(f"projects/{pid}/experiments", json={"code": "HP300NA"}, headers=PESQ)
     assert exp.status_code == 201 and exp.json()["atmosphere"] == "nitrogênio" and exp.json()["replicate_letter"] == "A"
-    sample = client.post(f"projects/{pid}/samples", json={"code": "HP300H"}, headers=IC).json()
+    assert client.patch(f"projects/{pid}/experiments/{exp.json()['id']}", json={"notes": "ok"}, headers=PESQ).status_code == 200
+    sample = client.post(f"projects/{pid}/samples", json={"code": "HP300H"}, headers=PESQ).json()
     assert sample["fraction"] == "H" and sample["temperature_c"] == 300
-    assert client.patch(f"projects/{pid}/samples/{sample['id']}", json={"notes": "ok"}, headers=IC).status_code == 200
-    confirm(client, pid, upload(client, pid, {"run.pdf": syn.chnso_summary_pdf(ROWS)}, headers=IC), headers=IC)
+    assert client.patch(f"projects/{pid}/samples/{sample['id']}", json={"notes": "ok"}, headers=PESQ).status_code == 200
+    confirm(client, pid, upload(client, pid, {"run.pdf": syn.chnso_summary_pdf(ROWS)}, headers=PESQ), headers=PESQ)
+    analysis = client.get(f"projects/{pid}/samples/{sample['id']}", headers=PESQ).json()["analyses"][0]
 
-    assert client.post(f"projects/{pid}/samples/{sample['id']}/validation", json={"valid": True}, headers=IC).status_code == 403
-    assert client.delete(f"projects/{pid}/samples/{sample['id']}", headers=IC).status_code == 403
-    assert client.delete(f"projects/{pid}/experiments/{exp.json()['id']}", headers=PESQ).status_code == 403
+    assert client.post(f"projects/{pid}/samples/{sample['id']}/validation", json={"valid": True}, headers=PESQ).status_code == 403
+    assert client.post(f"projects/{pid}/analyses/{analysis['id']}/validation", json={"valid": False}, headers=PESQ).status_code == 403
     assert client.post(f"projects/{pid}/archive", headers=PESQ).status_code == 403
     assert client.patch(f"projects/{pid}", json={"name": "X"}, headers=PESQ).status_code == 403
     assert client.patch("fractions/SE", json={"label": "x"}, headers=PESQ).status_code == 403
+
+    assert client.delete(f"projects/{pid}/analyses/{analysis['id']}", headers=PESQ).status_code == 204
+    assert client.delete(f"projects/{pid}/samples/{sample['id']}", headers=PESQ).status_code == 204
+    assert client.delete(f"projects/{pid}/experiments/{exp.json()['id']}", headers=PESQ).status_code == 204
+
+
+@pytest.mark.parametrize("who", [TEC, IC], ids=["tecnico", "ic"])
+def test_tecnico_and_ic_only_view(client, project, who):
+    pid = project["id"]
+    confirm(client, pid, upload(client, pid, {"run.pdf": syn.chnso_summary_pdf(ROWS)}))
+    exp = client.post(f"projects/{pid}/experiments", json={"code": "HP300NA"}, headers=PESQ).json()
+    table = client.get(f"projects/{pid}/samples", headers=who).json()["samples"]
+    sample = next(s for s in table if s["code"] == "HP300H")
+    detail = client.get(f"projects/{pid}/samples/{sample['id']}", headers=who).json()
+    analysis = detail["analyses"][0]
+    # vê tudo, inclusive exportar
+    assert client.get("projects", headers=who).status_code == 200
+    assert client.get(f"projects/{pid}/experiments", headers=who).status_code == 200
+    assert client.post(f"projects/{pid}/export", json={"format": "csv", "columns": []}, headers=who).status_code == 200
+
+    files = [("files", ("run.pdf", syn.chnso_summary_pdf(ROWS), "application/pdf"))]
+    pv = upload(client, pid, {"outro.pdf": syn.chnso_summary_pdf(ROWS[:1])})  # prévia feita por quem pode
+    forbidden = [
+        client.post(f"projects/{pid}/imports/preview", files=files, headers=who),
+        client.post(f"projects/{pid}/imports/{pv['batch_id']}/confirm", json={"decisions": []}, headers=who),
+        client.post(f"projects/{pid}/samples", json={"code": "HP340H"}, headers=who),
+        client.post(f"projects/{pid}/samples/bulk", json={"codes": ["HP360H"]}, headers=who),
+        client.patch(f"projects/{pid}/samples/{sample['id']}", json={"notes": "x"}, headers=who),
+        client.delete(f"projects/{pid}/samples/{sample['id']}", headers=who),
+        client.post(f"projects/{pid}/samples/{sample['id']}/validation", json={"valid": True}, headers=who),
+        client.post(f"projects/{pid}/samples/{sample['id']}/aliases", json={"alias": "Rocha X"}, headers=who),
+        client.post(f"projects/{pid}/analyses/{analysis['id']}/validation", json={"valid": False}, headers=who),
+        client.delete(f"projects/{pid}/analyses/{analysis['id']}", headers=who),
+        client.post(f"projects/{pid}/experiments", json={"code": "HP320NA"}, headers=who),
+        client.post(f"projects/{pid}/experiments/bulk", json={"codes": ["HP320NB"]}, headers=who),
+        client.patch(f"projects/{pid}/experiments/{exp['id']}", json={"notes": "x"}, headers=who),
+        client.delete(f"projects/{pid}/experiments/{exp['id']}", headers=who),
+        client.post("projects", json={"name": "Outro"}, headers=who),
+        client.patch("fractions/SE", json={"label": "x"}, headers=who),
+    ]
+    for r in forbidden:
+        assert r.status_code == 403, (r.request.method, str(r.request.url), r.text)
+    assert "só visualizam" in forbidden[0].json()["detail"]
+    after = client.get(f"projects/{pid}/samples/{sample['id']}", headers=who).json()
+    assert len(after["analyses"]) == len(detail["analyses"]) and after["notes"] == detail["notes"]
 
 
 def test_coordinator_validates_and_deletes(client, project):
@@ -104,8 +152,12 @@ def test_dev_mode_view_as_level_switcher(client, monkeypatch):
     me = client.get("me").json()
     assert me["level"] == 1 and me["role"] == "coordenador" and me["dev_mode"] is True
     me = client.get("me", headers=person("dev-nivel-4", 4)).json()
-    assert me["level"] == 4 and me["role"] == "colaborador"
+    assert me["level"] == 4 and me["role"] == "colaborador" and me["can_edit"] is False
     assert client.post("projects", json={"name": "P"}, headers=person("dev-nivel-4", 4)).status_code == 403
+    pid = client.post("projects", json={"name": "P"}).json()["id"]
+    assert client.post(f"projects/{pid}/samples", json={"code": "HP300H"}, headers=person("dev-nivel-4", 4)).status_code == 403
+    assert client.get("me", headers=person("dev-nivel-3", 3)).json()["can_edit"] is True
+    assert client.post(f"projects/{pid}/samples", json={"code": "HP300H"}, headers=person("dev-nivel-3", 3)).status_code == 201
 
 
 def test_fraction_table_is_editable_by_coordinator(client):

@@ -162,9 +162,12 @@ sobrepor nos gráficos como "referência" — não é prioridade da v1.
 
 Papel pelo **cargo no Horun** (`X-Horun-Level`): níveis 1–2 (administrador
 máximo, coordenador(a)) = **coordenador**; demais com acesso = **colaborador**.
-Colaborador: ver tudo, criar amostras/experimentos, importar arquivos.
-Coordenador: tudo isso + criar/arquivar projetos, **validar/invalidar**,
-excluir análises/amostras. Excluir projeto: só administrador máximo, com
+Quem altera (`can_edit`, 08/10/2026): níveis 1–3 (administrador,
+coordenador/a, pesquisador/a) importam, criam/editam/excluem amostras,
+experimentos e medições. Técnico(a) (4) e IC (5): **só visualizam** (inclui
+exportar CSV/XLSX) — 403 "Técnicos e ICs só visualizam os resultados." em
+toda rota que altera. Coordenador: tudo isso + criar/editar/arquivar
+projetos, **validar/invalidar**, tabela de frações. Excluir projeto: só administrador máximo, com
 confirmação digitando o nome. Sem senhas próprias do módulo (no modo de
 desenvolvimento, seletor "Ver como" para trocar o nível).
 

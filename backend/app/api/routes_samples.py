@@ -1,7 +1,8 @@
 """Experimentos, amostras e medições (análises) de um projeto.
 
-Colaborador cria/edita amostras e experimentos; coordenador valida/invalida e
-exclui (ESPECIFICACAO.md, seção 7)."""
+Níveis 1–3 (administrador, coordenador/a, pesquisador/a) criam, editam e
+excluem amostras, experimentos e medições; técnico(a) e IC só visualizam;
+validar/invalidar é do coordenador (ESPECIFICACAO.md, seção 7)."""
 
 from __future__ import annotations
 
@@ -15,7 +16,7 @@ from sqlmodel import Session, select
 
 from app.api.deps import ensure_open, get_project
 from app.core.identity import HorunIdentity, get_identity
-from app.core.permissions import require_coordenador
+from app.core.permissions import require_coordenador, require_editor
 from app.db.models import Analysis, AnalysisValue, Experiment, FractionType, Project, Sample, SampleAlias, utcnow
 from app.db.session import get_session
 from app.services import audit, deletion, importer, results
@@ -75,7 +76,7 @@ def list_experiments(project: Project = Depends(get_project), session: Session =
 
 @router.post("/projects/{project_id}/experiments", status_code=201)
 def create_experiment(
-    body: ExperimentIn, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(get_identity)
+    body: ExperimentIn, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_editor)
 ):
     ensure_open(project)
     norm = normalize_code(body.code)
@@ -105,7 +106,7 @@ def patch_experiment(
     body: ExperimentPatch,
     project: Project = Depends(get_project),
     session: Session = Depends(get_session),
-    identity: HorunIdentity = Depends(get_identity),
+    identity: HorunIdentity = Depends(require_editor),
 ):
     ensure_open(project)
     exp = _get_experiment(session, project, experiment_id)
@@ -129,7 +130,7 @@ def patch_experiment(
 
 @router.delete("/projects/{project_id}/experiments/{experiment_id}", status_code=204)
 def delete_experiment(
-    experiment_id: int, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_coordenador)
+    experiment_id: int, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_editor)
 ):
     ensure_open(project)
     exp = _get_experiment(session, project, experiment_id)
@@ -189,7 +190,7 @@ def samples_table(
 
 @router.post("/projects/{project_id}/samples", status_code=201)
 def create_sample(
-    body: SampleIn, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(get_identity)
+    body: SampleIn, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_editor)
 ):
     ensure_open(project)
     norm = normalize_code(body.code)
@@ -229,7 +230,7 @@ def patch_sample(
     body: SamplePatch,
     project: Project = Depends(get_project),
     session: Session = Depends(get_session),
-    identity: HorunIdentity = Depends(get_identity),
+    identity: HorunIdentity = Depends(require_editor),
 ):
     ensure_open(project)
     sample = _get_sample(session, project, sample_id)
@@ -275,7 +276,7 @@ def validate_sample(
 
 @router.delete("/projects/{project_id}/samples/{sample_id}", status_code=204)
 def delete_sample(
-    sample_id: int, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_coordenador)
+    sample_id: int, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_editor)
 ):
     ensure_open(project)
     sample = _get_sample(session, project, sample_id)
@@ -321,7 +322,7 @@ def _get_samples(session: Session, project: Project, ids: list[int]) -> list[Sam
 
 @router.post("/projects/{project_id}/samples/bulk-delete")
 def bulk_delete_samples(
-    body: BulkDelete, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_coordenador)
+    body: BulkDelete, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_editor)
 ):
     """Exclui várias amostras numa transação só. Com `dry_run`, só devolve o
     que sairia (medições por amostra, arquivos que saem/ficam)."""
@@ -414,7 +415,7 @@ def validate_analysis(
 
 @router.delete("/projects/{project_id}/analyses/{analysis_id}", status_code=204)
 def delete_analysis(
-    analysis_id: int, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_coordenador)
+    analysis_id: int, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_editor)
 ):
     ensure_open(project)
     analysis = _get_analysis(session, project, analysis_id)
@@ -448,7 +449,7 @@ def split_codes(codes: list[str]) -> list[str]:
 
 @router.post("/projects/{project_id}/samples/bulk", status_code=201)
 def bulk_samples(
-    body: BulkCodes, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(get_identity)
+    body: BulkCodes, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_editor)
 ):
     """Cria várias amostras de uma vez (lista de códigos colada). Fração,
     temperatura e experimento sugeridos pelo código; o experimento é criado
@@ -485,7 +486,7 @@ def bulk_samples(
 
 @router.post("/projects/{project_id}/experiments/bulk", status_code=201)
 def bulk_experiments(
-    body: BulkCodes, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(get_identity)
+    body: BulkCodes, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_editor)
 ):
     ensure_open(project)
     created, existing = [], []
@@ -512,7 +513,7 @@ def add_alias(
     body: AliasIn,
     project: Project = Depends(get_project),
     session: Session = Depends(get_session),
-    identity: HorunIdentity = Depends(get_identity),
+    identity: HorunIdentity = Depends(require_editor),
 ):
     ensure_open(project)
     sample = _get_sample(session, project, sample_id)
@@ -533,7 +534,7 @@ def delete_alias(
     alias_id: int,
     project: Project = Depends(get_project),
     session: Session = Depends(get_session),
-    identity: HorunIdentity = Depends(get_identity),
+    identity: HorunIdentity = Depends(require_editor),
 ):
     ensure_open(project)
     sample = _get_sample(session, project, sample_id)

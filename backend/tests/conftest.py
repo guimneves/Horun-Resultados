@@ -35,6 +35,7 @@ def person(user_id: str, level: int | None, role: str | None = None) -> dict:
 ADMIN = person("1", 1)
 COORD = person("2", 2)
 PESQ = person("3", 3)
+TEC = person("4", 4)
 IC = person("5", 5)
 
 
