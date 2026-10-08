@@ -1,12 +1,19 @@
 """Lista de pessoas do Horun para "Pessoas do projeto".
 
-O Horun Core não tem uma rota que liste os usuários para os módulos (só a de
-avisos, /internal/modules/{id}/notify). Mesmo mecanismo do Financeiro
-(`KnownUser`): o módulo anota quem já o abriu — id do Core, usuário e o cargo
-(X-Horun-Level) da última visita — a cada `GET /api/me`, que o frontend chama
-ao abrir. Quem nunca abriu o Resultados ainda não aparece na lista.
+Fonte principal: o Horun Core, `GET /internal/modules/resultados/users`
+(Prompt_Horun_Modulo.md, seção 11) — quem pode entrar no Resultados agora,
+com id do Core, usuário, nome e nível. Usa as mesmas variáveis dos avisos
+(`HORUN_CORE_URL` + `HORUN_NOTIFY_TOKEN`, app/core/notify.py), com timeout
+curto e um cache em memória de ~60 s (falha fica guardada só ~15 s).
 
-O cargo anotado serve só para filtrar quem cada um pode escolher; a regra de
+Plano B, se o Core não estiver configurado ou não responder: o mesmo
+mecanismo do Financeiro (`KnownUser`) — o módulo anota quem já o abriu (id do
+Core, usuário e o cargo X-Horun-Level da última visita) a cada `GET /api/me`,
+que o frontend chama ao abrir. Nesse caso, quem nunca abriu o Resultados
+ainda não aparece na lista. A anotação continua sempre, para o plano B estar
+pronto quando precisar.
+
+O cargo da lista serve só para filtrar quem cada um pode escolher; a regra de
 acesso usa sempre o cargo do cabeçalho da requisição.
 
 No desenvolvimento (HORUN_DEV_MODE=true) entra também um diretório de faz de
@@ -16,13 +23,26 @@ nomes genéricos, para testar sem o Core.
 
 from __future__ import annotations
 
+import json
+import logging
+import threading
+import time
+import urllib.request
 from dataclasses import dataclass
 
 from sqlmodel import Session, select
 
 from app.core import identity as identity_module
+from app.core import notify as notify_module
 from app.core.identity import HorunIdentity
 from app.db.models import KnownUser, utcnow
+
+
+logger = logging.getLogger(__name__)
+
+CORE_TIMEOUT_SECONDS = 3
+CACHE_SECONDS = 60
+FAILURE_CACHE_SECONDS = 15
 
 
 @dataclass(frozen=True)
@@ -66,7 +86,56 @@ def remember(session: Session, identity: HorunIdentity) -> None:
     session.commit()
 
 
-def list_people(session: Session) -> list[Person]:
+# (url, chave) -> (validade, pessoas ou None = o Core falhou)
+_cache: dict[tuple[str, str], tuple[float, list[Person] | None]] = {}
+_cache_lock = threading.Lock()
+
+
+def clear_cache() -> None:
+    with _cache_lock:
+        _cache.clear()
+
+
+def _fetch_core(url: str, token: str) -> list[Person]:
+    request = urllib.request.Request(
+        f"{url}/internal/modules/{notify_module.MODULE_ID}/users",
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    with urllib.request.urlopen(request, timeout=CORE_TIMEOUT_SECONDS) as response:  # noqa: S310 (URL do admin)
+        data = json.loads(response.read().decode("utf-8"))
+    people: list[Person] = []
+    for item in data:
+        level = int(item["level"])
+        if not 1 <= level <= 5:
+            continue
+        username = str(item.get("username") or "")
+        people.append(Person(str(item["id"]), username, str(item.get("display_name") or ""), level))
+    return people
+
+
+def core_people() -> list[Person] | None:
+    """Pessoas com acesso ao Resultados, segundo o Core; None se o Core não
+    está configurado ou não respondeu (aí vale o plano B, `KnownUser`)."""
+    config = notify_module._config()
+    if config is None:
+        return None
+    now = time.monotonic()
+    with _cache_lock:
+        hit = _cache.get(config)
+        if hit is not None and hit[0] > now:
+            return hit[1]
+    try:
+        people: list[Person] | None = _fetch_core(*config)
+        ttl = CACHE_SECONDS
+    except Exception:  # noqa: BLE001 — Core fora do ar, chave errada, resposta estranha: plano B
+        logger.warning("Lista de pessoas do Horun Core indisponível; usando quem já abriu o Resultados.", exc_info=True)
+        people, ttl = None, FAILURE_CACHE_SECONDS
+    with _cache_lock:
+        _cache[config] = (now + ttl, people)
+    return people
+
+
+def _known_people(session: Session) -> list[Person]:
     people: dict[str, Person] = {}
     if identity_module.DEV_MODE:
         people.update({p.user_id: p for p in DEV_PEOPLE})
@@ -74,6 +143,16 @@ def list_people(session: Session) -> list[Person]:
         known = people.get(row.user_id)
         people[row.user_id] = Person(row.user_id, row.username, known.display_name if known else "", row.level)
     return list(people.values())
+
+
+def list_people(session: Session) -> list[Person]:
+    from_core = core_people()
+    if from_core is None:
+        return _known_people(session)
+    if identity_module.DEV_MODE:
+        ids = {p.user_id for p in from_core}
+        return from_core + [p for p in DEV_PEOPLE if p.user_id not in ids]
+    return list(from_core)
 
 
 def find(session: Session, user_id: str) -> Person | None:

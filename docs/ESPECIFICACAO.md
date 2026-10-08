@@ -144,8 +144,8 @@ sobrepor nos gráficos como "referência" — não é prioridade da v1.
   Core (texto), usuário, nome, cargo na hora em que entrou (só registro),
   quem adicionou e quando.
 - **Pessoa conhecida** (`KnownUser`): id no Core, usuário e cargo da última
-  visita de quem já abriu o módulo — a lista para escolher pessoas (o Core não
-  tem rota que liste usuários para os módulos).
+  visita de quem já abriu o módulo — plano B da lista para escolher pessoas,
+  quando o Core não responde (ver seção 7).
 
 ## 5. Importação
 
@@ -202,8 +202,12 @@ adicionam/removem só técnicos e ICs; técnicos e ICs só consultam (403 ao
 alterar). Vale sempre o cargo **atual** do cabeçalho; o cargo guardado na
 entrada é só registro. `/me` e cada projeto trazem `can_manage_members`; `/me`
 traz `sees_all_projects`. Entradas e saídas vão para o histórico
-(`membro_adicionado`, `membro_removido`). A lista para escolher = quem já abriu
-o módulo (`KnownUser`, anotado a cada `GET /me`); no desenvolvimento, mais um
+(`membro_adicionado`, `membro_removido`). A lista para escolher vem do Horun
+Core: `GET {HORUN_CORE_URL}/internal/modules/resultados/users` com a chave dos
+avisos (`HORUN_NOTIFY_TOKEN`) — quem tem acesso ao Resultados agora, com nome e
+nível; timeout de 3 s e cache em memória de 60 s (falha guardada 15 s). Sem o
+Core (variáveis ausentes, fora do ar, chave errada), plano B: quem já abriu o
+módulo (`KnownUser`, anotado a cada `GET /me`). No desenvolvimento, mais um
 diretório de faz de conta (`services/directory.py`).
 
 ## 8. Regras do Horun que o módulo segue

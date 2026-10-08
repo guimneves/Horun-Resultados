@@ -511,8 +511,9 @@ export const MANUAL_SECTIONS: ManualSection[] = [
           </li>
         </Bullets>
         <p>
-          Só aparece na busca quem já abriu o Resultados pelo Horun ao menos uma vez. Se a pessoa não aparece, peça para ela abrir o módulo
-          uma vez e tente de novo. Quem entrou e quem saiu fica no <strong>Histórico</strong>.
+          A busca mostra quem tem acesso ao Resultados no Horun (a lista vem do Horun Core). Se a pessoa não aparece, peça a um coordenador
+          para liberar o Resultados para ela no Horun. Se o Horun Core estiver fora do ar, a busca mostra só quem já abriu o Resultados ao
+          menos uma vez. Quem entrou e quem saiu fica no <strong>Histórico</strong>.
         </p>
       </>
     ),

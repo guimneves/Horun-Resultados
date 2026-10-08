@@ -1,6 +1,17 @@
 # Changelog — Horun · Resultados
 
 ## Não lançado — 08/10/2026
+### Pessoas do projeto: lista vinda do Horun Core
+- `services/directory.py` busca a lista em `GET /internal/modules/resultados/users`
+  do Core (rota nova do Core, mesma chave dos avisos: `HORUN_CORE_URL` +
+  `HORUN_NOTIFY_TOKEN`), com timeout de 3 s e cache de 60 s. Quem tem acesso ao
+  Resultados no Horun já aparece para ser adicionado, sem precisar abrir o
+  módulo antes; quem perdeu o acesso no Core some da lista.
+- Plano B: Core não configurado ou fora do ar → `KnownUser` (quem já abriu o
+  módulo), como antes. Diretório de faz de conta do desenvolvimento mantido.
+- Regras de cargo iguais (coordenadores escolhem 3–5; pesquisadores, 4–5).
+  Texto da janela e Manual atualizados. Testes: `tests/test_directory.py`.
+
 ### Massas de gás, óleo e betume por réplica; Séries → Balanço de massas (pedido do mantenedor)
 - `Experiment` ganhou `gas_mass_g`, `oil_mass_g` e `bitumen_mass_g` (g, nulos;
   migração `_ensure_column`). Pesquisadores e coordenadores editam pelo PATCH

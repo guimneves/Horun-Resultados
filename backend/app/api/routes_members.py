@@ -5,7 +5,8 @@
 * Pesquisador(a) (nível 3), dentro de um projeto em que é membro, adiciona e
   remove técnicos e ICs (não outros pesquisadores nem coordenadores).
 * Técnicos e ICs veem a lista (só leitura).
-A lista de pessoas para escolher: quem já abriu o módulo (app/services/directory.py).
+A lista de pessoas para escolher vem do Horun Core (quem tem acesso ao módulo);
+sem o Core, quem já abriu o módulo (app/services/directory.py).
 """
 
 from __future__ import annotations
@@ -71,7 +72,7 @@ def add_member(
     levels = _require_manager(identity)
     person = directory.find(session, body.user_id.strip())
     if person is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Pessoa não encontrada — ela precisa ter aberto o Resultados pelo Horun ao menos uma vez.")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Pessoa não encontrada — ela precisa ter acesso ao Resultados no Horun.")
     if person.level not in levels:
         allowed = ", ".join(LEVEL_LABELS[lvl] for lvl in levels)
         raise HTTPException(status.HTTP_403_FORBIDDEN, f"Você só pode adicionar: {allowed}.")

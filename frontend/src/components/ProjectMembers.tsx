@@ -64,7 +64,7 @@ function PersonPicker({ projectId, onAdded, onCancel }: { projectId: number; onA
       ) : shown.length === 0 ? (
         <p className="text-sm" style={muted}>
           {people.length === 0
-            ? 'Ninguém disponível para adicionar. A pessoa precisa ter aberto o Resultados pelo Horun ao menos uma vez para aparecer aqui.'
+            ? 'Ninguém disponível para adicionar. A lista mostra quem tem acesso ao Resultados no Horun; se o Horun Core estiver fora do ar, só quem já abriu o Resultados ao menos uma vez.'
             : 'Ninguém encontrado com essa busca.'}
         </p>
       ) : (
