@@ -41,7 +41,7 @@ export function Field({ label, children, hint }: { label: string; children: Reac
 }
 
 /** Janela: no celular ocupa a largura toda, com rolagem interna (Prompt, seção 13). */
-export function Modal({ title, onClose, children, wide = false }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
+export function Modal({ title, onClose, children, wide = false }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean | 'xl' }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
@@ -52,7 +52,7 @@ export function Modal({ title, onClose, children, wide = false }: { title: strin
       <div
         role="dialog"
         aria-label={title}
-        className={`modal-panel w-full rounded-lg border p-4 shadow-xl ${wide ? 'md:max-w-4xl' : 'md:max-w-lg'}`}
+        className={`modal-panel w-full rounded-lg border p-4 shadow-xl ${wide === 'xl' ? 'md:max-w-6xl' : wide ? 'md:max-w-4xl' : 'md:max-w-lg'}`}
         style={card}
         onClick={(e) => e.stopPropagation()}
       >

@@ -10,7 +10,13 @@
   a escolha Lista/Valores fica lembrada no navegador.
 - **Mais**: Selecionar várias (coordenador; as caixinhas só aparecem nesse modo),
   Criar várias, Exportar CSV/XLSX.
-- Detalhe da amostra: **Resultados** com um cartão por técnica (parâmetros
+- Detalhe da amostra com **gráficos primeiro** e valores no final
+  (`frontend/src/charts/SampleCharts.tsx`): pirograma (escolha do sinal),
+  n-alcanos, composição do gás, composição elementar CHNSO (com desvio),
+  HI × Tmax e Van Krevelen com a amostra em destaque entre as do projeto,
+  "Na série" (parâmetro × temperatura na mesma fração) e "Réplicas". Só
+  aparecem os que têm dados; janela mais larga no computador.
+- Detalhe da amostra: **Valores principais** com um cartão por técnica (parâmetros
   principais, média ± DP); "Todos os valores e medições" e "Nomes lembrados"
   recolhidos.
 
