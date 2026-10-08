@@ -29,6 +29,9 @@ class Project(SQLModel, table=True):
     archived_at: datetime | None = None
     created_at: datetime = Field(default_factory=utcnow)
     created_by: str = ""
+    # Perfil do projeto (tipo de amostra, análises, parâmetros) em JSON —
+    # app/services/profiles.py. Vazio = perfil padrão (rocha, hidropirólise).
+    profile_json: str = ""
 
 
 class FractionType(SQLModel, table=True):

@@ -1,5 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { Button, card, muted } from '../components/ui'
+import { useApp } from '../context/AppContext'
 import { downloadChartPng } from '../lib/chartExport'
 
 export const axisProps = {
@@ -25,9 +26,12 @@ export function ChartCard({
   table,
   filename,
   empty,
+  sources = [],
 }: {
   title: string
   subtitle?: string
+  /** Técnicas de onde vêm os dados (chaves do catálogo) — viram etiquetas. */
+  sources?: string[]
   children: ReactNode
   table?: ReactNode
   filename?: string
@@ -40,6 +44,7 @@ export function ChartCard({
       <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <h3 className="font-semibold">{title}</h3>
+          {sources.length > 0 && <SourceChips sources={sources} />}
           {subtitle && (
             <p className="text-xs" style={muted}>
               {subtitle}
@@ -98,5 +103,23 @@ export function SimpleTable({ head, rows }: { head: string[]; rows: (string | nu
         ))}
       </tbody>
     </table>
+  )
+}
+
+/** Etiquetas "de onde vêm os dados": análise e equipamento. */
+export function SourceChips({ sources }: { sources: string[] }) {
+  const { sourceLabel } = useApp()
+  return (
+    <div className="my-1 flex flex-wrap gap-1" aria-label="Análises usadas">
+      {Array.from(new Set(sources)).map((t) => (
+        <span
+          key={t}
+          className="whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium"
+          style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}
+        >
+          {sourceLabel(t)}
+        </span>
+      ))}
+    </div>
   )
 }

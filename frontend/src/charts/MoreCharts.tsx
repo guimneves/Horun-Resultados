@@ -40,6 +40,7 @@ export function HiTmaxChart({ samples, fractionLabel }: { samples: SampleRow[]; 
   return (
     <ChartCard
       title="HI × Tmax"
+      sources={['rockeval']}
       subtitle="Campos de querogênio aproximados; linhas em Tmax 435 e 470 °C (janela de óleo)"
       empty={points.length ? null : 'Sem amostras com HI e Tmax (Rock-Eval).'}
       table={
@@ -118,6 +119,7 @@ export function GasCompositionChart({ samples }: { samples: SampleRow[] }) {
   return (
     <ChartCard
       title="Composição do gás por experimento"
+      sources={rows.some((r) => r.source === 'balanço') ? ['gas_balanco', 'gc_fid'] : ['gc_fid']}
       subtitle={
         onlyFid ? 'Só hidrocarbonetos (GC-FID, % de área)' : 'Planilha de cálculo de gás, normalizada sem o gás de enchimento (%); GC-FID quando faltar'
       }
@@ -171,7 +173,8 @@ export function PyrogramChart({ curves, xAxis, signal }: { curves: AnalysisData<
   return (
     <ChartCard
       title={`Pirogramas sobrepostos — ${signal}`}
-      subtitle={`Rock-Eval, pirólise · eixo X: ${xAxis === 'Temp' ? 'temperatura (°C)' : 'tempo'} · sinal em µg/g rocha/s`}
+      sources={['rockeval']}
+      subtitle={`Pirólise · eixo X: ${xAxis === 'Temp' ? 'temperatura (°C)' : 'tempo'} · sinal em µg/g rocha/s`}
       empty={lines.length ? null : 'Escolha amostras com curvas de Rock-Eval.'}
       table={
         <SimpleTable
@@ -242,7 +245,8 @@ export function AlkaneChart({ data }: { data: AnalysisData<PyPeaks>[] }) {
   const barSize = Math.max(2, Math.min(8, Math.floor(24 / Math.max(1, lines.length))))
   return (
     <ChartCard
-      title="Distribuição de n-alcanos (Py-GC-MS)"
+      title="Distribuição de n-alcanos"
+      sources={['pygcms']}
       subtitle="Área de cada n-alcano em % da soma dos n-alcanos da amostra"
       empty={lines.length ? null : 'Sem dados de Py-GC-MS nas amostras escolhidas.'}
       table={
@@ -278,7 +282,8 @@ export function VanKrevelenChart({ samples, fractionLabel }: { samples: SampleRo
   return (
     <ChartCard
       title="Van Krevelen (H/C × O/C)"
-      subtitle="Razões atômicas do CHNSO, por fração"
+      sources={['chnso']}
+      subtitle="Razões atômicas, por fração"
       empty={points.length ? null : 'Sem amostras com H/C e O/C (CHNSO com oxigênio).'}
       table={<SimpleTable head={['Amostra', 'Fração', 'O/C', 'H/C']} rows={points.map((p) => [p.code, fractionLabel(p.fraction), fmt(p.oc), fmt(p.hc)])} />}
     >
@@ -316,6 +321,7 @@ export function CompareBarChart({ samples, column, label }: { samples: SampleRow
   return (
     <ChartCard
       title={label}
+      sources={[column.split('.')[0]]}
       subtitle="Média ± desvio de cada amostra escolhida"
       empty={rows.length ? null : 'Nenhuma das amostras escolhidas tem este parâmetro.'}
       table={<SimpleTable head={['Amostra', label]} rows={rows.map((r) => [r.code, fmtMeanSd(r.stat)])} />}
@@ -385,6 +391,7 @@ export function CorrelationChart({
   return (
     <ChartCard
       title={title}
+      sources={[x.split('.')[0], y.split('.')[0]]}
       subtitle={
         fit
           ? `${equation} · n = ${points.length} amostras · linha cheia: reta ajustada; tracejada: 1:1`

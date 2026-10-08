@@ -6,7 +6,8 @@ temperatura. Backend FastAPI+SQLModel (`backend/`), frontend React+Vite (`fronte
 
 **Leia primeiro:** `docs/ESPECIFICACAO.md` (requisitos e formatos verificados),
 `docs/ESTADO_E_PLANOS.md` (estado, decisões, perguntas em aberto) e
-`docs/CHANGELOG.md`. Regras da plataforma: `../Horun Core/Prompt_Horun_Modulo.md`.
+`docs/CHANGELOG.md`. Projetos de outros tipos (tabaco, incrustações):
+`docs/PERFIS_DE_PROJETO.md` (fundação pronta, sem tela). Regras da plataforma: `../Horun Core/Prompt_Horun_Modulo.md`.
 
 ## Regras do projeto
 
@@ -44,7 +45,7 @@ temperatura. Backend FastAPI+SQLModel (`backend/`), frontend React+Vite (`fronte
 ## Comandos
 
 ```bash
-cd backend && .venv/Scripts/python -m pytest -q        # 109 passam
+cd backend && .venv/Scripts/python -m pytest -q        # 118 passam
 cd frontend && npx tsc -b && npx oxlint && npm run build
 ```
 

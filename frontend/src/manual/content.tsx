@@ -161,8 +161,8 @@ export const MANUAL_SECTIONS: ManualSection[] = [
           </li>
         </Steps>
         <p>
-          Para uma só, use <strong>+ Nova amostra</strong>. Corridas de hidropirólise: aba <strong>Condições experimentais</strong>,{' '}
-          <strong>+ Nova corrida</strong> ou <strong>Mais</strong> → <strong>Criar várias</strong>.
+          Para uma só, use <strong>+ Nova amostra</strong>. As corridas de hidropirólise não se cadastram à mão: vêm da planilha de cálculo
+          de gás.
         </p>
       </>
     ),
@@ -346,21 +346,26 @@ export const MANUAL_SECTIONS: ManualSection[] = [
   },
   {
     id: 'experimentos',
-    title: 'Como cuidar das condições experimentais',
+    title: 'Como ver as condições experimentais',
     body: (
       <>
         <p>
-          A aba <strong>Condições experimentais</strong> lista as corridas de hidropirólise (código, temperatura, atmosfera, réplica A/B/C,
-          reator, massa inicial e as amostras ligadas). A importação da planilha de cálculo de gás cria o experimento e guarda as condições
-          (reator, massa, pressões...) — toque em <strong>Ver condições lidas da planilha de gás</strong>.
+          As corridas de hidropirólise vêm da <strong>planilha de cálculo de gás</strong>: ao importá-la (Importar resultados →{' '}
+          <strong>Balanço de gás</strong>), a corrida é criada com tudo o que a planilha traz.
         </p>
         <Steps>
           <li>
-            Para criar à mão: <strong>+ Nova corrida</strong>, digite o código (ex.: HP300NA) e confira o que foi sugerido.
+            Na aba <strong>Condições experimentais</strong>, a lista à esquerda mostra as corridas por temperatura. A etiqueta{' '}
+            <strong>planilha</strong> indica que a planilha já foi importada; <strong>sem planilha</strong>, que ainda não.
           </li>
           <li>
-            Para corrigir: <strong>Editar</strong>. Para ligar uma amostra a uma corrida, abra a amostra e use <strong>Mais</strong> →{' '}
-            <strong>Editar dados</strong>.
+            Toque numa corrida para ver a ficha, organizada como a planilha: no alto, massa inicial, massa de gás gerada, gás por massa de
+            rocha e fechamento do balanço; depois os blocos <strong>Dados do experimento</strong>, <strong>Reator</strong>,{' '}
+            <strong>Inicial</strong>, <strong>Final</strong> e <strong>Verificação da cromatografia</strong>, e a composição do gás.
+          </li>
+          <li>
+            Algo veio errado? Em <strong>Mais</strong> → <strong>Corrigir dados</strong>. Para ligar uma amostra a uma corrida, abra a
+            amostra e use <strong>Mais</strong> → <strong>Editar dados</strong>.
           </li>
         </Steps>
       </>
@@ -381,6 +386,15 @@ export const MANUAL_SECTIONS: ManualSection[] = [
           <li>
             Falta algum? <strong>+ Gráfico</strong>: escolha a técnica e o parâmetro e toque em <strong>Adicionar</strong>. Ele vai para{' '}
             <strong>Meus gráficos</strong> (guardado neste navegador).
+          </li>
+          <li>
+            Cada gráfico e cada grupo mostram, em etiquetas, de qual análise e equipamento vêm os dados (ex.: <strong>Rock-Eval 7S</strong>,{' '}
+            <strong>LECO SC832</strong>, <strong>CHNSO · EuroVector EA</strong>).
+          </li>
+          <li>
+            Em <strong>Opções</strong> → <strong>Tratar apenas</strong>, escolha <strong>Só as extraídas</strong> ou{' '}
+            <strong>Só as normais, sem extração</strong> (H, SE, HP). Gás e rocha original continuam aparecendo. Um aviso no alto lembra
+            quando o filtro está ligado.
           </li>
           <li>Cada linha é uma fração (hidropirolisada, extraída...). Cada ponto é a média ± desvio (barra) na temperatura.</li>
           <li>

@@ -142,6 +142,7 @@ def catalog_json() -> list[dict]:
         {
             "key": tech,
             "label": info["label"],
+            "instrument": info.get("instrument", ""),
             "params": [
                 {"key": p.key, "label": p.label, "unit": p.unit, "main": p.main, "derived": p.derived}
                 for p in info["params"]

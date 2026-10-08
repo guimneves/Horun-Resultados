@@ -6,13 +6,20 @@ import { axisProps, ChartCard, gridProps, SimpleTable, tooltipStyle } from './Ch
 
 /** Parâmetro × temperatura: uma linha por fração (H, E...), média ± desvio
  * (barras de erro); rocha original como linha de referência tracejada. */
-export function SeriesChart({ data, title, techniqueLabel }: { data: SeriesResponse | null; title?: string; techniqueLabel?: string }) {
+export function SeriesChart({
+  data: raw,
+  title,
+  keepFraction = () => true,
+}: {
+  data: SeriesResponse | null
+  title?: string
+  keepFraction?: (fraction: string) => boolean
+}) {
+  const data = raw ? { ...raw, series: raw.series.filter((s) => keepFraction(s.fraction)) } : null
   const name = title ?? `${data?.label ?? ''} × temperatura`
   const unit = data?.unit ? ` (${data.unit})` : ''
   const hasData = !!data && (data.series.some((s) => s.points.length) || data.baseline.length)
-  const subtitle = data
-    ? `${techniqueLabel ?? data.technique} · média ± desvio-padrão${data.mode === 'validas' ? ' · só validadas' : data.mode === 'todas' ? ' · inclui inválidas' : ''}`
-    : undefined
+  const subtitle = data ? `média ± desvio-padrão${data.mode === 'validas' ? ' · só validadas' : data.mode === 'todas' ? ' · inclui inválidas' : ''}` : undefined
 
   const rows: (string | number)[][] = []
   data?.series.forEach((s) =>
@@ -24,6 +31,7 @@ export function SeriesChart({ data, title, techniqueLabel }: { data: SeriesRespo
     <ChartCard
       title={name}
       subtitle={subtitle}
+      sources={data ? [data.technique] : []}
       filename={name}
       empty={data === null ? 'Carregando…' : hasData ? null : 'Sem valores deste parâmetro nas amostras do projeto.'}
       table={<SimpleTable head={['Série', 'Temp. (°C)', `Média ± desvio${unit}`, 'Amostras', 'Códigos']} rows={rows} />}

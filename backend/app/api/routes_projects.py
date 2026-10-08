@@ -28,7 +28,7 @@ from app.db.models import (
     utcnow,
 )
 from app.db.session import get_session
-from app.services import audit, storage
+from app.services import audit, profiles, storage
 from app.services.catalog import catalog_json
 
 router = APIRouter(tags=["projetos"])
@@ -48,6 +48,12 @@ def me(identity: HorunIdentity = Depends(get_identity)):
         "can_see_history": identity.level == 1,
         "dev_mode": identity_module.DEV_MODE,
     }
+
+
+@router.get("/profiles")
+def profile_options(_identity: HorunIdentity = Depends(get_identity)):
+    """Tipos de amostra e análises disponíveis para o perfil do projeto (sem tela ainda)."""
+    return profiles.options_json()
 
 
 @router.get("/catalog")
@@ -100,16 +106,27 @@ class ProjectIn(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     description: str = Field(default="", max_length=2000)
     color: str = Field(default="#15216f", pattern=r"^#[0-9a-fA-F]{6}$")
+    # Perfil (tipo de amostra, análises, parâmetros) — ainda sem tela;
+    # ausente = perfil padrão. Ver app/services/profiles.py.
+    profile: dict | None = None
 
 
 class ProjectPatch(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=2000)
     color: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
+    profile: dict | None = None
 
 
 class DeleteConfirm(BaseModel):
     confirm_name: str
+
+
+def _checked_profile(data: dict | None) -> profiles.ProjectProfile:
+    try:
+        return profiles.validate(data)
+    except profiles.ProfileError as err:
+        raise HTTPException(422, str(err)) from err
 
 
 def _project_out(session: Session, project: Project) -> dict:
@@ -117,7 +134,8 @@ def _project_out(session: Session, project: Project) -> dict:
     analyses = session.exec(select(func.count()).select_from(Analysis).where(Analysis.project_id == project.id)).one()
     experiments = session.exec(select(func.count()).select_from(Experiment).where(Experiment.project_id == project.id)).one()
     return {
-        **project.model_dump(),
+        **project.model_dump(exclude={"profile_json"}),
+        "profile": profiles.load(project.profile_json).resolved(),
         "counts": {"samples": samples, "analyses": analyses, "experiments": experiments},
     }
 
@@ -137,7 +155,10 @@ def create_project(body: ProjectIn, session: Session = Depends(get_session), ide
     name = body.name.strip()
     if session.exec(select(Project).where(Project.name == name)).first():
         raise HTTPException(status.HTTP_409_CONFLICT, "Já existe um projeto com esse nome.")
-    project = Project(name=name, description=body.description.strip(), color=body.color, created_by=identity.username)
+    profile = _checked_profile(body.profile)
+    project = Project(
+        name=name, description=body.description.strip(), color=body.color, created_by=identity.username, profile_json=profiles.dump(profile)
+    )
     session.add(project)
     session.flush()
     audit.record(session, identity, "projeto_criado", f"Criou o projeto \"{name}\".", project_id=project.id)
@@ -164,8 +185,13 @@ def patch_project(
         other = session.exec(select(Project).where(Project.name == changes["name"], Project.id != project.id)).first()
         if other:
             raise HTTPException(status.HTTP_409_CONFLICT, "Já existe um projeto com esse nome.")
+    if "profile" in changes:
+        changes.pop("profile")
+        project.profile_json = profiles.dump(_checked_profile(body.profile))
+        changes["profile"] = profiles.load(project.profile_json).resolved()
     for k, v in changes.items():
-        setattr(project, k, v)
+        if k != "profile":
+            setattr(project, k, v)
     session.add(project)
     audit.record(session, identity, "projeto_editado", "Editou os dados do projeto.", project_id=project.id, details=changes)
     session.commit()

@@ -76,6 +76,8 @@ Avisos que os dados reais geram (de propósito, para a pessoa conferir):
 
 ## 4. Próximos passos
 
+- **Perfis de projeto** (tabaco, incrustações...): fundação no servidor pronta
+  em 08/10/2026, sem tela — próximos passos em `docs/PERFIS_DE_PROJETO.md`, seção 3.
 - **Plugar no Core**: cadastrar o módulo (MODULE.md), gerar a chave de avisos, subir
   o `docker-compose.yml`, conferir o limite de tamanho de upload do gateway do Core
   (o .zip do GC tem alguns MB; o módulo aceita até 100 MB por arquivo).

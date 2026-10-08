@@ -66,7 +66,8 @@ function ElementsChart({ detail }: { detail: SampleDetail }) {
   if (!rows.length) return null
   return (
     <ChartCard
-      title="Composição elementar (CHNSO)"
+      title="Composição elementar"
+      sources={['chnso']}
       subtitle="Média em % de massa; a barra fina é o desvio-padrão entre réplicas"
       filename={`${detail.code}-chnso`}
       table={<SimpleTable head={['Elemento', 'Média (%)', 'Desvio', 'n']} rows={rows.map((r) => [r.el, fmt(r.mean), fmt(r.sd), r.n])} />}
@@ -118,6 +119,7 @@ function ProjectScatter({
     <ChartCard
       title={title}
       subtitle={subtitle}
+      sources={[x.split('.')[0], y.split('.')[0]]}
       filename={`${detail.code}-${title}`}
       table={
         <SimpleTable head={['Amostra', xLabel, yLabel]} rows={[...me, ...others].map((p, i) => [i === 0 ? `${p.code} (esta)` : p.code, fmt(p.x), fmt(p.y)])} />
@@ -174,6 +176,7 @@ function SeriesPosition({ detail, samples, options }: { detail: SampleDetail; sa
   return (
     <ChartCard
       title={`Na série: ${fractionLabel(detail.fraction)}`}
+      sources={active ? [active.split('.')[0]] : []}
       subtitle="Mesmo parâmetro nas amostras desta fração, por temperatura; esta amostra em destaque"
       filename={`${detail.code}-serie`}
       empty={line.length ? null : 'Sem outras amostras desta fração com este parâmetro.'}
@@ -249,6 +252,7 @@ function ReplicatesChart({ detail, options }: { detail: SampleDetail; options: {
   return (
     <ChartCard
       title="Réplicas"
+      sources={[tech]}
       subtitle="Cada medição válida do parâmetro; a linha tracejada é a média"
       filename={`${detail.code}-replicas`}
       table={<SimpleTable head={['#', 'Medição', label]} rows={points.map((p) => [p.i, p.label, fmt(p.v)])} />}

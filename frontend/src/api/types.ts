@@ -23,6 +23,7 @@ export interface ParamDef {
 export interface TechniqueDef {
   key: string
   label: string
+  instrument?: string
   params: ParamDef[]
 }
 

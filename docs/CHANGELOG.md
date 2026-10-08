@@ -1,6 +1,19 @@
 # Changelog — Horun · Resultados
 
 ## Não lançado — 08/10/2026
+### Origem dos dados, filtro de frações, ficha da corrida e perfis (fundação)
+- Etiquetas de **análise · equipamento** em cada gráfico e em cada grupo de
+  Séries (`SourceChips`; `/catalog` devolve `instrument`).
+- Séries → Opções → **Tratar apenas**: todas / só extraídas / só normais
+  (`lib/fractionFilter.ts`); gás e rocha original sempre ficam.
+- **Condições experimentais** sem criar corrida à mão (vem da planilha de
+  gás): lista por temperatura + **ficha** no formato da planilha (Dados do
+  experimento, Reator, Inicial, Final, Verificação da cromatografia) e
+  composição do gás. Corrigir/Excluir no "Mais".
+- **Perfis de projeto — só fundação, sem tela** (`services/profiles.py`,
+  `Project.profile_json` + migração, `GET /api/profiles`, `profile` em
+  criar/editar projeto; desenho em `docs/PERFIS_DE_PROJETO.md`).
+
 ### COT × LECO e histórico só para o administrador máximo
 - Séries → Matéria orgânica: **COT (Rock-Eval) × C total (LECO)**, uma
   amostra por ponto, reta de mínimos quadrados, **R²**, equação e linha 1:1

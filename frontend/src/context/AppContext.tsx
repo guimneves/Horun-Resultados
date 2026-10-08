@@ -11,6 +11,8 @@ interface AppState {
   reloadProjects: () => Promise<void>
   reloadFractions: () => Promise<void>
   techniqueLabel: (key: string) => string
+  /** Análise + equipamento de origem (ex.: "CHNSO · EuroVector EA", "Rock-Eval 7S"). */
+  sourceLabel: (key: string) => string
   paramLabel: (column: string, withUnit?: boolean) => string
   fractionLabel: (code: string) => string
 }
@@ -56,7 +58,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return `${p.label}${withUnit && p.unit ? ` (${p.unit})` : ''}`
     }
     const fractionLabel = (code: string) => fractions.find((f) => f.code === code)?.label ?? code
-    return { me, catalog, fractions, projects, error, reloadProjects, reloadFractions, techniqueLabel, paramLabel, fractionLabel }
+    const sourceLabel = (key: string) => {
+      const t = catalog.find((x) => x.key === key)
+      if (!t) return key
+      const inst = t.instrument ?? ''
+      if (!inst) return t.label
+      // "Rock-Eval 7S" já diz a análise; "EuroVector EA" não
+      return inst.toLowerCase().startsWith(t.label.split(' ')[0].toLowerCase()) ? inst : `${t.label} · ${inst}`
+    }
+    return { me, catalog, fractions, projects, error, reloadProjects, reloadFractions, techniqueLabel, sourceLabel, paramLabel, fractionLabel }
   }, [me, catalog, fractions, projects, error, reloadProjects, reloadFractions])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

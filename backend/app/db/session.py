@@ -56,7 +56,7 @@ def _run_migrations() -> None:
     # (as colunas da v1 já nascem com o create_all). Exemplo:
     #   _ensure_column("sample", "observacoes", "VARCHAR")
     #   _ensure_column("sample", "conferida", "BOOLEAN", default_sql="0")
-    pass
+    _ensure_column("project", "profile_json", "TEXT", default_sql="''")  # 08/10/2026 — perfil do projeto
 
 
 def _seed_fractions() -> None:

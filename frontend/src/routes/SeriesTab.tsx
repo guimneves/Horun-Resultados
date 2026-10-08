@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import type { AnalysisData, Mode, PyPeaks, PyroData, SampleRow, SeriesResponse } from '../api/types'
+import { SourceChips } from '../charts/ChartCard'
 import { SeriesChart } from '../charts/SeriesChart'
 import { AlkaneChart, CorrelationChart, GasCompositionChart, HiTmaxChart, PyrogramChart, VanKrevelenChart } from '../charts/MoreCharts'
 import { Button, card, Dropdown, ErrorBox, inputClass, inputStyle, muted, Segmented } from '../components/ui'
 import { useApp } from '../context/AppContext'
+import { fractionAllowed, FRACTION_CHOICES, type FractionChoice } from '../lib/fractionFilter'
 import { useSamples } from '../lib/useSamples'
 import { useProject } from './ProjectLayout'
 import { MODE_OPTIONS } from './SamplesTab'
@@ -34,8 +36,19 @@ function readCustom(projectId: number): string[] {
   }
 }
 
-function SeriesLoader({ projectId, spec, mode, split }: { projectId: number; spec: { technique: string; parameter: string }; mode: Mode; split: boolean }) {
-  const { techniqueLabel } = useApp()
+function SeriesLoader({
+  projectId,
+  spec,
+  mode,
+  split,
+  keepFraction,
+}: {
+  projectId: number
+  spec: { technique: string; parameter: string }
+  mode: Mode
+  split: boolean
+  keepFraction?: (fraction: string) => boolean
+}) {
   const [data, setData] = useState<SeriesResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
@@ -48,7 +61,7 @@ function SeriesLoader({ projectId, spec, mode, split }: { projectId: number; spe
       .catch((err) => setError(String(err.message ?? err)))
   }, [projectId, spec.technique, spec.parameter, mode, split])
   if (error) return <ErrorBox message={error} />
-  return <SeriesChart data={data} techniqueLabel={techniqueLabel(spec.technique)} />
+  return <SeriesChart data={data} keepFraction={keepFraction} />
 }
 
 /** Escolha de amostras para os gráficos por amostra (pirogramas, n-alcanos). */
@@ -175,13 +188,15 @@ export function SeriesTab() {
   const { catalog, fractionLabel, paramLabel, techniqueLabel } = useApp()
   const [mode, setMode] = useState<Mode>('padrao')
   const [split, setSplit] = useState(false)
+  const [onlyFraction, setOnlyFraction] = useState<FractionChoice>('todas')
   const [section, setSection] = useState('todos')
   const [custom, setCustom] = useState<string[]>(() => readCustom(project.id))
   const [adding, setAdding] = useState(false)
   const [technique, setTechnique] = useState('rockeval')
   const [parameter, setParameter] = useState('TOC')
   const { samples } = useSamples(project.id, mode)
-  const list = samples ?? []
+  const keepFraction = (f: string) => fractionAllowed(f, onlyFraction)
+  const list = (samples ?? []).filter((s) => keepFraction(s.fraction))
 
   const saveCustom = (next: string[]) => {
     setCustom(next)
@@ -211,8 +226,20 @@ export function SeriesTab() {
   const params = catalog.find((t) => t.key === technique)?.params ?? []
   const chart = (col: string) => {
     const [t, p] = col.split('.')
-    return <SeriesLoader key={col} projectId={project.id} spec={{ technique: t, parameter: p }} mode={mode} split={split} />
+    return <SeriesLoader key={col} projectId={project.id} spec={{ technique: t, parameter: p }} mode={mode} split={split} keepFraction={keepFraction} />
   }
+  const optionsActive = [mode !== 'padrao', split, onlyFraction !== 'todas'].filter(Boolean).length
+  // de quais análises vem cada grupo (etiquetas no título do grupo)
+  const EXTRA_SOURCES: Record<Extra, string[]> = {
+    toc_leco: ['rockeval', 'leco'],
+    hi_tmax: ['rockeval'],
+    vk: ['chnso'],
+    gas: ['gas_balanco', 'gc_fid'],
+    alkanes: ['pygcms'],
+    pyro: ['rockeval'],
+  }
+  const sectionSources = (sec: { series: string[]; extras: Extra[] }) =>
+    Array.from(new Set([...sec.series.map((c) => c.split('.')[0]), ...sec.extras.flatMap((e) => EXTRA_SOURCES[e])]))
   const extra = (e: Extra) => {
     if (e === 'toc_leco')
       return (
@@ -254,7 +281,7 @@ export function SeriesTab() {
         <Segmented label="Grupo de gráficos" value={section} onChange={setSection} options={groups} />
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <Button onClick={() => setAdding((v) => !v)}>+ Gráfico</Button>
-          <Dropdown label="Opções" ariaLabel="Opções dos gráficos">
+          <Dropdown label={`Opções${optionsActive ? ` (${optionsActive})` : ''}`} ariaLabel="Opções dos gráficos">
             <div className="space-y-2 p-2 text-sm" onClick={(e) => e.stopPropagation()}>
               <label className="block">
                 <span className="mb-1 block text-xs" style={muted}>
@@ -268,6 +295,24 @@ export function SeriesTab() {
                   ))}
                 </select>
               </label>
+              <label className="block">
+                <span className="mb-1 block text-xs" style={muted}>
+                  Tratar apenas
+                </span>
+                <select
+                  className={inputClass}
+                  style={inputStyle}
+                  value={onlyFraction}
+                  onChange={(e) => setOnlyFraction(e.target.value as FractionChoice)}
+                  aria-label="Tratar apenas"
+                >
+                  {FRACTION_CHOICES.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label className="flex items-center gap-2">
                 <input type="checkbox" checked={split} onChange={(e) => setSplit(e.target.checked)} />
                 Separar réplicas A, B, C
@@ -276,6 +321,12 @@ export function SeriesTab() {
           </Dropdown>
         </div>
       </div>
+
+      {onlyFraction !== 'todas' && (
+        <p className="text-sm" style={muted} role="status">
+          Mostrando {onlyFraction === 'extraidas' ? 'só as frações extraídas' : 'só as frações normais (sem extração)'} — mude em Opções.
+        </p>
+      )}
 
       {adding && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border p-3" style={card}>
@@ -341,7 +392,10 @@ export function SeriesTab() {
       {section !== 'meus' &&
         shown.map((sec) => (
           <section key={sec.id}>
-            <h2 className="mb-2 font-semibold">{sec.label}</h2>
+            <div className="mb-2 flex flex-wrap items-center gap-x-3">
+              <h2 className="font-semibold">{sec.label}</h2>
+              <SourceChips sources={sectionSources(sec)} />
+            </div>
             <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
               {sec.series.map(chart)}
               {sec.extras.map(extra)}
