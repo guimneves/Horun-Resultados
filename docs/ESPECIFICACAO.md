@@ -166,8 +166,8 @@ Quem altera (`can_edit`, 08/10/2026): níveis 1–3 (administrador,
 coordenador/a, pesquisador/a) importam, criam/editam/excluem amostras,
 experimentos e medições. Técnico(a) (4) e IC (5): **só visualizam** (inclui
 exportar CSV/XLSX) — 403 "Técnicos e ICs só visualizam os resultados." em
-toda rota que altera. Coordenador: tudo isso + criar/editar/arquivar
-projetos, **validar/invalidar**, tabela de frações. Excluir projeto: só administrador máximo, com
+toda rota que altera, inclusive **validar/invalidar**. Coordenador: tudo isso
++ criar/editar/arquivar projetos, tabela de frações e o **histórico**. Excluir projeto: só administrador máximo, com
 confirmação digitando o nome. Sem senhas próprias do módulo (no modo de
 desenvolvimento, seletor "Ver como" para trocar o nível).
 

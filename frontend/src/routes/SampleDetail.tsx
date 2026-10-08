@@ -129,7 +129,7 @@ export function SampleDetailModal({
   })
   const [error, setError] = useState<string | null>(null)
   const [newAlias, setNewAlias] = useState('')
-  const canValidate = !!me?.is_coordenador && !readOnly
+  const canValidate = !!me?.can_edit && !readOnly
 
   const load = useCallback(async () => {
     try {

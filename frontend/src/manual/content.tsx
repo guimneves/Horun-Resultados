@@ -65,11 +65,12 @@ export const MANUAL_SECTIONS: ManualSection[] = [
           </li>
           <li>
             <strong>Colaborador(a)</strong> (pesquisador): vê tudo, importa arquivos, cria amostras e experimentos, corrige os dados deles,
-            liga nomes lembrados e exclui medições, amostras e experimentos (uma a uma ou várias de uma vez).
+            liga nomes lembrados, marca amostras e medições como <strong>válidas</strong> ou <strong>inválidas</strong> e exclui medições,
+            amostras e experimentos (uma a uma ou várias de uma vez).
           </li>
           <li>
             <strong>Coordenador(a)</strong> (administrador máximo e coordenadores do Horun): tudo isso e mais — cria, edita e arquiva
-            projetos e marca amostras e medições como <strong>válidas</strong> ou <strong>inválidas</strong>.
+            projetos e vê o <strong>Histórico</strong> (quem fez o quê).
           </li>
           <li>
             <strong>Administrador máximo</strong>: é o único que pode <strong>Excluir</strong> um projeto inteiro (digitando o nome do
@@ -296,7 +297,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
   },
   {
     id: 'validar',
-    title: 'Como validar amostras e medições (coordenador)',
+    title: 'Como validar amostras e medições (pesquisadores e coordenadores)',
     body: (
       <>
         <Steps>
@@ -305,7 +306,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
           </li>
           <li>
             Toque em <strong>Válida</strong> ou <strong>Inválida</strong>. Para desfazer, <strong>Voltar a pendente</strong>. Editar os
-            dados e excluir a amostra ficam em <strong>Mais</strong>, no detalhe da amostra (pesquisadores também podem).
+            dados e excluir a amostra ficam em <strong>Mais</strong>, no detalhe da amostra.
           </li>
           <li>
             Uma medição ruim (ex.: uma réplica fora) pode ser tirada sozinha: no cartão da medição, <strong>Invalidar</strong> (e{' '}
@@ -332,8 +333,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
           </li>
           <li>
             Aparece uma barra embaixo: <strong>N selecionada(s)</strong>, <strong>Marcar como válida</strong>,{' '}
-            <strong>Marcar como inválida</strong> (só coordenadores), <strong>Excluir selecionadas</strong> e{' '}
-            <strong>Limpar seleção</strong>.
+            <strong>Marcar como inválida</strong>, <strong>Excluir selecionadas</strong> e <strong>Limpar seleção</strong>.
           </li>
           <li>
             Em <strong>Excluir selecionadas</strong>, confira a lista com os códigos e quantas medições cada amostra tem, e toque em{' '}
@@ -453,8 +453,9 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     title: 'Histórico e arquivos originais',
     body: (
       <p>
-        Só para o <strong>administrador máximo</strong>: em <strong>Projeto ▾</strong> → <strong>Histórico</strong> ele vê quem importou,
-        validou, editou ou excluiu, e quando. Ao lado, a lista de arquivos importados — toque no nome para baixar o original.
+        Para o <strong>administrador máximo</strong> e os <strong>coordenadores</strong>: em <strong>Projeto ▾</strong> →{' '}
+        <strong>Histórico</strong> veem quem importou, validou, editou ou excluiu, e quando. Ao lado, a lista de arquivos importados — toque
+        no nome para baixar o original.
       </p>
     ),
   },

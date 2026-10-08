@@ -37,10 +37,10 @@ temperatura. Backend FastAPI+SQLModel (`backend/`), frontend React+Vite (`fronte
 - SQLModel 0.0.47 exige `datetime` com fuso: use `app.db.models.utcnow()`.
 - Toda rota da API sob `/api` (prefixo em `main.py`); `/health` na raiz.
 - Papéis (`app/core/permissions.py`): cargo no Horun — níveis 1–2 coordenador
-  (validar, projetos, frações), demais colaborador; **alterar/importar só níveis
+  (projetos, frações, histórico), demais colaborador; **alterar/importar/validar só níveis
   1–3** (`require_editor`, `can_edit` no /me) — técnico (4) e IC (5) só
-  visualizam; excluir projeto só nível 1, digitando o nome; histórico só
-  nível 1. Sem senha. Rota nova que altera dados → `require_editor` (ou mais).
+  visualizam; excluir projeto só nível 1, digitando o nome; histórico níveis
+  1–2. Sem senha. Rota nova que altera dados → `require_editor` (ou mais).
 - Gráficos: cores por significado (`frontend/src/lib/colors.ts`, paleta validada),
   sempre com legenda e "Ver tabela"; nada de eixo duplo.
 

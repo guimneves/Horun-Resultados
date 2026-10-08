@@ -190,7 +190,7 @@ export function SamplesTab() {
   const [exportError, setExportError] = useState<string | null>(null)
   // Seleção (quem pode alterar, projeto aberto): excluir várias de uma vez; validar só coordenadores
   const canSelect = canEdit
-  const canValidate = !!me?.is_coordenador
+  const canValidate = !!me?.can_edit
   const [selected, setSelected] = useState<Set<number>>(() => new Set())
   const [confirmDelete, setConfirmDelete] = useState<number[] | null>(null)
   const [bulkBusy, setBulkBusy] = useState(false)

@@ -1,6 +1,12 @@
 # Changelog — Horun · Resultados
 
 ## Não lançado — 08/10/2026
+### Pesquisadores validam; coordenadores veem o histórico (pedido do mantenedor)
+- Validar/invalidar amostras e medições (uma a uma e em lote) passou a
+  `require_editor` (níveis 1–3): pesquisadores marcam válidas e inválidas.
+- Histórico (`GET /projects/{id}/history`, `can_see_history` no /me): níveis
+  1–2 (administrador máximo e coordenadores).
+
 ### Técnicos e ICs só visualizam (pedido do mantenedor)
 - Pesquisadores e coordenadores importam, criam, editam e excluem resultados;
   técnicos (nível 4) e ICs (nível 5) veem tudo (tabelas, séries, gráficos,

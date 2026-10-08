@@ -30,7 +30,7 @@ def test_admin_role_without_level_header_counts_as_coordinator(client):
     assert client.get("me", headers=old_core).json()["role"] == "coordenador"
 
 
-def test_pesquisador_imports_edits_and_deletes_but_not_validates(client, project):
+def test_pesquisador_imports_edits_deletes_and_validates(client, project):
     pid = project["id"]
     assert client.post("projects", json={"name": "Outro"}, headers=PESQ).status_code == 403
     exp = client.post(f"projects/{pid}/experiments", json={"code": "HP300NA"}, headers=PESQ)
@@ -42,8 +42,9 @@ def test_pesquisador_imports_edits_and_deletes_but_not_validates(client, project
     confirm(client, pid, upload(client, pid, {"run.pdf": syn.chnso_summary_pdf(ROWS)}, headers=PESQ), headers=PESQ)
     analysis = client.get(f"projects/{pid}/samples/{sample['id']}", headers=PESQ).json()["analyses"][0]
 
-    assert client.post(f"projects/{pid}/samples/{sample['id']}/validation", json={"valid": True}, headers=PESQ).status_code == 403
-    assert client.post(f"projects/{pid}/analyses/{analysis['id']}/validation", json={"valid": False}, headers=PESQ).status_code == 403
+    r = client.post(f"projects/{pid}/samples/{sample['id']}/validation", json={"valid": True}, headers=PESQ)
+    assert r.status_code == 200 and r.json()["valid"] is True
+    assert client.post(f"projects/{pid}/analyses/{analysis['id']}/validation", json={"valid": False}, headers=PESQ).status_code == 200
     assert client.post(f"projects/{pid}/archive", headers=PESQ).status_code == 403
     assert client.patch(f"projects/{pid}", json={"name": "X"}, headers=PESQ).status_code == 403
     assert client.patch("fractions/SE", json={"label": "x"}, headers=PESQ).status_code == 403
@@ -169,10 +170,11 @@ def test_fraction_table_is_editable_by_coordinator(client):
     assert client.patch("fractions/SE", json={"series_group": "ZZ"}, headers=COORD).status_code == 400
 
 
-def test_history_only_for_super_admin(client, project):
+def test_history_for_admin_and_coordinators(client, project):
     pid = project["id"]
-    for who in (COORD, PESQ, IC):
+    for who in (PESQ, TEC, IC):
         assert client.get(f"projects/{pid}/history", headers=who).status_code == 403
-    assert client.get(f"projects/{pid}/history", headers=ADMIN).status_code == 200
-    assert client.get("me", headers=ADMIN).json()["can_see_history"] is True
-    assert client.get("me", headers=COORD).json()["can_see_history"] is False
+        assert client.get("me", headers=who).json()["can_see_history"] is False
+    for who in (ADMIN, COORD):
+        assert client.get(f"projects/{pid}/history", headers=who).status_code == 200
+        assert client.get("me", headers=who).json()["can_see_history"] is True

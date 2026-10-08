@@ -33,7 +33,7 @@ def _files(pid):
         return {f.filename: f.sha256 for f in session.exec(select(StoredFile).where(StoredFile.project_id == pid))}
 
 
-def test_tecnico_and_ic_cannot_bulk_delete_pesquisador_cannot_validate(client, project):
+def test_tecnico_and_ic_cannot_bulk_delete_nor_validate(client, project):
     pid = project["id"]
     ids = _setup(client, pid)
     body = {"sample_ids": [ids["HP300H"]]}
@@ -41,7 +41,7 @@ def test_tecnico_and_ic_cannot_bulk_delete_pesquisador_cannot_validate(client, p
         assert client.post(f"projects/{pid}/samples/bulk-delete", json=body, headers=who).status_code == 403
         assert client.post(f"projects/{pid}/samples/bulk-delete", json={**body, "dry_run": True}, headers=who).status_code == 403
         assert client.post(f"projects/{pid}/samples/bulk-validation", json={**body, "valid": True}, headers=who).status_code == 403
-    assert client.post(f"projects/{pid}/samples/bulk-validation", json={**body, "valid": True}, headers=PESQ).status_code == 403
+    assert client.post(f"projects/{pid}/samples/bulk-validation", json={**body, "valid": True}, headers=PESQ).status_code == 200
     assert "HP300H" in {s["code"] for s in client.get(f"projects/{pid}/samples", headers=PESQ).json()["samples"]}
 
 

@@ -9,8 +9,11 @@ Financeiro (`module_mode()/core_role()`), sem cadastro de membros nem senha:
   excluem amostras, experimentos e medições, ligam nomes lembrados;
 * técnico(a) (nível 4) e IC (nível 5): só visualizam (tabelas, séries,
   gráficos, fichas, exportar CSV/XLSX) — nada de importar nem alterar;
-* coordenador: além disso cria/edita/arquiva projetos, valida/invalida e
-  edita a tabela de frações;
+* validar/invalidar amostras e medições: também níveis 1–3 (decisão de
+  08/10/2026 — pesquisadores marcam válidas e inválidas);
+* coordenador: além disso cria/edita/arquiva projetos e edita a tabela de
+  frações;
+* histórico (quem fez o quê): administrador máximo e coordenadores (níveis 1–2);
 * excluir projeto: só o administrador máximo (nível 1), digitando o nome.
 
 No desenvolvimento (HORUN_DEV_MODE=true) vale a mesma regra; o seletor
@@ -65,8 +68,12 @@ def require_super_admin(identity: HorunIdentity = Depends(get_identity)) -> Horu
     return identity
 
 
+def can_see_history(identity: HorunIdentity) -> bool:
+    """Histórico (quem fez o quê): administrador máximo e coordenadores (níveis 1–2)."""
+    return identity.level <= LEVEL_COORDENADOR
+
+
 def require_history_access(identity: HorunIdentity = Depends(get_identity)) -> HorunIdentity:
-    """Histórico (quem fez o quê): só o administrador máximo (decisão de 08/10/2026)."""
-    if identity.level != LEVEL_ADMIN:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Só o administrador máximo do Horun vê o histórico.")
+    if not can_see_history(identity):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Só o administrador máximo e os coordenadores veem o histórico.")
     return identity

@@ -2,7 +2,7 @@
 
 Níveis 1–3 (administrador, coordenador/a, pesquisador/a) criam, editam e
 excluem amostras, experimentos e medições; técnico(a) e IC só visualizam;
-validar/invalidar é do coordenador (ESPECIFICACAO.md, seção 7)."""
+validar/invalidar: níveis 1–3, como as demais alterações (ESPECIFICACAO.md, seção 7)."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from sqlmodel import Session, select
 
 from app.api.deps import ensure_open, get_project
 from app.core.identity import HorunIdentity, get_identity
-from app.core.permissions import require_coordenador, require_editor
+from app.core.permissions import require_editor
 from app.db.models import Analysis, AnalysisValue, Experiment, FractionType, Project, Sample, SampleAlias, utcnow
 from app.db.session import get_session
 from app.services import audit, deletion, importer, results
@@ -259,7 +259,7 @@ def validate_sample(
     body: Validation,
     project: Project = Depends(get_project),
     session: Session = Depends(get_session),
-    identity: HorunIdentity = Depends(require_coordenador),
+    identity: HorunIdentity = Depends(require_editor),
 ):
     ensure_open(project)
     sample = _get_sample(session, project, sample_id)
@@ -356,7 +356,7 @@ def bulk_delete_samples(
 
 @router.post("/projects/{project_id}/samples/bulk-validation")
 def bulk_validate_samples(
-    body: BulkValidation, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_coordenador)
+    body: BulkValidation, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_editor)
 ):
     ensure_open(project)
     samples = _get_samples(session, project, body.sample_ids)
@@ -397,7 +397,7 @@ def validate_analysis(
     body: Validation,
     project: Project = Depends(get_project),
     session: Session = Depends(get_session),
-    identity: HorunIdentity = Depends(require_coordenador),
+    identity: HorunIdentity = Depends(require_editor),
 ):
     ensure_open(project)
     analysis = _get_analysis(session, project, analysis_id)
