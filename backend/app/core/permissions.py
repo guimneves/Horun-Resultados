@@ -48,3 +48,10 @@ def require_super_admin(identity: HorunIdentity = Depends(get_identity)) -> Horu
     if identity.level != LEVEL_ADMIN:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Só o administrador máximo do Horun pode excluir um projeto.")
     return identity
+
+
+def require_history_access(identity: HorunIdentity = Depends(get_identity)) -> HorunIdentity:
+    """Histórico (quem fez o quê): só o administrador máximo (decisão de 08/10/2026)."""
+    if identity.level != LEVEL_ADMIN:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Só o administrador máximo do Horun vê o histórico.")
+    return identity

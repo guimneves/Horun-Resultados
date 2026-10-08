@@ -6,7 +6,7 @@ confirmar; nomes lembrados como apelidos; reimportação sem duplicar."""
 from __future__ import annotations
 
 from tests import synthetic as syn
-from tests.conftest import COORD, PESQ, confirm, upload
+from tests.conftest import ADMIN, COORD, PESQ, confirm, upload
 from tests.test_parsers import FID, LECO_SETS, ROWS
 
 
@@ -241,7 +241,7 @@ def test_error_files_are_reported_not_fatal(client, project):
 
 def test_history_records_the_import(client, project):
     confirm(client, project["id"], upload(client, project["id"], {"run.pdf": syn.chnso_summary_pdf(ROWS)}))
-    events = client.get(f"projects/{project['id']}/history", headers=COORD).json()
+    events = client.get(f"projects/{project['id']}/history", headers=ADMIN).json()
     imp = next(e for e in events if e["action"] == "importacao")
     assert imp["username"] == "pessoa3" and imp["details"]["files"] == ["run.pdf"]
     files = client.get(f"projects/{project['id']}/files", headers=PESQ).json()

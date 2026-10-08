@@ -63,7 +63,7 @@ def test_coordinator_validates_and_deletes(client, project):
     assert client.delete(f"projects/{pid}/analyses/{analysis['id']}", headers=COORD).status_code == 204
     assert client.delete(f"projects/{pid}/samples/{hp['id']}", headers=COORD).status_code == 204
     assert all(s["code"] != "HP300H" for s in client.get(f"projects/{pid}/samples", headers=PESQ).json()["samples"])
-    actions = {e["action"] for e in client.get(f"projects/{pid}/history", headers=PESQ).json()}
+    actions = {e["action"] for e in client.get(f"projects/{pid}/history", headers=ADMIN).json()}
     assert {"validacao", "medicao_excluida", "amostra_excluida", "importacao"} <= actions
 
 
@@ -115,3 +115,12 @@ def test_fraction_table_is_editable_by_coordinator(client):
     r = client.patch("fractions/SE", json={"series_group": ""}, headers=COORD)
     assert r.status_code == 200 and r.json()["series_group"] == ""
     assert client.patch("fractions/SE", json={"series_group": "ZZ"}, headers=COORD).status_code == 400
+
+
+def test_history_only_for_super_admin(client, project):
+    pid = project["id"]
+    for who in (COORD, PESQ, IC):
+        assert client.get(f"projects/{pid}/history", headers=who).status_code == 403
+    assert client.get(f"projects/{pid}/history", headers=ADMIN).status_code == 200
+    assert client.get("me", headers=ADMIN).json()["can_see_history"] is True
+    assert client.get("me", headers=COORD).json()["can_see_history"] is False

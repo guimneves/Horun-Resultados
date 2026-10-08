@@ -13,7 +13,7 @@ from sqlmodel import Session, func, select
 from app.api.deps import get_project
 from app.core import identity as identity_module
 from app.core.identity import HorunIdentity, get_identity
-from app.core.permissions import COORDENADOR, core_role, require_coordenador, require_super_admin
+from app.core.permissions import COORDENADOR, core_role, require_coordenador, require_history_access, require_super_admin
 from app.db.models import (
     Analysis,
     AnalysisValue,
@@ -45,6 +45,7 @@ def me(identity: HorunIdentity = Depends(get_identity)):
         "role": role,
         "is_coordenador": role == COORDENADOR,
         "can_delete_projects": identity.level == 1,
+        "can_see_history": identity.level == 1,
         "dev_mode": identity_module.DEV_MODE,
     }
 
@@ -229,7 +230,7 @@ def history(
     limit: int = 200,
     project: Project = Depends(get_project),
     session: Session = Depends(get_session),
-    _identity: HorunIdentity = Depends(get_identity),
+    _identity: HorunIdentity = Depends(require_history_access),
 ):
     events = session.exec(
         select(AuditEvent).where(AuditEvent.project_id == project.id).order_by(AuditEvent.created_at.desc()).limit(min(limit, 1000))  # type: ignore[union-attr]

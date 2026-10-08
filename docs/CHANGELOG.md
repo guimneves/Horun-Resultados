@@ -1,6 +1,14 @@
 # Changelog — Horun · Resultados
 
 ## Não lançado — 08/10/2026
+### COT × LECO e histórico só para o administrador máximo
+- Séries → Matéria orgânica: **COT (Rock-Eval) × C total (LECO)**, uma
+  amostra por ponto, reta de mínimos quadrados, **R²**, equação e linha 1:1
+  (`CorrelationChart`/`linearFit` em `charts/MoreCharts.tsx`).
+- Histórico: `GET /projects/{id}/history` só para o nível 1
+  (`require_history_access`); `/me` ganhou `can_see_history`; o item some do
+  menu Projeto para os demais.
+
 ### Layout mais limpo e mais gráficos (pedido do mantenedor)
 - Cabeçalho do projeto: só **Importar resultados** e o menu **Projeto ▾**
   (Histórico, Editar, Arquivar, Excluir). Abas leves (sublinhado): Amostras,

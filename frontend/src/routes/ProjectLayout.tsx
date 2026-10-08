@@ -115,16 +115,18 @@ export function ProjectLayout() {
               Importar resultados
             </Link>
           )}
-          <Dropdown label="Projeto" ariaLabel="Ações do projeto">
-            <MenuItem onClick={() => navigate(`/projects/${project.id}/historico`)}>Histórico</MenuItem>
-            {me?.is_coordenador && <MenuItem onClick={() => setEditing(true)}>Editar projeto</MenuItem>}
-            {me?.is_coordenador && <MenuItem onClick={toggleArchive}>{project.archived_at ? 'Desarquivar' : 'Arquivar'}</MenuItem>}
-            {me?.can_delete_projects && (
-              <MenuItem danger onClick={() => setDeleting(true)}>
-                Excluir projeto
-              </MenuItem>
-            )}
-          </Dropdown>
+          {(me?.is_coordenador || me?.can_see_history) && (
+            <Dropdown label="Projeto" ariaLabel="Ações do projeto">
+              {me?.can_see_history && <MenuItem onClick={() => navigate(`/projects/${project.id}/historico`)}>Histórico</MenuItem>}
+              {me?.is_coordenador && <MenuItem onClick={() => setEditing(true)}>Editar projeto</MenuItem>}
+              {me?.is_coordenador && <MenuItem onClick={toggleArchive}>{project.archived_at ? 'Desarquivar' : 'Arquivar'}</MenuItem>}
+              {me?.can_delete_projects && (
+                <MenuItem danger onClick={() => setDeleting(true)}>
+                  Excluir projeto
+                </MenuItem>
+              )}
+            </Dropdown>
+          )}
         </div>
       </div>
       <ErrorBox message={error} />

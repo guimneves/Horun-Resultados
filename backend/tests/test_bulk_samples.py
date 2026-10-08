@@ -10,7 +10,7 @@ from app.core.config import settings
 from app.db.models import Analysis, AnalysisValue, SampleAlias, StoredFile
 from app.db.session import engine
 from tests import synthetic as syn
-from tests.conftest import COORD, IC, PESQ, confirm, upload
+from tests.conftest import ADMIN, COORD, IC, PESQ, confirm, upload
 from tests.test_parsers import ROWS
 
 ONLY_HP320 = [(1, "Smp", "HP320E-1", 0.5, 30.0, 3.0, 2.0, None, 1.0), (2, "Smp", "HP320E-2", 0.5, 31.0, 3.1, 2.1, None, 1.0)]
@@ -98,7 +98,7 @@ def test_bulk_delete_cascades_and_keeps_shared_file_removes_orphan(client, proje
     # o arquivo órfão pode ser importado de novo
     assert upload(client, pid, {"run2.pdf": syn.chnso_summary_pdf(ONLY_HP320)})["files"][0]["status"] == "ok"
 
-    history = client.get(f"projects/{pid}/history", headers=PESQ).json()
+    history = client.get(f"projects/{pid}/history", headers=ADMIN).json()
     event = next(e for e in history if e["action"] == "amostras_excluidas")
     assert "2 amostra(s)" in event["summary"] and "5 medição(ões)" in event["summary"]
 
@@ -127,7 +127,7 @@ def test_bulk_validation_marks_valid_invalid_and_pending(client, project):
     client.post(f"projects/{pid}/samples/bulk-validation", json={"sample_ids": chosen, "valid": None}, headers=COORD)
     detail = client.get(f"projects/{pid}/samples/{ids['HP300H']}", headers=PESQ).json()
     assert detail["valid"] is None and detail["validated_by"] is None
-    assert any("2 amostra(s) como válidas" in e["summary"] for e in client.get(f"projects/{pid}/history", headers=PESQ).json())
+    assert any("2 amostra(s) como válidas" in e["summary"] for e in client.get(f"projects/{pid}/history", headers=ADMIN).json())
 
 
 def test_archived_project_refuses_bulk_actions(client, project):

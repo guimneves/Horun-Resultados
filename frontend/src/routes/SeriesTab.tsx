@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import type { AnalysisData, Mode, PyPeaks, PyroData, SampleRow, SeriesResponse } from '../api/types'
 import { SeriesChart } from '../charts/SeriesChart'
-import { AlkaneChart, GasCompositionChart, HiTmaxChart, PyrogramChart, VanKrevelenChart } from '../charts/MoreCharts'
+import { AlkaneChart, CorrelationChart, GasCompositionChart, HiTmaxChart, PyrogramChart, VanKrevelenChart } from '../charts/MoreCharts'
 import { Button, card, Dropdown, ErrorBox, inputClass, inputStyle, muted, Segmented } from '../components/ui'
 import { useApp } from '../context/AppContext'
 import { useSamples } from '../lib/useSamples'
@@ -10,13 +10,13 @@ import { useProject } from './ProjectLayout'
 import { MODE_OPTIONS } from './SamplesTab'
 
 // Painel de séries: grupos de gráficos (só aparecem os que têm dados no projeto).
-type Extra = 'hi_tmax' | 'vk' | 'gas' | 'alkanes' | 'pyro'
+type Extra = 'toc_leco' | 'hi_tmax' | 'vk' | 'gas' | 'alkanes' | 'pyro'
 const SECTIONS: { id: string; label: string; series: string[]; extras: Extra[] }[] = [
   {
     id: 'mo',
     label: 'Matéria orgânica',
     series: ['rockeval.TOC', 'leco.C', 'chnso.C', 'rockeval.HI', 'rockeval.OI', 'rockeval.Tmax', 'rockeval.S1', 'rockeval.S2', 'rockeval.PI'],
-    extras: ['hi_tmax'],
+    extras: ['toc_leco', 'hi_tmax'],
   },
   { id: 'el', label: 'Elementar', series: ['chnso.HC_at', 'chnso.OC_at', 'chnso.H', 'chnso.N', 'chnso.S', 'leco.S'], extras: ['vk'] },
   { id: 'gas', label: 'Gás', series: ['gas_balanco.gas_mass_g', 'gas_balanco.gas_yield_mg_g', 'gc_fid.wetness'], extras: ['gas'] },
@@ -193,15 +193,17 @@ export function SeriesTab() {
   }
   const hasSeries = (col: string) => list.some((s) => s.temperature_c != null && s.values[col]?.mean != null)
   const hasExtra = (e: Extra) =>
-    e === 'hi_tmax'
-      ? list.some((s) => s.values['rockeval.HI'] && s.values['rockeval.Tmax'])
-      : e === 'vk'
-        ? list.some((s) => s.values['chnso.HC_at'] && s.values['chnso.OC_at'])
-        : e === 'gas'
-          ? list.some((s) => s.fraction === 'G')
-          : e === 'alkanes'
-            ? list.some((s) => s.techniques?.includes('pygcms'))
-            : list.some((s) => s.techniques?.includes('rockeval'))
+    e === 'toc_leco'
+      ? list.some((s) => s.values['rockeval.TOC'] && s.values['leco.C'])
+      : e === 'hi_tmax'
+        ? list.some((s) => s.values['rockeval.HI'] && s.values['rockeval.Tmax'])
+        : e === 'vk'
+          ? list.some((s) => s.values['chnso.HC_at'] && s.values['chnso.OC_at'])
+          : e === 'gas'
+            ? list.some((s) => s.fraction === 'G')
+            : e === 'alkanes'
+              ? list.some((s) => s.techniques?.includes('pygcms'))
+              : list.some((s) => s.techniques?.includes('rockeval'))
   const sections = SECTIONS.map((sec) => ({ ...sec, series: sec.series.filter(hasSeries), extras: sec.extras.filter(hasExtra) })).filter(
     (sec) => sec.series.length || sec.extras.length,
   )
@@ -212,6 +214,19 @@ export function SeriesTab() {
     return <SeriesLoader key={col} projectId={project.id} spec={{ technique: t, parameter: p }} mode={mode} split={split} />
   }
   const extra = (e: Extra) => {
+    if (e === 'toc_leco')
+      return (
+        <CorrelationChart
+          key={e}
+          samples={list}
+          x="leco.C"
+          y="rockeval.TOC"
+          xLabel="C total LECO (%)"
+          yLabel="COT Rock-Eval (%)"
+          title="COT (Rock-Eval) × C total (LECO)"
+          fractionLabel={fractionLabel}
+        />
+      )
     if (e === 'hi_tmax') return <HiTmaxChart key={e} samples={list} fractionLabel={fractionLabel} />
     if (e === 'vk') return <VanKrevelenChart key={e} samples={list} fractionLabel={fractionLabel} />
     if (e === 'gas') return <GasCompositionChart key={e} samples={list} />

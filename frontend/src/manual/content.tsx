@@ -374,9 +374,9 @@ export const MANUAL_SECTIONS: ManualSection[] = [
         <Steps>
           <li>
             Na aba <strong>Séries</strong>, os gráficos aparecem todos juntos, em grupos: <strong>Matéria orgânica</strong> (COT, C total,
-            HI, OI, Tmax, S1, S2, HI × Tmax), <strong>Elementar</strong> (H/C, O/C, N, S, Van Krevelen), <strong>Gás</strong>,{' '}
-            <strong>Py-GC-MS</strong> e <strong>Pirogramas</strong>. Só aparecem os que têm dados no projeto. Use os botões do alto para ver
-            um grupo só.
+            HI, OI, Tmax, S1, S2, HI × Tmax e <strong>COT (Rock-Eval) × C total (LECO)</strong>, com a reta ajustada e o <strong>R²</strong>
+            ), <strong>Elementar</strong> (H/C, O/C, N, S, Van Krevelen), <strong>Gás</strong>, <strong>Py-GC-MS</strong> e{' '}
+            <strong>Pirogramas</strong>. Só aparecem os que têm dados no projeto. Use os botões do alto para ver um grupo só.
           </li>
           <li>
             Falta algum? <strong>+ Gráfico</strong>: escolha a técnica e o parâmetro e toque em <strong>Adicionar</strong>. Ele vai para{' '}
@@ -433,8 +433,8 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     title: 'Histórico e arquivos originais',
     body: (
       <p>
-        Em <strong>Projeto ▾</strong> → <strong>Histórico</strong> você vê quem importou, validou, editou ou excluiu, e quando. Ao lado, a
-        lista de arquivos importados — toque no nome para baixar o original.
+        Só para o <strong>administrador máximo</strong>: em <strong>Projeto ▾</strong> → <strong>Histórico</strong> ele vê quem importou,
+        validou, editou ou excluiu, e quando. Ao lado, a lista de arquivos importados — toque no nome para baixar o original.
       </p>
     ),
   },

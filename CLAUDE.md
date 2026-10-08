@@ -36,14 +36,15 @@ temperatura. Backend FastAPI+SQLModel (`backend/`), frontend React+Vite (`fronte
 - SQLModel 0.0.47 exige `datetime` com fuso: use `app.db.models.utcnow()`.
 - Toda rota da API sob `/api` (prefixo em `main.py`); `/health` na raiz.
 - Papéis (`app/core/permissions.py`): cargo no Horun — níveis 1–2 coordenador,
-  demais colaborador; excluir projeto só nível 1, digitando o nome. Sem senha.
+  demais colaborador; excluir projeto só nível 1, digitando o nome; histórico só
+  nível 1. Sem senha.
 - Gráficos: cores por significado (`frontend/src/lib/colors.ts`, paleta validada),
   sempre com legenda e "Ver tabela"; nada de eixo duplo.
 
 ## Comandos
 
 ```bash
-cd backend && .venv/Scripts/python -m pytest -q        # 108 passam
+cd backend && .venv/Scripts/python -m pytest -q        # 109 passam
 cd frontend && npx tsc -b && npx oxlint && npm run build
 ```
 

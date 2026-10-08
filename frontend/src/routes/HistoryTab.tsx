@@ -9,15 +9,26 @@ import { useProject } from './ProjectLayout'
 /** Histórico do projeto (quem fez o quê, quando) e arquivos originais importados. */
 export function HistoryTab() {
   const { project } = useProject()
-  const { techniqueLabel } = useApp()
+  const { techniqueLabel, me } = useApp()
+  const allowed = !!me?.can_see_history
   const [events, setEvents] = useState<HistoryEvent[] | null>(null)
   const [files, setFiles] = useState<StoredFileOut[]>([])
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    api.get<HistoryEvent[]>(`/projects/${project.id}/history`).then(setEvents).catch((err) => setError(errorText(err)))
-    api.get<StoredFileOut[]>(`/projects/${project.id}/files`).then(setFiles).catch(() => setFiles([]))
-  }, [project.id])
+    if (!allowed) return
+    api
+      .get<HistoryEvent[]>(`/projects/${project.id}/history`)
+      .then(setEvents)
+      .catch((err) => setError(errorText(err)))
+    api
+      .get<StoredFileOut[]>(`/projects/${project.id}/files`)
+      .then(setFiles)
+      .catch(() => setFiles([]))
+  }, [project.id, allowed])
+
+  // Histórico só para o administrador máximo (08/10/2026)
+  if (!allowed) return <Empty>Só o administrador máximo do Horun vê o histórico.</Empty>
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

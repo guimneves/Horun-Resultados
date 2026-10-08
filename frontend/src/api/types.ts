@@ -8,6 +8,7 @@ export interface Me {
   role: 'coordenador' | 'colaborador'
   is_coordenador: boolean
   can_delete_projects: boolean
+  can_see_history: boolean
   dev_mode: boolean
 }
 

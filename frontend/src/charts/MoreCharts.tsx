@@ -332,3 +332,140 @@ export function CompareBarChart({ samples, column, label }: { samples: SampleRow
     </ChartCard>
   )
 }
+
+// ---------------------------------------------------------------- correlação entre duas medidas
+
+/** Reta de mínimos quadrados y = a·x + b e o R² (1 − SQres/SQtot). */
+export function linearFit(points: { x: number; y: number }[]): { a: number; b: number; r2: number } | null {
+  const n = points.length
+  if (n < 3) return null
+  const mx = points.reduce((s, p) => s + p.x, 0) / n
+  const my = points.reduce((s, p) => s + p.y, 0) / n
+  const sxx = points.reduce((s, p) => s + (p.x - mx) ** 2, 0)
+  const sxy = points.reduce((s, p) => s + (p.x - mx) * (p.y - my), 0)
+  const syy = points.reduce((s, p) => s + (p.y - my) ** 2, 0)
+  if (sxx === 0 || syy === 0) return null
+  const a = sxy / sxx
+  const b = my - a * mx
+  const ssRes = points.reduce((s, p) => s + (p.y - (a * p.x + b)) ** 2, 0)
+  return { a, b, r2: 1 - ssRes / syy }
+}
+
+/** Uma medida contra a outra, amostra por amostra (ex.: COT do Rock-Eval × C
+ * total do LECO), com a reta ajustada, o R² e a linha 1:1 de referência. */
+export function CorrelationChart({
+  samples,
+  x,
+  y,
+  xLabel,
+  yLabel,
+  title,
+  fractionLabel,
+}: {
+  samples: SampleRow[]
+  x: string
+  y: string
+  xLabel: string
+  yLabel: string
+  title: string
+  fractionLabel: (c: string) => string
+}) {
+  const points = samples
+    .filter((s) => s.values[x]?.mean != null && s.values[y]?.mean != null)
+    .map((s) => ({ code: s.code, fraction: s.fraction, x: s.values[x].mean as number, y: s.values[y].mean as number }))
+  const fit = linearFit(points)
+  const fractions = Array.from(new Set(points.map((p) => p.fraction)))
+  const lo = Math.min(0, ...points.map((p) => Math.min(p.x, p.y)))
+  const hi = Math.max(...points.map((p) => Math.max(p.x, p.y)), 1)
+  const xs = points.map((p) => p.x)
+  const x0 = Math.min(...xs)
+  const x1 = Math.max(...xs)
+  const sign = fit && fit.b < 0 ? '−' : '+'
+  const equation = fit ? `y = ${fmt(fit.a)}·x ${sign} ${fmt(Math.abs(fit.b))}` : ''
+  return (
+    <ChartCard
+      title={title}
+      subtitle={
+        fit
+          ? `${equation} · n = ${points.length} amostras · linha cheia: reta ajustada; tracejada: 1:1`
+          : `Precisa de pelo menos 3 amostras com as duas medidas (há ${points.length}).`
+      }
+      empty={points.length ? null : 'Nenhuma amostra tem as duas medidas.'}
+      table={
+        <SimpleTable
+          head={['Amostra', 'Fração', xLabel, yLabel, 'Diferença (y − x)']}
+          rows={points.map((p) => [p.code, fractionLabel(p.fraction), fmt(p.x), fmt(p.y), fmt(p.y - p.x)])}
+        />
+      }
+    >
+      <div className="flex h-full flex-col">
+        {fit && (
+          <p className="mb-1 text-sm font-semibold tabular-nums" data-testid="r2">
+            R² = {fit.r2.toLocaleString('pt-BR', { maximumFractionDigits: 3 })}
+          </p>
+        )}
+        <div className="min-h-0 flex-1">
+          <ResponsiveContainer width="100%" height="100%">
+            <ScatterChart margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
+              <CartesianGrid {...gridProps} />
+              <XAxis
+                type="number"
+                dataKey="x"
+                name={xLabel}
+                domain={[lo, Math.ceil(hi * 1.05)]}
+                {...axisProps}
+                height={40}
+                tickFormatter={(v: number) => fmt(v)}
+                label={{ value: xLabel, position: 'insideBottom', offset: -2, fill: 'var(--color-text-muted)', fontSize: 12 }}
+              />
+              <YAxis
+                type="number"
+                dataKey="y"
+                name={yLabel}
+                domain={[lo, Math.ceil(hi * 1.05)]}
+                {...axisProps}
+                width={52}
+                tickFormatter={(v: number) => fmt(v)}
+                label={{ value: yLabel, angle: -90, position: 'insideLeft', fill: 'var(--color-text-muted)', fontSize: 12 }}
+              />
+              <ZAxis range={[70, 70]} />
+              <ReferenceLine
+                segment={[
+                  { x: lo, y: lo },
+                  { x: hi, y: hi },
+                ]}
+                stroke="var(--color-text-muted)"
+                strokeDasharray="4 4"
+                ifOverflow="hidden"
+              />
+              {fit && (
+                <ReferenceLine
+                  segment={[
+                    { x: x0, y: fit.a * x0 + fit.b },
+                    { x: x1, y: fit.a * x1 + fit.b },
+                  ]}
+                  stroke="var(--color-text)"
+                  strokeWidth={2}
+                  ifOverflow="hidden"
+                />
+              )}
+              <Tooltip {...tooltipStyle} formatter={(v) => fmt(Number(v))} cursor={{ strokeDasharray: '3 3' }} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              {fractions.map((f) => (
+                <Scatter
+                  key={f}
+                  name={fractionLabel(f)}
+                  data={points.filter((p) => p.fraction === f)}
+                  fill={fractionColor(f)}
+                  stroke="var(--color-bg-elevated)"
+                  strokeWidth={2}
+                  isAnimationActive={false}
+                />
+              ))}
+            </ScatterChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </ChartCard>
+  )
+}
