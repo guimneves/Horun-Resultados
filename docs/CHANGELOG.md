@@ -1,5 +1,19 @@
 # Changelog — Horun · Resultados
 
+## Não lançado — 08/10/2026
+### Aba Amostras mais simples (pedido do mantenedor)
+- Lista enxuta por padrão: amostra, fração, temperatura, técnicas com resultado
+  (etiquetas) e validade — sem colunas de números.
+- Filtros (fração, técnica, validade, médias, padrões) recolhidos no botão
+  **Filtros**, que mostra quantos estão ativos e tem **Limpar filtros**.
+- Visão **Valores** = a tabela antiga com uma coluna por parâmetro e **Colunas**;
+  a escolha Lista/Valores fica lembrada no navegador.
+- **Mais**: Selecionar várias (coordenador; as caixinhas só aparecem nesse modo),
+  Criar várias, Exportar CSV/XLSX.
+- Detalhe da amostra: **Resultados** com um cartão por técnica (parâmetros
+  principais, média ± DP); "Todos os valores e medições" e "Nomes lembrados"
+  recolhidos.
+
 ## Não lançado — 07/10/2026
 
 ### Seleção de várias amostras (pedido do mantenedor)
