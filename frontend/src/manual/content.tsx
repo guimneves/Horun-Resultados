@@ -409,9 +409,9 @@ export const MANUAL_SECTIONS: ManualSection[] = [
             navegador). Lá ficam três gráficos separados, em gramas × temperatura: <strong>Massa de óleo</strong>,{' '}
             <strong>Massa de gás</strong> e <strong>Massa de betume</strong>, com a média ± desvio das réplicas de cada amostra (pontos
             cheios) e cada réplica (pontos vazados); valores 0 ou vazios não entram. Com mais de uma atmosfera, cada uma ganha uma linha com
-            traço diferente. Os dados vêm de <strong>Condições experimentais</strong> (gás: planilha ou valor editado). Abaixo, os gráficos
-            do gás que antes ficavam no grupo Gás: massa de gás gerada (só o valor da planilha), gás por massa de rocha, wetness e
-            composição do gás.
+            traço diferente. Os dados vêm de <strong>Condições experimentais</strong> (gás: planilha ou valor editado — o valor editado vale
+            em todos os gráficos, tabelas e exportações). Abaixo, os gráficos do gás que antes ficavam no grupo Gás: massa de gás gerada,
+            gás por massa de rocha, wetness e composição do gás.
           </li>
           <li>
             Falta algum? <strong>+ Gráfico</strong>: escolha a técnica e o parâmetro e toque em <strong>Adicionar</strong>. Ele vai para{' '}

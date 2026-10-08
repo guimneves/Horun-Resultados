@@ -74,7 +74,53 @@ def load(session: Session, project_id: int, sample_ids: list[int] | None = None,
     for start in range(0, len(ids), 500):
         chunk = ids[start : start + 500]
         values.extend(session.exec(select(AnalysisValue).where(AnalysisValue.analysis_id.in_(chunk))))  # type: ignore[union-attr]
-    return Loaded(samples, experiments, analyses, values)
+    return Loaded(samples, experiments, analyses, _with_edited_gas(samples, experiments, analyses, values))
+
+
+def _with_edited_gas(
+    samples: dict[int, Sample], experiments: dict[int, Experiment], analyses: dict[int, Analysis], values: list[AnalysisValue]
+) -> list[AnalysisValue]:
+    """Massa de gás digitada em Condições experimentais (`Experiment.gas_mass_g`)
+    vale em TODO lugar (decisão de 08/10/2026): substitui o `gas_mass_g` da
+    planilha nas medições `gas_balanco` da corrida e recalcula o gás por massa
+    de rocha. Cópias soltas — o valor importado no banco não muda."""
+    edited: dict[int, float] = {}
+    for a in analyses.values():
+        if a.technique != "gas_balanco":
+            continue
+        exp_id = samples[a.sample_id].experiment_id
+        exp = experiments.get(exp_id) if exp_id else None
+        if exp is not None and exp.gas_mass_g is not None:
+            edited[a.id] = exp.gas_mass_g
+    if not edited:
+        return values
+    initial: dict[tuple[int, int | None], float] = {}
+    for v in values:
+        if v.analysis_id in edited and v.parameter == "initial_mass_g" and v.value:
+            initial[(v.analysis_id, v.replicate)] = v.value
+    out: list[AnalysisValue] = []
+    seen: set[int] = set()
+    for v in values:
+        if v.analysis_id not in edited or v.parameter not in ("gas_mass_g", "gas_yield_mg_g"):
+            out.append(v)
+            continue
+        gas = edited[v.analysis_id]
+        if v.parameter == "gas_mass_g":
+            seen.add(v.analysis_id)
+            out.append(AnalysisValue(analysis_id=v.analysis_id, parameter="gas_mass_g", value=gas, unit=v.unit, replicate=v.replicate))
+        else:
+            mass = initial.get((v.analysis_id, v.replicate)) or initial.get((v.analysis_id, None))
+            if mass:
+                out.append(AnalysisValue(analysis_id=v.analysis_id, parameter="gas_yield_mg_g", value=1000 * gas / mass, unit=v.unit, replicate=v.replicate))
+    for analysis_id, gas in edited.items():
+        if analysis_id in seen:
+            continue
+        # planilha sem "Massa de gás gerada" calculada: o valor digitado entra
+        out.append(AnalysisValue(analysis_id=analysis_id, parameter="gas_mass_g", value=gas, unit="g"))
+        mass = initial.get((analysis_id, None))
+        if mass and not any(v.analysis_id == analysis_id and v.parameter == "gas_yield_mg_g" for v in out):
+            out.append(AnalysisValue(analysis_id=analysis_id, parameter="gas_yield_mg_g", value=1000 * gas / mass, unit="mg/g"))
+    return out
 
 
 def _values_by_sample(data: Loaded, mode: str) -> dict[int, dict[str, list[float]]]:

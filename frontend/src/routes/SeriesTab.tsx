@@ -408,8 +408,8 @@ export function SeriesTab() {
           )}
           <p className="mt-2 text-xs" style={muted}>
             Massas de óleo, gás e betume: digitadas por réplica em Condições experimentais (gás: o da planilha de cálculo de gás, ou o valor editado). Cada
-            ponto cheio é a média ± desvio das réplicas da amostra (ex.: HP300NA, NB, NC → HP300N); valores 0 ou vazios não entram. "Massa de gás gerada ×
-            temperatura" usa só o valor importado da planilha.
+            ponto cheio é a média ± desvio das réplicas da amostra (ex.: HP300NA, NB, NC → HP300N); valores 0 ou vazios não entram. Todos os gráficos de gás
+            (inclusive "Massa de gás gerada" e "gás por massa de rocha") usam o valor editado quando houver.
           </p>
         </section>
       )}

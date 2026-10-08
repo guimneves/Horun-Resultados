@@ -107,3 +107,33 @@ def test_masses_respect_project_membership(client, project):
     add_members(client, pid, outsider)
     assert client.get(f"projects/{pid}/experiments/masses", headers=outsider).status_code == 200
     assert client.get(f"projects/{pid}/experiments/masses", headers=COORD).status_code == 200
+
+
+def test_edited_gas_used_everywhere(client, project):
+    """Massa de gás digitada vale também na tabela, nas séries e no gás por massa de rocha."""
+    pid = project["id"]
+    _import_gas(client, pid, "HP300NA", 1.5)
+    exp = _exps(client, pid)["HP300NA"]
+
+    def gas_row():
+        rows = client.get(f"projects/{pid}/samples", headers=PESQ).json()["samples"]
+        return next(r for r in rows if r["experiment_id"] == exp["id"] and "gas_balanco.gas_mass_g" in r["values"])
+
+    before = gas_row()["values"]
+    assert before["gas_balanco.gas_mass_g"]["mean"] == pytest.approx(1.5)
+    initial = before["gas_balanco.initial_mass_g"]["mean"]
+
+    client.patch(f"projects/{pid}/experiments/{exp['id']}", json={"gas_mass_g": 3.0}, headers=PESQ)
+    after = gas_row()
+    assert after["values"]["gas_balanco.gas_mass_g"]["mean"] == pytest.approx(3.0)
+    assert after["values"]["gas_balanco.gas_yield_mg_g"]["mean"] == pytest.approx(1000 * 3.0 / initial)
+    detail = client.get(f"projects/{pid}/samples/{after['id']}", headers=PESQ).json()
+    assert detail["values"]["gas_balanco.gas_mass_g"]["mean"] == pytest.approx(3.0)
+
+    series = client.get(f"projects/{pid}/series", params={"technique": "gas_balanco", "parameter": "gas_mass_g"}, headers=PESQ).json()
+    means = [p["mean"] for s in series["series"] for p in s["points"]]
+    assert means == [pytest.approx(3.0)]
+
+    # o valor importado continua guardado: limpar a edição volta ao da planilha
+    client.patch(f"projects/{pid}/experiments/{exp['id']}", json={"gas_mass_g": None}, headers=PESQ)
+    assert gas_row()["values"]["gas_balanco.gas_mass_g"]["mean"] == pytest.approx(1.5)

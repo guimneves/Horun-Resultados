@@ -1,6 +1,12 @@
 # Changelog — Horun · Resultados
 
 ## Não lançado — 08/10/2026
+### Massa de gás editada vale em todo lugar (pedido do mantenedor)
+- O valor digitado em Condições experimentais substitui o da planilha em
+  tabelas, detalhe da amostra, séries ("Massa de gás gerada", "gás por massa
+  de rocha", recalculado) e exportação (`results._with_edited_gas`, cópias em
+  memória — o valor importado continua no banco e volta ao limpar a edição).
+
 ### Pessoas do projeto: lista vinda do Horun Core
 - `services/directory.py` busca a lista em `GET /internal/modules/resultados/users`
   do Core (rota nova do Core, mesma chave dos avisos: `HORUN_CORE_URL` +
