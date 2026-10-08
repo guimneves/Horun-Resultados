@@ -399,6 +399,11 @@ export const MANUAL_SECTIONS: ManualSection[] = [
             <strong>LECO SC832</strong>, <strong>CHNSO · EuroVector EA</strong>).
           </li>
           <li>
+            Nos gráficos que não são por temperatura (HI × Tmax, Van Krevelen, COT × C total), cada ponto traz o nome da amostra e, ao lado
+            e em cinza, a réplica do experimento (ex.: HP300N <span style={{ color: 'var(--color-text-muted)' }}>A</span>). Toque no ponto
+            para ver os valores.
+          </li>
+          <li>
             Em <strong>Opções</strong> → <strong>Tratar apenas</strong>, escolha <strong>Só as extraídas</strong> ou{' '}
             <strong>Só as normais, sem extração</strong> (H, SE, HP). Gás e rocha original continuam aparecendo. Um aviso no alto lembra
             quando o filtro está ligado.

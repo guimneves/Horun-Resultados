@@ -24,6 +24,7 @@ import { fractionColor } from '../lib/colors'
 import { fmt, fmtTemp } from '../lib/format'
 import { axisProps, ChartCard, gridProps, SimpleTable, tooltipStyle } from './ChartCard'
 import { AlkaneChart, GasCompositionChart, PyrogramChart } from './MoreCharts'
+import { pointId, pointLabels, pointText, PointTooltip } from './PointLabels'
 
 // Gráficos do detalhe de UMA amostra: as curvas dela e onde ela fica em
 // relação às outras amostras do projeto. A amostra aberta sempre em destaque
@@ -110,7 +111,7 @@ function ProjectScatter({
   yLabel: string
   refLinesX?: number[]
 }) {
-  const point = (s: SampleRow) => ({ code: s.code, x: s.values[x]?.mean as number, y: s.values[y]?.mean as number })
+  const point = (s: SampleRow) => ({ ...pointId(s), x: s.values[x]?.mean as number, y: s.values[y]?.mean as number })
   const has = (s: SampleRow) => s.values[x]?.mean != null && s.values[y]?.mean != null
   if (detail.values[x]?.mean == null || detail.values[y]?.mean == null) return null
   const me = [point(detail)]
@@ -122,7 +123,10 @@ function ProjectScatter({
       sources={[x.split('.')[0], y.split('.')[0]]}
       filename={`${detail.code}-${title}`}
       table={
-        <SimpleTable head={['Amostra', xLabel, yLabel]} rows={[...me, ...others].map((p, i) => [i === 0 ? `${p.code} (esta)` : p.code, fmt(p.x), fmt(p.y)])} />
+        <SimpleTable
+          head={['Amostra', xLabel, yLabel]}
+          rows={[...me, ...others].map((p, i) => [i === 0 ? `${pointText(p)} (esta)` : pointText(p), fmt(p.x), fmt(p.y)])}
+        />
       }
     >
       <ResponsiveContainer width="100%" height="100%">
@@ -134,14 +138,11 @@ function ProjectScatter({
           <XAxis type="number" dataKey="x" name={xLabel} domain={['auto', 'auto']} {...axisProps} height={36} tickFormatter={(v: number) => fmt(v)} />
           <YAxis type="number" dataKey="y" name={yLabel} domain={['auto', 'auto']} {...axisProps} width={52} tickFormatter={(v: number) => fmt(v)} />
           <ZAxis range={[60, 60]} />
-          <Tooltip
-            {...tooltipStyle}
-            formatter={(v, n) => [fmt(Number(v)), n === 'x' ? xLabel : n === 'y' ? yLabel : String(n)]}
-            labelFormatter={() => ''}
-            cursor={{ strokeDasharray: '3 3' }}
-          />
+          <Tooltip content={<PointTooltip xKey="x" yKey="y" xLabel={xLabel} yLabel={yLabel} />} cursor={{ strokeDasharray: '3 3' }} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          <Scatter name="Outras amostras do projeto" data={others} fill={OTHERS} fillOpacity={0.6} isAnimationActive={false} />
+          <Scatter name="Outras amostras do projeto" data={others} fill={OTHERS} fillOpacity={0.6} isAnimationActive={false}>
+            {pointLabels(others)}
+          </Scatter>
           <Scatter
             name={detail.code}
             data={me}

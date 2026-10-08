@@ -19,6 +19,7 @@ import type { AnalysisData, PyPeaks, PyroData, SampleRow } from '../api/types'
 import { dashFor, fractionColor, GAS_COLORS, seriesColor } from '../lib/colors'
 import { fmt, fmtMeanSd } from '../lib/format'
 import { axisProps, ChartCard, gridProps, SimpleTable, tooltipStyle } from './ChartCard'
+import { pointId, pointLabels, pointText, PointTooltip } from './PointLabels'
 
 // ---------------------------------------------------------------- HI × Tmax
 
@@ -35,7 +36,7 @@ const KEROGEN_BANDS = [
 export function HiTmaxChart({ samples, fractionLabel }: { samples: SampleRow[]; fractionLabel: (c: string) => string }) {
   const points = samples
     .filter((s) => s.values['rockeval.HI']?.mean != null && s.values['rockeval.Tmax']?.mean != null)
-    .map((s) => ({ code: s.code, fraction: s.fraction, hi: s.values['rockeval.HI'].mean as number, tmax: s.values['rockeval.Tmax'].mean as number }))
+    .map((s) => ({ ...pointId(s), fraction: s.fraction, hi: s.values['rockeval.HI'].mean as number, tmax: s.values['rockeval.Tmax'].mean as number }))
   const fractions = Array.from(new Set(points.map((p) => p.fraction)))
   return (
     <ChartCard
@@ -44,7 +45,10 @@ export function HiTmaxChart({ samples, fractionLabel }: { samples: SampleRow[]; 
       subtitle="Campos de querogênio aproximados; linhas em Tmax 435 e 470 °C (janela de óleo)"
       empty={points.length ? null : 'Sem amostras com HI e Tmax (Rock-Eval).'}
       table={
-        <SimpleTable head={['Amostra', 'Fração', 'Tmax (°C)', 'HI']} rows={points.map((p) => [p.code, fractionLabel(p.fraction), fmt(p.tmax), fmt(p.hi)])} />
+        <SimpleTable
+          head={['Amostra', 'Fração', 'Tmax (°C)', 'HI']}
+          rows={points.map((p) => [pointText(p), fractionLabel(p.fraction), fmt(p.tmax), fmt(p.hi)])}
+        />
       }
     >
       <ResponsiveContainer width="100%" height="100%">
@@ -66,19 +70,24 @@ export function HiTmaxChart({ samples, fractionLabel }: { samples: SampleRow[]; 
           <XAxis type="number" dataKey="tmax" name="Tmax" unit=" °C" domain={['dataMin - 10', 'dataMax + 10']} {...axisProps} height={36} />
           <YAxis type="number" dataKey="hi" name="HI" domain={[0, 'auto']} {...axisProps} width={48} />
           <ZAxis range={[70, 70]} />
-          <Tooltip {...tooltipStyle} formatter={(v) => fmt(Number(v))} cursor={{ strokeDasharray: '3 3' }} />
+          <Tooltip content={<PointTooltip xKey="tmax" yKey="hi" xLabel="Tmax (°C)" yLabel="HI" />} cursor={{ strokeDasharray: '3 3' }} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          {fractions.map((f) => (
-            <Scatter
-              key={f}
-              name={fractionLabel(f)}
-              data={points.filter((p) => p.fraction === f)}
-              fill={fractionColor(f)}
-              stroke="var(--color-bg-elevated)"
-              strokeWidth={2}
-              isAnimationActive={false}
-            />
-          ))}
+          {fractions.map((f) => {
+            const data = points.filter((p) => p.fraction === f)
+            return (
+              <Scatter
+                key={f}
+                name={fractionLabel(f)}
+                data={data}
+                fill={fractionColor(f)}
+                stroke="var(--color-bg-elevated)"
+                strokeWidth={2}
+                isAnimationActive={false}
+              >
+                {pointLabels(data)}
+              </Scatter>
+            )
+          })}
         </ScatterChart>
       </ResponsiveContainer>
     </ChartCard>
@@ -277,7 +286,7 @@ export function AlkaneChart({ data }: { data: AnalysisData<PyPeaks>[] }) {
 export function VanKrevelenChart({ samples, fractionLabel }: { samples: SampleRow[]; fractionLabel: (c: string) => string }) {
   const points = samples
     .filter((s) => s.values['chnso.HC_at']?.mean != null && s.values['chnso.OC_at']?.mean != null)
-    .map((s) => ({ code: s.code, fraction: s.fraction, hc: s.values['chnso.HC_at'].mean as number, oc: s.values['chnso.OC_at'].mean as number }))
+    .map((s) => ({ ...pointId(s), fraction: s.fraction, hc: s.values['chnso.HC_at'].mean as number, oc: s.values['chnso.OC_at'].mean as number }))
   const fractions = Array.from(new Set(points.map((p) => p.fraction)))
   return (
     <ChartCard
@@ -285,7 +294,9 @@ export function VanKrevelenChart({ samples, fractionLabel }: { samples: SampleRo
       sources={['chnso']}
       subtitle="Razões atômicas, por fração"
       empty={points.length ? null : 'Sem amostras com H/C e O/C (CHNSO com oxigênio).'}
-      table={<SimpleTable head={['Amostra', 'Fração', 'O/C', 'H/C']} rows={points.map((p) => [p.code, fractionLabel(p.fraction), fmt(p.oc), fmt(p.hc)])} />}
+      table={
+        <SimpleTable head={['Amostra', 'Fração', 'O/C', 'H/C']} rows={points.map((p) => [pointText(p), fractionLabel(p.fraction), fmt(p.oc), fmt(p.hc)])} />
+      }
     >
       <ResponsiveContainer width="100%" height="100%">
         <ScatterChart margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
@@ -293,19 +304,24 @@ export function VanKrevelenChart({ samples, fractionLabel }: { samples: SampleRo
           <XAxis type="number" dataKey="oc" name="O/C" domain={[0, 'auto']} {...axisProps} height={36} tickFormatter={(v: number) => fmt(v)} />
           <YAxis type="number" dataKey="hc" name="H/C" domain={[0, 'auto']} {...axisProps} width={48} tickFormatter={(v: number) => fmt(v)} />
           <ZAxis range={[70, 70]} />
-          <Tooltip {...tooltipStyle} formatter={(v) => fmt(Number(v))} cursor={{ strokeDasharray: '3 3' }} />
+          <Tooltip content={<PointTooltip xKey="oc" yKey="hc" xLabel="O/C" yLabel="H/C" />} cursor={{ strokeDasharray: '3 3' }} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          {fractions.map((f) => (
-            <Scatter
-              key={f}
-              name={fractionLabel(f)}
-              data={points.filter((p) => p.fraction === f)}
-              fill={fractionColor(f)}
-              stroke="var(--color-bg-elevated)"
-              strokeWidth={2}
-              isAnimationActive={false}
-            />
-          ))}
+          {fractions.map((f) => {
+            const data = points.filter((p) => p.fraction === f)
+            return (
+              <Scatter
+                key={f}
+                name={fractionLabel(f)}
+                data={data}
+                fill={fractionColor(f)}
+                stroke="var(--color-bg-elevated)"
+                strokeWidth={2}
+                isAnimationActive={false}
+              >
+                {pointLabels(data)}
+              </Scatter>
+            )
+          })}
         </ScatterChart>
       </ResponsiveContainer>
     </ChartCard>
@@ -317,14 +333,14 @@ export function VanKrevelenChart({ samples, fractionLabel }: { samples: SampleRo
 export function CompareBarChart({ samples, column, label }: { samples: SampleRow[]; column: string; label: string }) {
   const rows = samples
     .filter((s) => s.values[column]?.mean != null)
-    .map((s) => ({ code: s.code, mean: s.values[column].mean as number, fraction: s.fraction, stat: s.values[column] }))
+    .map((s) => ({ ...pointId(s), mean: s.values[column].mean as number, fraction: s.fraction, stat: s.values[column] }))
   return (
     <ChartCard
       title={label}
       sources={[column.split('.')[0]]}
       subtitle="Média ± desvio de cada amostra escolhida"
       empty={rows.length ? null : 'Nenhuma das amostras escolhidas tem este parâmetro.'}
-      table={<SimpleTable head={['Amostra', label]} rows={rows.map((r) => [r.code, fmtMeanSd(r.stat)])} />}
+      table={<SimpleTable head={['Amostra', label]} rows={rows.map((r) => [pointText(r), fmtMeanSd(r.stat)])} />}
     >
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={rows} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
@@ -378,7 +394,7 @@ export function CorrelationChart({
 }) {
   const points = samples
     .filter((s) => s.values[x]?.mean != null && s.values[y]?.mean != null)
-    .map((s) => ({ code: s.code, fraction: s.fraction, x: s.values[x].mean as number, y: s.values[y].mean as number }))
+    .map((s) => ({ ...pointId(s), fraction: s.fraction, x: s.values[x].mean as number, y: s.values[y].mean as number }))
   const fit = linearFit(points)
   const fractions = Array.from(new Set(points.map((p) => p.fraction)))
   const lo = Math.min(0, ...points.map((p) => Math.min(p.x, p.y)))
@@ -401,7 +417,7 @@ export function CorrelationChart({
       table={
         <SimpleTable
           head={['Amostra', 'Fração', xLabel, yLabel, 'Diferença (y − x)']}
-          rows={points.map((p) => [p.code, fractionLabel(p.fraction), fmt(p.x), fmt(p.y), fmt(p.y - p.x)])}
+          rows={points.map((p) => [pointText(p), fractionLabel(p.fraction), fmt(p.x), fmt(p.y), fmt(p.y - p.x)])}
         />
       }
     >
@@ -456,19 +472,24 @@ export function CorrelationChart({
                   ifOverflow="hidden"
                 />
               )}
-              <Tooltip {...tooltipStyle} formatter={(v) => fmt(Number(v))} cursor={{ strokeDasharray: '3 3' }} />
+              <Tooltip content={<PointTooltip xKey="x" yKey="y" xLabel={xLabel} yLabel={yLabel} />} cursor={{ strokeDasharray: '3 3' }} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              {fractions.map((f) => (
-                <Scatter
-                  key={f}
-                  name={fractionLabel(f)}
-                  data={points.filter((p) => p.fraction === f)}
-                  fill={fractionColor(f)}
-                  stroke="var(--color-bg-elevated)"
-                  strokeWidth={2}
-                  isAnimationActive={false}
-                />
-              ))}
+              {fractions.map((f) => {
+                const data = points.filter((p) => p.fraction === f)
+                return (
+                  <Scatter
+                    key={f}
+                    name={fractionLabel(f)}
+                    data={data}
+                    fill={fractionColor(f)}
+                    stroke="var(--color-bg-elevated)"
+                    strokeWidth={2}
+                    isAnimationActive={false}
+                  >
+                    {pointLabels(data)}
+                  </Scatter>
+                )
+              })}
             </ScatterChart>
           </ResponsiveContainer>
         </div>
