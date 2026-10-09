@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import io
 
-from app.parsers import chnso, gc, leco, pygcms, rockeval
+from app.parsers import chnso, gc, leco, leco_ri, pygcms, rockeval
 from app.parsers.common import NotResultsFile, ParseError, ParseResult
 from app.services.derived import add_derived
 
@@ -59,6 +59,8 @@ def _parse_xlsx(content: bytes, filename: str, path_hint: str) -> ParseResult:
             return gc.parse_detector(wb, upper["DADOS TCD"], filename, path_hint)
         if pygcms.is_pygcms_workbook(wb):
             return pygcms.parse_workbook(wb, filename)
+        if leco_ri.is_ri_workbook(wb):
+            return leco_ri.parse_workbook(wb, filename)
         first_rows = " ".join(
             str(c) for ws in wb.worksheets[:1] for r in ws.iter_rows(min_row=1, max_row=6, values_only=True) for c in r if c
         )
@@ -69,7 +71,8 @@ def _parse_xlsx(content: bytes, filename: str, path_hint: str) -> ParseResult:
             )
         raise ParseError(
             "Planilha não reconhecida. Formatos aceitos: \"Dados FID\", \"Dados TCD\", "
-            "\"Planilha cálculo gás\" (aba \"Dados FID-TCD\") e Py-GC-MS (uma aba por amostra)."
+            "\"Planilha cálculo gás\" (aba \"Dados FID-TCD\"), Py-GC-MS (uma aba por amostra) e "
+            "LECO - Resíduo Insolúvel (colunas Amostra, RI1, RI2...)."
         )
     finally:
         wb.close()

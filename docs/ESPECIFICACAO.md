@@ -107,6 +107,16 @@ Identificação`; linhas seguintes = picos (n-C10..., Pristano, Fitano...).
 Derivados úteis: Pristano/Fitano, Pr/n-C17, Fi/n-C18, distribuição de
 n-alcanos, CPI quando houver os pares.
 
+### 3.5b LECO - Resíduo Insolúvel (planilha .xlsx do laboratório, 09/10/2026)
+Uma aba, cabeçalho `Amostra | Cod. Experimento | RI1 | RI2 | RI3 | Média`
+(achado pelo rótulo nas primeiras linhas; quantas colunas `RIn` vierem).
+Cada `RIn` = réplica do parâmetro `leco_ri.RI` (unidade como na planilha — a
+confirmar); a coluna Média (fórmula) é ignorada. `Cod. Experimento` vira a
+sugestão de experimento (só se for código de verdade — "Rocha virgem" não).
+Linhas sem RI são puladas com aviso. Sugestões de código: "… - SEM EXTRAÇÃO"
+→ `SE`; fração separada por `_`/`.`/espaço ("HP300NA_E") → junta. Leitor:
+`parsers/leco_ri.py`.
+
 ### 3.6 Tabela de literatura (opcional)
 Planilha de um artigo de referência = dados publicados (parâmetros por
 temperatura). Suportar, de forma genérica, **importar uma tabela de referência**

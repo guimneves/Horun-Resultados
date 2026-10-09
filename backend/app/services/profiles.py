@@ -48,6 +48,7 @@ class ImportRecipe:
 _PARSER_OF = {
     "chnso": "chnso",
     "leco": "leco",
+    "leco_ri": "leco_ri",
     "rockeval": "rockeval",
     "gc_fid": "gc",
     "gc_tcd": "gc",

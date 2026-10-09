@@ -1,6 +1,6 @@
 # Horun · Resultados — guia para o Claude Code
 
-Módulo do Horun que reúne os resultados das análises (CHNSO, LECO, Rock-Eval,
+Módulo do Horun que reúne os resultados das análises (CHNSO, LECO, LECO - Resíduo Insolúvel, Rock-Eval,
 GC-FID/TCD, balanço de gás, Py-GC-MS) por projeto, com tabelas e séries por
 temperatura. Backend FastAPI+SQLModel (`backend/`), frontend React+Vite (`frontend/`).
 
@@ -55,7 +55,7 @@ temperatura. Backend FastAPI+SQLModel (`backend/`), frontend React+Vite (`fronte
 ## Comandos
 
 ```bash
-cd backend && .venv/Scripts/python -m pytest -q        # 148 passam
+cd backend && .venv/Scripts/python -m pytest -q        # 155 passam
 cd frontend && npx tsc -b && npx oxlint && npm run build
 ```
 

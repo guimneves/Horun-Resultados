@@ -44,6 +44,15 @@ TECHNIQUES: dict[str, dict] = {
             Param("mass", "Massa", "g"),
         ],
     },
+    # Planilha do laboratório (Amostra | Cod. Experimento | RI1 | RI2 | RI3 | Média),
+    # parsers/leco_ri.py. Unidade como vem na planilha (a confirmar com o laboratório).
+    "leco_ri": {
+        "label": "LECO - Resíduo Insolúvel",
+        "instrument": "LECO",
+        "params": [
+            Param("RI", "Resíduo insolúvel", "", True),
+        ],
+    },
     "rockeval": {
         "label": "Rock-Eval",
         "instrument": "Rock-Eval 7S",

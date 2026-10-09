@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useNavigate, useOutletContext, useParams } f
 import { api, errorText } from '../api/client'
 import type { Project } from '../api/types'
 import { PROJECT_TABS } from '../components/Shell'
+import { ExportReportModal } from '../components/ExportReport'
 import { ProjectMembersModal } from '../components/ProjectMembers'
 import { Button, Dropdown, ErrorBox, Field, inputClass, inputStyle, MenuItem, Modal, muted } from '../components/ui'
 import { useApp } from '../context/AppContext'
@@ -67,6 +68,7 @@ export function ProjectLayout() {
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [members, setMembers] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const project = projects?.find((p) => p.id === Number(projectId))
 
@@ -93,7 +95,7 @@ export function ProjectLayout() {
 
   return (
     <div className="p-3 md:p-6">
-      {/* Cabeçalho enxuto: nome à esquerda; à direita só Importar e o menu do projeto. */}
+      {/* Cabeçalho enxuto: nome à esquerda; à direita Importar, Exportar e o menu do projeto. */}
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <h1 className="flex items-center gap-2 text-xl font-semibold md:text-2xl">
@@ -121,6 +123,15 @@ export function ProjectLayout() {
               Importar resultados
             </Link>
           )}
+          {/* Exportar: relatório em Excel — todos do projeto podem baixar */}
+          <button
+            type="button"
+            onClick={() => setExporting(true)}
+            className="inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium"
+            style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)', color: 'var(--color-text)' }}
+          >
+            Exportar
+          </button>
           {/* "Pessoas do projeto" para todos: quem cuida adiciona/remove, os demais só consultam */}
           {me && (
             <Dropdown label="Projeto" ariaLabel="Ações do projeto">
@@ -184,6 +195,7 @@ export function ProjectLayout() {
       )}
       {deleting && <DeleteProject project={project} onClose={() => setDeleting(false)} />}
       {members && <ProjectMembersModal project={project} onClose={() => setMembers(false)} />}
+      {exporting && <ExportReportModal project={project} onClose={() => setExporting(false)} />}
     </div>
   )
 }

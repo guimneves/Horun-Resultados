@@ -106,4 +106,4 @@ def test_export_csv_and_xlsx(client, loaded):
 
 def test_catalog_lists_techniques(client):
     keys = [t["key"] for t in client.get("catalog", headers=PESQ).json()]
-    assert keys == ["chnso", "leco", "rockeval", "gc_fid", "gc_tcd", "gas_balanco", "pygcms"]
+    assert keys == ["chnso", "leco", "leco_ri", "rockeval", "gc_fid", "gc_tcd", "gas_balanco", "pygcms"]

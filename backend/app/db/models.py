@@ -137,7 +137,7 @@ class Analysis(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     project_id: int = Field(foreign_key="project.id", index=True)
     sample_id: int = Field(foreign_key="sample.id", index=True)
-    technique: str = Field(index=True)  # chnso | leco | rockeval | gc_fid | gc_tcd | gas_balanco | pygcms
+    technique: str = Field(index=True)  # chnso | leco | leco_ri | rockeval | gc_fid | gc_tcd | gas_balanco | pygcms
     # Chave natural da medição no arquivo (ex. "chnso:<corrida>:<posição>") —
     # reimportar a mesma medição atualiza em vez de duplicar.
     source_key: str

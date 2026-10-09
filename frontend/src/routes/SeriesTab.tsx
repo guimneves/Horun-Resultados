@@ -21,7 +21,7 @@ const SECTIONS: { id: string; label: string; series: string[]; extras: Extra[] }
     series: ['rockeval.TOC', 'leco.C', 'chnso.C', 'rockeval.HI', 'rockeval.OI', 'rockeval.Tmax', 'rockeval.S1', 'rockeval.S2', 'rockeval.PI'],
     extras: ['toc_leco', 'hi_tmax'],
   },
-  { id: 'el', label: 'Elementar', series: ['chnso.HC_at', 'chnso.OC_at', 'chnso.H', 'chnso.N', 'chnso.S', 'leco.S'], extras: ['vk'] },
+  { id: 'el', label: 'Elementar', series: ['chnso.HC_at', 'chnso.OC_at', 'chnso.H', 'chnso.N', 'chnso.S', 'leco.S', 'leco_ri.RI'], extras: ['vk'] },
   { id: 'py', label: 'Py-GC-MS', series: ['pygcms.pr_ph', 'pygcms.pr_nc17', 'pygcms.ph_nc18', 'pygcms.cpi'], extras: ['alkanes'] },
   { id: 'pyro', label: 'Pirogramas', series: [], extras: ['pyro'] },
 ]

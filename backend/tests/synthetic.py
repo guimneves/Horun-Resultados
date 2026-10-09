@@ -266,3 +266,17 @@ def zip_of(files: dict[str, bytes]) -> bytes:
         for name, content in files.items():
             zf.writestr(name, content)
     return buf.getvalue()
+
+
+def leco_ri_xlsx(rows: list[tuple]) -> bytes:
+    """Planilha do Resíduo Insolúvel: Amostra | Cod. Experimento | RI1 | RI2 | RI3 | Média
+    (a Média vem como fórmula, como no arquivo do laboratório)."""
+    import openpyxl
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Planilha1"
+    ws.append(["Amostra", "Cod. Experimento", "RI1", "RI2", "RI3", "Média"])
+    for i, row in enumerate(rows, start=2):
+        ws.append([*row, f"=AVERAGE(C{i}:E{i})"])
+    return _xlsx(wb)

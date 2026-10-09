@@ -1,5 +1,22 @@
 # Changelog — Horun · Resultados
 
+## Não lançado — 09/10/2026
+### Novo modelo de importação: LECO - Resíduo Insolúvel (pedido do mantenedor)
+- Técnica `leco_ri` ("LECO - Resíduo Insolúvel", parâmetro `RI`) e leitor
+  `parsers/leco_ri.py` (ESPECIFICACAO 3.5b): RI1..RIn = réplicas, média
+  recalculada, `Cod. Experimento` como sugestão de experimento, sugestões de
+  código para "SEM EXTRAÇÃO" e fração separada. Escolha na Importação e série
+  em Séries → Elementar. Testes sintéticos: `tests/test_leco_ri_and_report.py`.
+
+### Botão "Exportar" — relatório em Excel (pedido do mantenedor)
+- Ao lado de "Importar resultados", para todos do projeto. A pessoa escolhe
+  técnicas, amostras e validade. `POST /projects/{id}/export/report`
+  (`services/report.py`): aba "Resumo geral" (projeto, quem/quando, quadro por
+  técnica, média e DP dos parâmetros principais por amostra, formatada para
+  apresentar) + uma aba por técnica (médias de todos os parâmetros e todas as
+  réplicas, com arquivo, data e validade). Usa os mesmos valores das telas
+  (inclusive a massa de gás editada).
+
 ## Não lançado — 08/10/2026
 ### Massa de gás editada vale em todo lugar (pedido do mantenedor)
 - O valor digitado em Condições experimentais substitui o da planilha em

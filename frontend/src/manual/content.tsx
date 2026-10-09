@@ -184,7 +184,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
             pesquisadores e coordenadores importam.
           </li>
           <li>
-            Em <strong>1. Qual análise você vai importar?</strong>, toque no tipo: <strong>CHNSO</strong>, <strong>LECO</strong>,{' '}
+            Em <strong>1. Qual análise você vai importar?</strong>, toque no tipo: <strong>CHNSO</strong>, <strong>LECO</strong>, <strong>LECO - Resíduo Insolúvel</strong>,{' '}
             <strong>Rock-Eval</strong>, <strong>GC-FID (gás)</strong>, <strong>GC-TCD (gás)</strong>, <strong>Balanço de gás</strong> ou{' '}
             <strong>Py-GC-MS</strong> (ou <strong>Vários / não sei</strong> para mandar arquivos misturados ou um .zip).
           </li>
@@ -237,6 +237,14 @@ export const MANUAL_SECTIONS: ManualSection[] = [
           <li>
             <strong>LECO</strong>: o <strong>CSV</strong> exportado do Cornerstone. O PDF e o .zip de diagnóstico do aparelho não são
             resultados.
+          </li>
+          <li>
+            <strong>LECO - Resíduo Insolúvel</strong>: a planilha com as colunas <strong>Amostra</strong>,{' '}
+            <strong>Cod. Experimento</strong>, <strong>RI1</strong>, <strong>RI2</strong>, <strong>RI3</strong> (pode ter mais réplicas) e{' '}
+            <strong>Média</strong>. Cada RI vira uma réplica; a média e o desvio são recalculados (a coluna Média da planilha não é
+            usada). O <strong>Cod. Experimento</strong> vira o experimento sugerido quando o código da amostra não traz (ex.: HP300H →
+            HP300NA). Linhas sem nenhum RI são puladas. Nomes escritos de outro jeito ganham sugestão no padrão: "HP355 - SEM
+            EXTRAÇÃO" → HP355SE, "HP300NA_E" → HP300NAE — confira na prévia.
           </li>
           <li>
             <strong>Rock-Eval</strong>: o relatório <strong>.htm</strong> (Job report do GeoWorks) — traz a tabela e os pirogramas.
@@ -292,6 +300,49 @@ export const MANUAL_SECTIONS: ManualSection[] = [
         <p>
           Padrões e amostras "Outra" ficam escondidos por padrão — em <strong>Filtros</strong>, marque{' '}
           <strong>Mostrar padrões e outras</strong>. No celular, cada amostra vira um cartão.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'exportar',
+    title: 'Como exportar o relatório em Excel',
+    body: (
+      <>
+        <ol>
+          <li>
+            No topo do projeto, ao lado de <strong>Importar resultados</strong>, toque em <strong>Exportar</strong>. Qualquer pessoa do
+            projeto pode exportar.
+          </li>
+          <li>
+            Em <strong>Resultados que entram</strong>, escolha <strong>Válidas e pendentes</strong> (padrão), <strong>Só as
+            validadas</strong> ou <strong>Todas</strong>.
+          </li>
+          <li>
+            Marque as <strong>Técnicas</strong> que vão no relatório e, em <strong>Amostras</strong>, deixe <strong>Todas com essas
+            técnicas</strong> ou toque em <strong>Escolher</strong> (com busca, <strong>Marcar visíveis</strong> e{' '}
+            <strong>Desmarcar visíveis</strong>).
+          </li>
+          <li>
+            Toque em <strong>Baixar Excel</strong>.
+          </li>
+        </ol>
+        <p>O arquivo vem pronto para apresentar:</p>
+        <ul>
+          <li>
+            <strong>Resumo geral</strong> (primeira aba): projeto, quem exportou e quando, quais resultados entraram, um quadro por
+            técnica (amostras, medições, réplicas, período das análises) e a tabela por amostra com a <strong>média e o desvio
+            padrão (DP)</strong> dos parâmetros principais de cada técnica. Cabeçalho fixo, filtros e impressão em paisagem.
+          </li>
+          <li>
+            <strong>Uma aba por técnica</strong>: em cima, as médias por amostra de todos os parâmetros (média, DP e n); embaixo,{' '}
+            <strong>todas as réplicas</strong> — uma linha por réplica, com o nome no arquivo, alíquota, data, arquivo de origem e
+            validade da medição.
+          </li>
+        </ul>
+        <p>
+          Para só a tabela que está na tela, continua valendo <strong>Mais</strong> → <strong>Exportar CSV</strong> /{' '}
+          <strong>Exportar XLSX</strong> na aba Amostras.
         </p>
       </>
     ),

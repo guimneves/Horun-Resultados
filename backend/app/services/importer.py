@@ -205,11 +205,15 @@ def _suggest(record: Record) -> dict:
             "aliquot": None,
         }
     kind = "standard" if record.kind == "standard" or info.kind == "standard" else "sample"
+    # o arquivo pode dizer de que experimento a amostra saiu (ex. coluna "Cod.
+    # Experimento" do Resíduo Insolúvel) — vale quando o código não traz
+    sheet_exp = record.experiment.code if record.experiment else None
+    exp_temp = parse_experiment_code(sheet_exp)["temperature_c"] if sheet_exp else None
     return {
         "code": info.base_code,
         "fraction": FRACTION_STANDARD if kind == "standard" else (record.fraction_hint or info.fraction),
-        "temperature_c": info.temperature_c,
-        "experiment_code": info.experiment_code,
+        "temperature_c": info.temperature_c if info.temperature_c is not None else exp_temp,
+        "experiment_code": info.experiment_code or sheet_exp,
         "kind": kind,
         "recognized": info.recognized,
         "replicate": info.replicate,

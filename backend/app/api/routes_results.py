@@ -17,7 +17,7 @@ from app.core.identity import HorunIdentity, get_identity
 from app.core.permissions import require_editor
 from app.db.models import ImportBatch, Project
 from app.db.session import get_session
-from app.services import importer, results
+from app.services import directory, importer, report, results
 from app.services.catalog import TECHNIQUES
 
 router = APIRouter(tags=["resultados"])
@@ -204,4 +204,35 @@ def export(body: ExportBody, project: Project = Depends(get_project), session: S
         buf.getvalue(),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f'attachment; filename="resultados_{safe_name}.xlsx"'},
+    )
+
+
+class ReportBody(BaseModel):
+    techniques: list[str] = []  # vazio = todas as que o projeto tem
+    sample_ids: list[int] = []  # vazio = todas
+    mode: str = "padrao"
+
+
+@router.post("/projects/{project_id}/export/report")
+def export_report(
+    body: ReportBody,
+    project: Project = Depends(get_project),
+    session: Session = Depends(get_session),
+    identity: HorunIdentity = Depends(get_identity),
+):
+    """Relatório em Excel (botão "Exportar"): aba "Resumo geral" + uma aba por
+    técnica com todas as réplicas — ver services/report.py."""
+    if body.mode not in results.MODES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Modo de validade inválido.")
+    unknown = [t for t in body.techniques if t not in TECHNIQUES]
+    if unknown:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Técnica desconhecida: {', '.join(unknown)}.")
+    person = directory.find(session, str(identity.user_id))
+    who = (person.label if person else "") or identity.username
+    content = report.build(session, project, body.techniques or list(TECHNIQUES), body.sample_ids, body.mode, who)
+    safe_name = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in project.name)[:40] or "projeto"
+    return Response(
+        content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="relatorio_{safe_name}.xlsx"'},
     )
