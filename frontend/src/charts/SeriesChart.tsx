@@ -10,12 +10,20 @@ export function SeriesChart({
   data: raw,
   title,
   keepFraction = () => true,
+  keepTemperature = () => true,
 }: {
   data: SeriesResponse | null
   title?: string
   keepFraction?: (fraction: string) => boolean
+  /** Temperaturas ocultadas em Séries → Opções ficam de fora. */
+  keepTemperature?: (temperature: number) => boolean
 }) {
-  const data = raw ? { ...raw, series: raw.series.filter((s) => keepFraction(s.fraction)) } : null
+  const data = raw
+    ? {
+        ...raw,
+        series: raw.series.filter((s) => keepFraction(s.fraction)).map((s) => ({ ...s, points: s.points.filter((p) => keepTemperature(p.temperature_c)) })),
+      }
+    : null
   const name = title ?? `${data?.label ?? ''} × temperatura`
   const unit = data?.unit ? ` (${data.unit})` : ''
   const hasData = !!data && (data.series.some((s) => s.points.length) || data.baseline.length)

@@ -508,6 +508,11 @@ export const MANUAL_SECTIONS: ManualSection[] = [
             <strong>Só as normais, sem extração</strong> (H, SE, HP). Gás e rocha original continuam aparecendo. Um aviso no alto lembra
             quando o filtro está ligado.
           </li>
+          <li>
+            Para tirar temperaturas da visualização, abra <strong>Opções</strong> → <strong>Temperaturas nos gráficos</strong> e desmarque
+            as que não quer ver. Vale para todos os gráficos de Parâmetros, Balanço de massas e Artigo (e para o PNG); um aviso no alto
+            lista as ocultas, com <strong>Mostrar todas</strong>. Fica guardado neste navegador, por projeto — os dados não mudam.
+          </li>
           <li>Cada linha é uma fração (hidropirolisada, extraída...). Cada ponto é a média ± desvio (barra) na temperatura.</li>
           <li>
             Réplicas do experimento (A, B, C) na mesma temperatura entram juntas no ponto. Para ver cada uma separada, em{' '}

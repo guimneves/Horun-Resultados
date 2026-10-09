@@ -83,7 +83,12 @@ function YieldChart({ data, groups, title, figure }: { data: ArticleData; groups
   const rows = data.gas
     .map((g) => ({
       temperature_c: g.temperature_c,
-      ...Object.fromEntries(groups.flatMap((k) => [[k, val(g.yields[k])], [`${k}_sd`, g.yields[k]?.sd ?? 0]])),
+      ...Object.fromEntries(
+        groups.flatMap((k) => [
+          [k, val(g.yields[k])],
+          [`${k}_sd`, g.yields[k]?.sd ?? 0],
+        ]),
+      ),
     }))
     .filter((r) => groups.some((k) => (r as Record<string, unknown>)[k] != null))
   return (
@@ -197,7 +202,13 @@ function SimpleLineChart({
 }) {
   const shown = rows.filter((r) => r.y != null).map((r) => ({ ...r, sdBar: r.sd ?? 0 }))
   return (
-    <ChartCard title={title} subtitle={subtitle} sources={sources} empty={shown.length ? null : 'Sem dados para esta figura.'} table={<SimpleTable {...table} />}>
+    <ChartCard
+      title={title}
+      subtitle={subtitle}
+      sources={sources}
+      empty={shown.length ? null : 'Sem dados para esta figura.'}
+      table={<SimpleTable {...table} />}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={shown} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
           <CartesianGrid {...gridProps} />
@@ -249,7 +260,15 @@ function BeforeAfterChart({ data, param }: { data: ArticleData; param: (typeof R
           <Tooltip {...tooltipStyle} labelFormatter={(t) => `${t} °C`} formatter={(v, n) => [`${fmt(Number(v))} ${param.unit}`, String(n)]} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
           {before != null && <Line dataKey="before" name="Antes" stroke={BEFORE} strokeWidth={2} dot={dot(BEFORE)} isAnimationActive={false} />}
-          <Line dataKey="after" name="Depois" stroke={AFTER} strokeWidth={2} legendType="square" dot={<Marker shape="square" color={AFTER} />} isAnimationActive={false}>
+          <Line
+            dataKey="after"
+            name="Depois"
+            stroke={AFTER}
+            strokeWidth={2}
+            legendType="square"
+            dot={<Marker shape="square" color={AFTER} />}
+            isAnimationActive={false}
+          >
             <ErrorBar dataKey="sdBar" width={4} stroke={AFTER} direction="y" />
           </Line>
         </LineChart>
@@ -308,20 +327,22 @@ function LoadingChart({ data }: { data: ArticleData }) {
   return (
     <ChartCard
       title="Figura 7a — Massa carregada no reator"
-      subtitle={hasWater ? 'Rocha e água carregadas (g) por temperatura' : 'Rocha carregada (g) por temperatura — a massa de água não está nas planilhas importadas'}
+      subtitle={
+        hasWater ? 'Rocha e água carregadas (g) por temperatura' : 'Rocha carregada (g) por temperatura — a massa de água não está nas planilhas importadas'
+      }
       sources={['gas_balanco']}
       empty={rows.length ? null : 'Sem massa inicial de amostra.'}
-      table={
-        <SimpleTable
-          head={['Temp. (°C)', 'Rocha (g)', 'Água (g)']}
-          rows={data.gas.map((g) => [g.temperature_c, cell(g.rock_g), cell(g.water_g)])}
-        />
-      }
+      table={<SimpleTable head={['Temp. (°C)', 'Rocha (g)', 'Água (g)']} rows={data.gas.map((g) => [g.temperature_c, cell(g.rock_g), cell(g.water_g)])} />}
     >
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={rows} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
           <CartesianGrid {...gridProps} />
-          <XAxis dataKey="t" {...axisProps} label={{ value: 'Temperatura (°C)', position: 'insideBottom', offset: -4, fill: 'var(--color-text-muted)', fontSize: 12 }} height={40} />
+          <XAxis
+            dataKey="t"
+            {...axisProps}
+            label={{ value: 'Temperatura (°C)', position: 'insideBottom', offset: -4, fill: 'var(--color-text-muted)', fontSize: 12 }}
+            height={40}
+          />
           <YAxis {...axisProps} width={48} tickFormatter={(v: number) => fmt(v)} />
           <Tooltip {...tooltipStyle} formatter={(v, n) => [`${fmt(Number(v))} g`, String(n)]} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
@@ -379,8 +400,16 @@ function H2ScatterChart({ data, x }: { data: ArticleData; x: 'tmax' | 's2' }) {
 
 const TOC0_KEY = (projectId: number) => `resultados.artigo.toc0.${projectId}`
 
-export function ArticleView({ projectId, mode }: { projectId: number; mode: Mode }) {
-  const [data, setData] = useState<ArticleData | null>(null)
+export function ArticleView({ projectId, mode, hiddenTemps = [] }: { projectId: number; mode: Mode; hiddenTemps?: number[] }) {
+  const [raw, setData] = useState<ArticleData | null>(null)
+  // temperaturas ocultadas em Séries → Opções saem de todas as figuras
+  const data = raw
+    ? {
+        ...raw,
+        gas: raw.gas.filter((g) => !hiddenTemps.includes(g.temperature_c)),
+        residue: raw.residue.filter((r) => !hiddenTemps.includes(r.temperature_c)),
+      }
+    : null
   const [error, setError] = useState<string | null>(null)
   // COT inicial digitado (fica neste navegador, por projeto); vazio = automático
   const [toc0, setToc0] = useState<string>(() => {
@@ -422,8 +451,7 @@ export function ArticleView({ projectId, mode }: { projectId: number; mode: Mode
   return (
     <div className="space-y-3">
       <p className="text-sm" style={muted}>
-        Figuras no estilo do Supporting Information do artigo de hidropirólise, com os dados deste projeto. Rendimentos em{' '}
-        <strong>{data.yield_unit}</strong>
+        Figuras no estilo do Supporting Information do artigo de hidropirólise, com os dados deste projeto. Rendimentos em <strong>{data.yield_unit}</strong>
         {data.toc0 != null
           ? ` (COT inicial = ${fmt(data.toc0)} % — ${data.toc0_source})`
           : ' — sem COT inicial: importe o Rock-Eval ou o LECO da rocha original, ou digite o valor abaixo'}
@@ -487,7 +515,10 @@ export function ArticleView({ projectId, mode }: { projectId: number; mode: Mode
           color="#5b6670"
           sources={['gas_balanco']}
           unit="g"
-          table={{ head: ['Temp. (°C)', 'Experimentos', 'Massa de gás (g)'], rows: data.gas.map((g) => [g.temperature_c, g.experiments.join(', '), cell(g.gas_mass_g)]) }}
+          table={{
+            head: ['Temp. (°C)', 'Experimentos', 'Massa de gás (g)'],
+            rows: data.gas.map((g) => [g.temperature_c, g.experiments.join(', '), cell(g.gas_mass_g)]),
+          }}
         />
         <H2ScatterChart data={data} x="tmax" />
         <H2ScatterChart data={data} x="s2" />

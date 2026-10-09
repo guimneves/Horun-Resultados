@@ -1,6 +1,12 @@
 # Changelog — Horun · Resultados
 
 ## Não lançado — 09/10/2026
+### Séries: ocultar temperaturas (pedido do mantenedor)
+- Opções → "Temperaturas nos gráficos": desmarca temperaturas, que saem de
+  todos os gráficos de Parâmetros, Balanço de massas e Artigo (só a
+  visualização; guardado no navegador por projeto). Aviso no alto com
+  "Mostrar todas".
+
 ### Artigo: COT inicial do LECO ou digitado; gás de qualquer amostra
 - COT inicial: Rock-Eval da rocha original → C do LECO da rocha original →
   valor digitado na tela ("COT inicial (%)", guardado no navegador; vai como

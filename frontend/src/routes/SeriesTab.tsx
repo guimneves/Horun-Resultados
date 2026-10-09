@@ -55,6 +55,17 @@ const MASS_ORDER: MassKey[] = ['oil_mass_g', 'gas_mass_g', 'bitumen_mass_g']
 type View = 'parametros' | 'massas' | 'artigo'
 const VIEW_KEY = 'resultados.series.view'
 const CUSTOM_KEY = (projectId: number) => `resultados.series.extra.${projectId}`
+// Temperaturas ocultadas nos gráficos (Opções → Temperaturas), por projeto, neste navegador.
+const HIDDEN_TEMPS_KEY = (projectId: number) => `resultados.series.temperaturas.ocultas.${projectId}`
+
+function readHiddenTemps(projectId: number): number[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(HIDDEN_TEMPS_KEY(projectId)) ?? '[]')
+    return Array.isArray(v) ? v.filter((x) => typeof x === 'number') : []
+  } catch {
+    return []
+  }
+}
 
 function readView(): View {
   try {
@@ -93,12 +104,14 @@ function SeriesLoader({
   mode,
   split,
   keepFraction,
+  keepTemperature,
 }: {
   projectId: number
   spec: { technique: string; parameter: string }
   mode: Mode
   split: boolean
   keepFraction?: (fraction: string) => boolean
+  keepTemperature?: (temperature: number) => boolean
 }) {
   const [data, setData] = useState<SeriesResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -112,7 +125,7 @@ function SeriesLoader({
       .catch((err) => setError(String(err.message ?? err)))
   }, [projectId, spec.technique, spec.parameter, mode, split])
   if (error) return <ErrorBox message={error} />
-  return <SeriesChart data={data} keepFraction={keepFraction} />
+  return <SeriesChart data={data} keepFraction={keepFraction} keepTemperature={keepTemperature} />
 }
 
 /** Escolha de amostras para os gráficos por amostra (pirogramas, n-alcanos). */
@@ -255,9 +268,30 @@ export function SeriesTab() {
     }
   }
   const masses = useMasses(project.id)
+  const [hiddenTemps, setHiddenTempsState] = useState<number[]>(() => readHiddenTemps(project.id))
+  const setHiddenTemps = (next: number[]) => {
+    setHiddenTempsState(next)
+    try {
+      localStorage.setItem(HIDDEN_TEMPS_KEY(project.id), JSON.stringify(next))
+    } catch {
+      /* sem armazenamento: vale só nesta visita */
+    }
+  }
+  const hiddenSet = new Set(hiddenTemps)
+  const keepTemperature = (t: number) => !hiddenSet.has(t)
   const { samples } = useSamples(project.id, mode)
   const keepFraction = (f: string) => fractionAllowed(f, onlyFraction)
-  const list = (samples ?? []).filter((s) => keepFraction(s.fraction))
+  // temperatura de cada amostra (a do código do experimento quando faltar, ex. gás)
+  const tempOf = (s: SampleRow) => s.temperature_c ?? gasTemperature(s)
+  const allTemps = Array.from(new Set((samples ?? []).map(tempOf).filter((t): t is number => t != null))).sort((a, b) => a - b)
+  const list = (samples ?? []).filter((s) => {
+    const t = tempOf(s)
+    return keepFraction(s.fraction) && (t == null || keepTemperature(t))
+  })
+  const massesShown =
+    masses.data && hiddenTemps.length
+      ? { ...masses.data, groups: masses.data.groups.filter((g) => g.temperature_c == null || keepTemperature(g.temperature_c)) }
+      : masses.data
 
   const saveCustom = (next: string[]) => {
     setCustom(next)
@@ -283,9 +317,9 @@ export function SeriesTab() {
                 ? list.some((s) => (hasGasComposition(s) || hasGcData(s, 'gc_fid')) && gasTemperature(s) != null)
                 : e === 'gas_tcd'
                   ? list.some((s) => (hasGasComposition(s) || hasGcData(s, 'gc_tcd')) && gasTemperature(s) != null)
-            : e === 'alkanes'
-              ? list.some((s) => s.techniques?.includes('pygcms'))
-              : list.some((s) => s.techniques?.includes('rockeval'))
+                  : e === 'alkanes'
+                    ? list.some((s) => s.techniques?.includes('pygcms'))
+                    : list.some((s) => s.techniques?.includes('rockeval'))
   const sections = SECTIONS.map((sec) => ({ ...sec, series: sec.series.filter(hasSeries), extras: sec.extras.filter(hasExtra) })).filter(
     (sec) => sec.series.length || sec.extras.length,
   )
@@ -293,9 +327,19 @@ export function SeriesTab() {
   const params = catalog.find((t) => t.key === technique)?.params ?? []
   const chart = (col: string) => {
     const [t, p] = col.split('.')
-    return <SeriesLoader key={col} projectId={project.id} spec={{ technique: t, parameter: p }} mode={mode} split={split} keepFraction={keepFraction} />
+    return (
+      <SeriesLoader
+        key={col}
+        projectId={project.id}
+        spec={{ technique: t, parameter: p }}
+        mode={mode}
+        split={split}
+        keepFraction={keepFraction}
+        keepTemperature={keepTemperature}
+      />
+    )
   }
-  const optionsActive = [mode !== 'padrao', split, onlyFraction !== 'todas'].filter(Boolean).length
+  const optionsActive = [mode !== 'padrao', split, onlyFraction !== 'todas', hiddenTemps.length > 0].filter(Boolean).length
   // de quais análises vem cada grupo (etiquetas no título do grupo)
   const EXTRA_SOURCES: Record<Extra, string[]> = {
     toc_leco: ['rockeval', 'leco'],
@@ -331,7 +375,12 @@ export function SeriesTab() {
       return (
         <div key={e} className="xl:col-span-2">
           {e === 'gas_fid' ? (
-            <GasBarsChart samples={list} keys={['C1', 'C2', 'C3', 'C4', 'C5p']} title="Gás — FID: hidrocarbonetos × temperatura" subtitle="C1, C2, C3, C4 e C5+ (soma ≥ C5)" />
+            <GasBarsChart
+              samples={list}
+              keys={['C1', 'C2', 'C3', 'C4', 'C5p']}
+              title="Gás — FID: hidrocarbonetos × temperatura"
+              subtitle="C1, C2, C3, C4 e C5+ (soma ≥ C5)"
+            />
           ) : (
             <GasBarsChart samples={list} keys={['H2', 'CO2']} title="Gás — TCD: H₂ e CO₂ × temperatura" subtitle="H₂ e CO₂" />
           )}
@@ -355,7 +404,7 @@ export function SeriesTab() {
       </div>
     )
   }
-  const massCharts = MASS_ORDER.filter((m) => hasMassData(masses.data, m))
+  const massCharts = MASS_ORDER.filter((m) => hasMassData(massesShown, m))
   const gasSeries = GAS_SERIES.filter(hasSeries)
   const gasComposition = hasExtra('gas')
   const gasByTemperature = hasExtra('gas_series')
@@ -425,10 +474,43 @@ export function SeriesTab() {
                 <input type="checkbox" checked={split} onChange={(e) => setSplit(e.target.checked)} />
                 Separar réplicas A, B, C
               </label>
+              {allTemps.length > 0 && (
+                <fieldset className="border-t pt-2" style={{ borderColor: 'var(--color-border)' }}>
+                  <legend className="mb-1 text-xs" style={muted}>
+                    Temperaturas nos gráficos
+                  </legend>
+                  <div className="grid max-h-48 grid-cols-3 gap-x-3 overflow-y-auto">
+                    {allTemps.map((t) => (
+                      <label key={t} className="flex min-h-8 items-center gap-1.5 whitespace-nowrap">
+                        <input
+                          type="checkbox"
+                          checked={!hiddenSet.has(t)}
+                          onChange={() => setHiddenTemps(hiddenSet.has(t) ? hiddenTemps.filter((x) => x !== t) : [...hiddenTemps, t].sort((a, b) => a - b))}
+                        />
+                        {t} °C
+                      </label>
+                    ))}
+                  </div>
+                  {hiddenTemps.length > 0 && (
+                    <button type="button" className="mt-1 text-xs underline" style={{ color: 'var(--color-primary)' }} onClick={() => setHiddenTemps([])}>
+                      Mostrar todas
+                    </button>
+                  )}
+                </fieldset>
+              )}
             </div>
           </Dropdown>
         </div>
       </div>
+
+      {hiddenTemps.length > 0 && (
+        <p className="text-sm" style={muted} role="status">
+          Temperaturas ocultas nos gráficos: {hiddenTemps.map((t) => `${t} °C`).join(', ')} — mude em Opções.{' '}
+          <button type="button" className="underline" style={{ color: 'var(--color-primary)' }} onClick={() => setHiddenTemps([])}>
+            Mostrar todas
+          </button>
+        </p>
+      )}
 
       {onlyFraction !== 'todas' && (
         <p className="text-sm" style={muted} role="status">
@@ -452,7 +534,7 @@ export function SeriesTab() {
           ) : (
             <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
               {massCharts.map((m) => (
-                <MassChart key={m} data={masses.data as MassesResponse} mass={m} />
+                <MassChart key={m} data={massesShown as MassesResponse} mass={m} />
               ))}
               {/* composição × temperatura também aqui, junto dos outros gráficos de gás */}
               {gasByTemperature && extra('gas_series')}
@@ -468,7 +550,7 @@ export function SeriesTab() {
         </section>
       )}
 
-      {view === 'artigo' && <ArticleView projectId={project.id} mode={mode} />}
+      {view === 'artigo' && <ArticleView projectId={project.id} mode={mode} hiddenTemps={hiddenTemps} />}
 
       {view === 'parametros' && adding && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border p-3" style={card}>
