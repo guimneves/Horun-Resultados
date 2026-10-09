@@ -17,6 +17,8 @@
   de linha por componente (`GasBarsChart`). Fonte: composição do balanço de
   gás; sem ela, % de área do GC-FID/TCD.
 - Nos três, botão "Barras | Pontos e linha" (escolha guardada no navegador).
+- Composição: caixa "Gases no gráfico" para escolher quais gases aparecem
+  (guardada no navegador; ChartCard ganhou a área `controls`, fora do PNG).
 
 ### Correção: "Composição do gás × temperatura" não aparecia
 - O gráfico só aparecia na vista Parâmetros e só para amostras da fração G

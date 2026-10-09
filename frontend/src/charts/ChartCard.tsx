@@ -32,10 +32,13 @@ export function ChartCard({
   empty,
   sources = [],
   actions,
+  controls,
 }: {
   title: string
   /** Controles extras no cabeçalho (ex.: trocar barras ↔ pontos e linha). */
   actions?: ReactNode
+  /** Controles entre o cabeçalho e o gráfico (ex.: quais séries mostrar) — ficam fora do PNG. */
+  controls?: ReactNode
   subtitle?: string
   /** Técnicas de onde vêm os dados (chaves do catálogo) — viram etiquetas. */
   sources?: string[]
@@ -81,7 +84,10 @@ export function ChartCard({
       data-chart={title}
     >
       {selection?.selecting && exportable && (
-        <label className="absolute bottom-2 right-2 z-10 flex cursor-pointer items-center gap-1 rounded-md border px-2 py-1 text-xs" style={{ background: 'var(--color-bg)' }}>
+        <label
+          className="absolute bottom-2 right-2 z-10 flex cursor-pointer items-center gap-1 rounded-md border px-2 py-1 text-xs"
+          style={{ background: 'var(--color-bg)' }}
+        >
           <input type="checkbox" checked={picked} onChange={() => selection.toggle(id)} aria-label={`Selecionar ${title}`} />
           incluir
         </label>
@@ -110,6 +116,7 @@ export function ChartCard({
           </div>
         )}
       </div>
+      {!empty && controls && <div className="print:hidden">{controls}</div>}
       {error && (
         <p className="mb-1 text-xs" style={{ color: '#a12020' }}>
           {error}

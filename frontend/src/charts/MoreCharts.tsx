@@ -215,14 +215,38 @@ export function GasBarsChart({
   title,
   subtitle,
   stacked = false,
+  pickKey,
 }: {
   samples: SampleRow[]
   keys: GasKey[]
   title: string
   subtitle: string
   stacked?: boolean
+  /** Com valor: caixa para escolher quais gases aparecem (guardada no navegador com esta chave). */
+  pickKey?: string
 }) {
   const parts = keys.map((k) => GAS_PARTS.find((p) => p.key === k)!)
+  const [picked, setPickedState] = useState<GasKey[]>(() => {
+    if (!pickKey) return keys
+    try {
+      const saved = JSON.parse(localStorage.getItem(pickKey) ?? 'null')
+      const valid = Array.isArray(saved) ? keys.filter((k) => saved.includes(k)) : []
+      return valid.length ? valid : keys
+    } catch {
+      return keys
+    }
+  })
+  const savePick = (next: GasKey[]) => {
+    if (!next.length) return // pelo menos um gás
+    setPickedState(next)
+    try {
+      if (pickKey) localStorage.setItem(pickKey, JSON.stringify(next))
+    } catch {
+      /* sem armazenamento: vale só nesta visita */
+    }
+  }
+  const togglePick = (k: GasKey) => savePick(picked.includes(k) ? picked.filter((x) => x !== k) : keys.filter((x) => x === k || picked.includes(x)))
+  const shown = parts.filter((p) => picked.includes(p.key as GasKey))
   const [style, setStyleState] = useState<GasStyle>(readGasStyle)
   const setStyle = (v: GasStyle) => {
     setStyleState(v)
@@ -290,6 +314,30 @@ export function GasBarsChart({
           />
         )
       }
+      controls={
+        pickKey ? (
+          <fieldset
+            className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border px-2 py-1 text-xs"
+            style={{ borderColor: 'var(--color-border)' }}
+          >
+            <legend className="px-1" style={{ color: 'var(--color-text-muted)' }}>
+              Gases no gráfico
+            </legend>
+            {parts.map((p) => (
+              <label key={p.key} className="flex min-h-8 cursor-pointer items-center gap-1">
+                <input type="checkbox" checked={picked.includes(p.key as GasKey)} onChange={() => togglePick(p.key as GasKey)} />
+                <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: GAS_COLORS[p.key] }} aria-hidden="true" />
+                {p.label}
+              </label>
+            ))}
+            {picked.length < parts.length && (
+              <button type="button" className="underline" style={{ color: 'var(--color-primary)' }} onClick={() => savePick(keys)}>
+                todos
+              </button>
+            )}
+          </fieldset>
+        ) : undefined
+      }
       table={
         <SimpleTable
           head={['Temp. (°C)', 'Experimentos', 'Fonte', ...parts.map((p) => `${p.label} (%)`)]}
@@ -319,7 +367,7 @@ export function GasBarsChart({
             <YAxis {...axisProps} width={44} unit="%" domain={[0, 'auto']} tickFormatter={(v: number) => fmt(v)} />
             <Tooltip {...tooltipStyle} labelFormatter={(t) => `${t} °C`} formatter={(v, name) => [`${fmt(Number(v))} %`, String(name)]} />
             <Legend wrapperStyle={{ fontSize: 12 }} />
-            {parts.map((p) => (
+            {shown.map((p) => (
               <Line
                 key={p.key}
                 dataKey={p.key}
@@ -346,7 +394,7 @@ export function GasBarsChart({
             <YAxis {...axisProps} width={44} unit="%" domain={stacked ? [0, 100] : [0, 'auto']} tickFormatter={(v: number) => fmt(v)} />
             <Tooltip {...tooltipStyle} labelFormatter={(t) => `${t} °C`} formatter={(v, name) => [`${fmt(Number(v))} %`, String(name)]} />
             <Legend wrapperStyle={{ fontSize: 12 }} />
-            {parts.map((p, i) => (
+            {shown.map((p, i) => (
               <Bar
                 key={p.key}
                 dataKey={p.key}
@@ -355,7 +403,7 @@ export function GasBarsChart({
                 stackId={stacked ? 'gas' : undefined}
                 stroke={stacked ? 'var(--color-bg-elevated)' : undefined}
                 strokeWidth={stacked ? 1 : 0}
-                radius={stacked ? (i === parts.length - 1 ? [4, 4, 0, 0] : 0) : [3, 3, 0, 0]}
+                radius={stacked ? (i === shown.length - 1 ? [4, 4, 0, 0] : 0) : [3, 3, 0, 0]}
                 isAnimationActive={false}
               >
                 {!stacked && <ErrorBar dataKey={`${p.key}_sd`} width={3} stroke="var(--color-text-muted)" direction="y" />}
@@ -377,6 +425,7 @@ export function GasSeriesChart({ samples }: { samples: SampleRow[] }) {
       keys={['CO2', 'H2', 'C1', 'C2', 'C3', 'C4', 'C5p']}
       title="Composição do gás × temperatura"
       subtitle="CO₂, H₂, C1–C4 e C5+ (soma ≥ C5)"
+      pickKey="resultados.gas.composicao.gases"
     />
   )
 }
