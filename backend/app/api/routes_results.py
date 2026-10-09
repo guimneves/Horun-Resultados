@@ -120,6 +120,7 @@ def series(
 @router.get("/projects/{project_id}/article")
 def article_data(
     mode: str = "padrao",
+    toc0: float | None = None,
     project: Project = Depends(get_project),
     session: Session = Depends(get_session),
     _i: HorunIdentity = Depends(get_identity),
@@ -127,7 +128,9 @@ def article_data(
     """Séries → Artigo: dados das figuras do artigo de hidropirólise (services/article.py)."""
     if mode not in results.MODES:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Modo de validade inválido.")
-    return article.build(session, project.id, mode)
+    if toc0 is not None and not 0 < toc0 <= 100:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "COT inicial deve estar entre 0 e 100 %.")
+    return article.build(session, project.id, mode, toc0)
 
 
 @router.get("/projects/{project_id}/analysis-data")

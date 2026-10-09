@@ -22,13 +22,14 @@ Uma chamada devolve tudo, por temperatura:
 from __future__ import annotations
 
 import json
+import re
 from collections import defaultdict
 
 from sqlmodel import Session
 
 from app.db.models import Experiment
 from app.services import results
-from app.services.codes import FRACTION_GAS, FRACTION_H, FRACTION_ORIGINAL, strip_accents
+from app.services.codes import FRACTION_H, FRACTION_ORIGINAL, strip_accents
 
 GROUPS = ("C1", "C2", "C3", "C4", "C5p", "H2", "CO2")
 # massa molar por grupo, para estimar mols só com a composição (mol%)
@@ -93,23 +94,59 @@ def _moles(analysis_data: dict | None, values: dict[str, float]) -> tuple[dict[s
     return {g: total * v / sum(comp.values()) for g, v in comp.items()}, True
 
 
-def build(session: Session, project_id: int, mode: str = "padrao") -> dict:
+_ORIGINAL_NAME_RE = re.compile(r"rocha|virgem|original|araripe", re.IGNORECASE)
+_TEMP_IN_CODE_RE = re.compile(r"^[A-Z]*?(\d{3})", re.IGNORECASE)
+
+
+def _is_original_rock(s) -> bool:
+    """Rocha original: fração O; ou, sem temperatura e sem fração definida,
+    nome que indica rocha não aquecida ("Rocha araripe 80mesh", "rocha virgem")."""
+    if s.temperature_c is not None:
+        return False
+    return s.fraction == FRACTION_ORIGINAL or (s.fraction == "X" and bool(_ORIGINAL_NAME_RE.search(s.code or "")))
+
+
+def _temperature(s, exp: Experiment | None) -> float | None:
+    """Temperatura da corrida: a da amostra, a do experimento ou a do código (HP320NA2 → 320)."""
+    if s.temperature_c is not None:
+        return s.temperature_c
+    if exp is not None and exp.temperature_c is not None:
+        return exp.temperature_c
+    m = _TEMP_IN_CODE_RE.match(re.sub(r"\s+", "", (exp.code if exp else s.code) or ""))
+    return float(m.group(1)) if m else None
+
+
+def build(session: Session, project_id: int, mode: str = "padrao", toc0_override: float | None = None) -> dict:
     data = results.load(session, project_id)
     by_sample = results._values_by_sample(data, mode)
     samples = {sid: s for sid, s in data.samples.items() if results._sample_ok(s, mode)}
 
     # COT inicial e Rock-Eval "antes": rocha original
     before_vals: dict[str, list[float]] = defaultdict(list)
-    before_codes = []
+    leco_c: list[float] = []
+    before_codes: list[str] = []
+    leco_codes: list[str] = []
     for s in samples.values():
-        if s.fraction == FRACTION_ORIGINAL and s.temperature_c is None:
-            vals = by_sample.get(s.id, {})
-            if any(f"rockeval.{p}" in vals for p in ROCK_PARAMS):
-                before_codes.append(s.code)
-            for p in ROCK_PARAMS:
-                before_vals[p] += vals.get(f"rockeval.{p}", [])
+        if not _is_original_rock(s):
+            continue
+        vals = by_sample.get(s.id, {})
+        if any(f"rockeval.{p}" in vals for p in ROCK_PARAMS):
+            before_codes.append(s.code)
+        for p in ROCK_PARAMS:
+            before_vals[p] += vals.get(f"rockeval.{p}", [])
+        if vals.get("leco.C"):
+            leco_c += vals["leco.C"]
+            leco_codes.append(s.code)
     before = {p: _mean(v) for p, v in before_vals.items() if v}
-    toc0 = before.get("TOC")
+    # COT inicial: digitado na tela > Rock-Eval da rocha original > C do LECO da rocha original
+    if toc0_override:
+        toc0, toc0_source = toc0_override, "digitado na tela"
+    elif before.get("TOC") is not None:
+        toc0, toc0_source = before["TOC"], f"COT do Rock-Eval da rocha original ({', '.join(sorted(before_codes))})"
+    elif leco_c:
+        toc0, toc0_source = _mean(leco_c), f"C do LECO da rocha original ({', '.join(sorted(leco_codes))})"
+    else:
+        toc0, toc0_source = None, ""
 
     # ---- gás, por experimento → por temperatura
     gas_by_temp: dict[float, list[dict]] = defaultdict(list)
@@ -122,8 +159,16 @@ def build(session: Session, project_id: int, mode: str = "padrao") -> dict:
         if v.analysis_id in data.analyses and data.analyses[v.analysis_id].technique == "gas_balanco":
             values_by_analysis[v.analysis_id][v.parameter] = v.value
     any_estimated = False
+    problems: list[str] = []
     for s in samples.values():
-        if s.fraction != FRACTION_GAS or s.temperature_c is None or not analyses_by_sample.get(s.id):
+        # qualquer amostra com balanço de gás (o gás pode ter sido ligado a outra fração)
+        if not analyses_by_sample.get(s.id):
+            continue
+        exp = data.experiments.get(s.experiment_id) if s.experiment_id else None
+        temp = _temperature(s, exp)
+        label = (exp.code if exp else s.code).replace(" (gás)", "")
+        if temp is None:
+            problems.append(f"{label}: sem temperatura")
             continue
         a = max(analyses_by_sample[s.id], key=lambda x: x.id)  # medição mais recente da corrida
         vals = values_by_analysis.get(a.id, {})
@@ -132,15 +177,25 @@ def build(session: Session, project_id: int, mode: str = "padrao") -> dict:
         except ValueError:
             adata = None
         moles, estimated = _moles(adata, vals)
-        exp = data.experiments.get(s.experiment_id) if s.experiment_id else None
         rock = vals.get("initial_mass_g") or (exp.initial_mass_g if exp else None)
+        missing = [
+            what
+            for what, ok in (
+                ("massa de gás gerada", bool(moles) or vals.get("gas_mass_g")),
+                ("composição do gás", bool(moles) or any(k.startswith("comp_") for k in vals)),
+                ("massa inicial de amostra (rocha)", bool(rock)),
+            )
+            if not ok
+        ]
+        if missing:
+            problems.append(f"{label}: falta {', '.join(missing)}")
         basis = (rock * toc0 / 100) if (rock and toc0) else rock
         yields = {g: (m * 1e6 / basis) for g, m in moles.items()} if basis else {}
         pool = sum(moles.get(g, 0) for g in GROUPS)
         any_estimated = any_estimated or (estimated and bool(moles))
-        gas_by_temp[s.temperature_c].append(
+        gas_by_temp[temp].append(
             {
-                "code": (exp.code if exp else s.code).replace(" (gás)", ""),
+                "code": label,
                 "yields": yields,
                 "mole_pct": {g: vals.get(f"comp_{g}") for g in ("H2", "C1", "CO2")},
                 "h2_share": 100 * moles["H2"] / pool if pool and moles.get("H2") is not None else None,
@@ -198,7 +253,9 @@ def build(session: Session, project_id: int, mode: str = "padrao") -> dict:
     return {
         "mode": mode,
         "toc0": toc0,
+        "toc0_source": toc0_source,
         "toc0_samples": sorted(before_codes),
+        "gas_problems": sorted(problems),
         "yield_unit": "µmol/g COT₀" if toc0 else "µmol/g rocha",
         "yields_estimated": any_estimated,
         "before": before,

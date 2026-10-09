@@ -17,7 +17,7 @@ import {
 } from 'recharts'
 import { api } from '../api/client'
 import type { Mode } from '../api/types'
-import { ErrorBox, muted } from '../components/ui'
+import { Button, ErrorBox, inputClass, inputStyle, muted } from '../components/ui'
 import { GAS_COLORS } from '../lib/colors'
 import { fmt } from '../lib/format'
 import { axisProps, ChartCard, gridProps, SimpleTable, tooltipStyle } from './ChartCard'
@@ -52,7 +52,9 @@ interface ResiduePoint {
 export interface ArticleData {
   mode: Mode
   toc0: number | null
+  toc0_source: string
   toc0_samples: string[]
+  gas_problems: string[]
   yield_unit: string
   yields_estimated: boolean
   before: Record<string, number>
@@ -89,7 +91,13 @@ function YieldChart({ data, groups, title, figure }: { data: ArticleData; groups
       title={`${figure} — ${title}`}
       subtitle={`Rendimento (${data.yield_unit}) × temperatura${data.yields_estimated ? ' · mols estimados pela composição e massa total de gás' : ''}`}
       sources={['gas_balanco']}
-      empty={rows.length ? null : 'Sem dados de gás com massa e massa de rocha.'}
+      empty={
+        rows.length
+          ? null
+          : data.gas_problems.length
+            ? `Sem rendimento calculável — ${data.gas_problems.join('; ')}.`
+            : 'Sem balanço de gás importado (planilha de cálculo de gás ou tabela consolidada).'
+      }
       table={
         <SimpleTable
           head={['Temp. (°C)', 'Experimentos', ...groups.map((k) => `${LABELS[k]} (${data.yield_unit})`)]}
@@ -369,17 +377,46 @@ function H2ScatterChart({ data, x }: { data: ArticleData; x: 'tmax' | 's2' }) {
   )
 }
 
+const TOC0_KEY = (projectId: number) => `resultados.artigo.toc0.${projectId}`
+
 export function ArticleView({ projectId, mode }: { projectId: number; mode: Mode }) {
   const [data, setData] = useState<ArticleData | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // COT inicial digitado (fica neste navegador, por projeto); vazio = automático
+  const [toc0, setToc0] = useState<string>(() => {
+    try {
+      return localStorage.getItem(TOC0_KEY(projectId)) ?? ''
+    } catch {
+      return ''
+    }
+  })
+  const [draft, setDraft] = useState(toc0)
   useEffect(() => {
     setData(null)
+    setError(null)
+    const q = toc0.trim() ? `&toc0=${encodeURIComponent(toc0.trim().replace(',', '.'))}` : ''
     api
-      .get<ArticleData>(`/projects/${projectId}/article?mode=${mode}`)
+      .get<ArticleData>(`/projects/${projectId}/article?mode=${mode}${q}`)
       .then(setData)
       .catch((err) => setError(String(err.message ?? err)))
-  }, [projectId, mode])
-  if (error) return <ErrorBox message={error} />
+  }, [projectId, mode, toc0])
+  const applyToc0 = (value: string) => {
+    setToc0(value)
+    setDraft(value)
+    try {
+      if (value.trim()) localStorage.setItem(TOC0_KEY(projectId), value)
+      else localStorage.removeItem(TOC0_KEY(projectId))
+    } catch {
+      /* sem armazenamento: vale só nesta visita */
+    }
+  }
+  if (error)
+    return (
+      <div className="space-y-2">
+        <ErrorBox message={error} />
+        {toc0 && <Button onClick={() => applyToc0('')}>Usar o COT inicial automático</Button>}
+      </div>
+    )
   if (!data) return <p style={muted}>Carregando…</p>
   const gasRows = (pick: (g: GasPoint) => Stat) => data.gas.map((g) => ({ temperature_c: g.temperature_c, y: val(pick(g)), sd: pick(g).sd }))
   return (
@@ -387,9 +424,38 @@ export function ArticleView({ projectId, mode }: { projectId: number; mode: Mode
       <p className="text-sm" style={muted}>
         Figuras no estilo do Supporting Information do artigo de hidropirólise, com os dados deste projeto. Rendimentos em{' '}
         <strong>{data.yield_unit}</strong>
-        {data.toc0 != null ? ` (COT inicial = ${fmt(data.toc0)} %, da rocha original ${data.toc0_samples.join(', ')})` : ' — importe o Rock-Eval da rocha original para ter por g de COT inicial'}
+        {data.toc0 != null
+          ? ` (COT inicial = ${fmt(data.toc0)} % — ${data.toc0_source})`
+          : ' — sem COT inicial: importe o Rock-Eval ou o LECO da rocha original, ou digite o valor abaixo'}
         . Ficam de fora as figuras de FRX, MEV e DRX.
       </p>
+      <form
+        className="flex flex-wrap items-center gap-2 text-sm"
+        onSubmit={(e) => {
+          e.preventDefault()
+          applyToc0(draft)
+        }}
+      >
+        <label htmlFor="toc0" style={muted}>
+          COT inicial (%)
+        </label>
+        <input
+          id="toc0"
+          className={`${inputClass} w-28`}
+          style={inputStyle}
+          inputMode="decimal"
+          placeholder="automático"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+        />
+        <Button type="submit">Aplicar</Button>
+        {toc0 && <Button onClick={() => applyToc0('')}>Usar o automático</Button>}
+      </form>
+      {data.gas_problems.length > 0 && (
+        <p className="rounded-md px-3 py-2 text-sm" style={{ background: 'var(--color-surface)' }} role="status">
+          Corridas de gás com dados faltando (ficam de fora dos rendimentos): {data.gas_problems.join('; ')}.
+        </p>
+      )}
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
         <YieldChart data={data} groups={['C1', 'C2', 'C3', 'C4', 'C5p']} title="Rendimento dos hidrocarbonetos C1–C5+" figure="Figura 1" />
         <YieldChart data={data} groups={['H2', 'CO2']} title="Rendimento de H₂ e CO₂" figure="Figura 2" />

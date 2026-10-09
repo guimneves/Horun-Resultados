@@ -1,6 +1,15 @@
 # Changelog — Horun · Resultados
 
 ## Não lançado — 09/10/2026
+### Artigo: COT inicial do LECO ou digitado; gás de qualquer amostra
+- COT inicial: Rock-Eval da rocha original → C do LECO da rocha original →
+  valor digitado na tela ("COT inicial (%)", guardado no navegador; vai como
+  ?toc0= para o servidor). Rocha original = fração O ou, sem temperatura e
+  sem fração, nome com "rocha", "virgem", "original" ou "araripe".
+- Rendimentos aceitam o balanço de gás de qualquer amostra (temperatura do
+  experimento ou do código quando a amostra não tem) e listam o que falta em
+  cada corrida (massa de gás, composição, massa de rocha).
+
 ### Gráficos de gás em barras (pedido do mantenedor)
 - "Composição do gás × temperatura" vira barras empilhadas (soma 100%);
   "Gás — FID" e "Gás — TCD" viram um gráfico de barras lado a lado cada

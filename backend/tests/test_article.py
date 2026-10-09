@@ -79,3 +79,23 @@ def test_exact_moles_with_molar_mass(client, project):
     assert out["gas"][0]["yields"]["H2"]["mean"] == pytest.approx(10000.0)
     assert out["gas"][0]["yields"]["C1"]["mean"] == pytest.approx(10000.0)
     assert out["gas"][0]["h2_share"]["mean"] == pytest.approx(50.0)
+
+
+def test_toc0_from_leco_and_override_and_problems(client, project):
+    pid = project["id"]
+    # rocha original só com LECO (C total 12 %), com nome em vez de código
+    confirm(client, pid, upload(client, pid, {"leco.csv": syn.leco_csv([{"name": "Rocha araripe 80mesh", "set_id": "S1", "reps": [(12.0, 1.0, 0.2, "Included")]}])}))
+    gas = syn.gas_consolidated_xlsx({"HP300NA": [("H2", 50.0, 1.0, None), ("Metano", 50.0, 1.0, None)]}, {"HP300NA": 100.0})
+    gas_no_mass = syn.gas_consolidated_xlsx({"HP320NA": [("H2", 50.0, None, None), ("Metano", 50.0, None, None)]})
+    confirm(client, pid, upload(client, pid, {"a.xlsx": gas, "b.xlsx": gas_no_mass}))
+    out = client.get(f"projects/{pid}/article", headers=PESQ).json()
+    assert out["toc0"] == pytest.approx(12.0)
+    assert "LECO" in out["toc0_source"]
+    assert out["yield_unit"] == "µmol/g COT₀"
+    assert any("HP320NA" in p and "massa inicial" in p for p in out["gas_problems"])
+
+    over = client.get(f"projects/{pid}/article?toc0=10", headers=PESQ).json()
+    assert over["toc0"] == 10 and over["toc0_source"] == "digitado na tela"
+    h2_12 = out["gas"][0]["yields"]["H2"]["mean"]
+    assert over["gas"][0]["yields"]["H2"]["mean"] == pytest.approx(h2_12 * 12 / 10)
+    assert client.get(f"projects/{pid}/article?toc0=0", headers=PESQ).status_code == 400
