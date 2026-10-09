@@ -5,7 +5,19 @@ import { ArticleView } from '../charts/ArticleCharts'
 import { SourceChips } from '../charts/ChartCard'
 import { hasMassData, MassChart } from '../charts/MassCharts'
 import { SeriesChart } from '../charts/SeriesChart'
-import { AlkaneChart, CorrelationChart, GasCompositionChart, gasTemperature, GasSeriesChart, hasGasComposition, HiTmaxChart, PyrogramChart, VanKrevelenChart } from '../charts/MoreCharts'
+import {
+  AlkaneChart,
+  CorrelationChart,
+  GasBarsChart,
+  GasCompositionChart,
+  gasTemperature,
+  GasSeriesChart,
+  hasGasComposition,
+  hasGcData,
+  HiTmaxChart,
+  PyrogramChart,
+  VanKrevelenChart,
+} from '../charts/MoreCharts'
 import { SelectChartsButton } from '../components/ChartSelection'
 import { Button, card, Dropdown, ErrorBox, inputClass, inputStyle, muted, Segmented } from '../components/ui'
 import { useApp } from '../context/AppContext'
@@ -15,7 +27,7 @@ import { useProject } from './ProjectLayout'
 import { MODE_OPTIONS } from './SamplesTab'
 
 // Painel de séries: grupos de gráficos (só aparecem os que têm dados no projeto).
-type Extra = 'toc_leco' | 'hi_tmax' | 'vk' | 'gas' | 'gas_series' | 'alkanes' | 'pyro'
+type Extra = 'toc_leco' | 'hi_tmax' | 'vk' | 'gas' | 'gas_series' | 'gas_fid' | 'gas_tcd' | 'alkanes' | 'pyro'
 const SECTIONS: { id: string; label: string; series: string[]; extras: Extra[] }[] = [
   {
     id: 'mo',
@@ -29,30 +41,9 @@ const SECTIONS: { id: string; label: string; series: string[]; extras: Extra[] }
   // FID = hidrocarbonetos, TCD = H2 e CO2 (da planilha de cálculo de gás ou da
   // tabela consolidada; % de área quando vierem as planilhas "Dados FID/TCD").
   { id: 'gas', label: 'Gás — composição', series: [], extras: ['gas_series'] },
-  {
-    id: 'fid',
-    label: 'Gás — FID (hidrocarbonetos)',
-    series: [
-      'gas_balanco.comp_C1',
-      'gas_balanco.comp_C2',
-      'gas_balanco.comp_C3',
-      'gas_balanco.comp_C4',
-      'gas_balanco.comp_C5p',
-      'gc_fid.pct_C1',
-      'gc_fid.pct_C2',
-      'gc_fid.pct_C3',
-      'gc_fid.pct_C4',
-      'gc_fid.pct_C5p',
-      'gc_fid.wetness',
-    ],
-    extras: [],
-  },
-  {
-    id: 'tcd',
-    label: 'Gás — TCD (H₂ e CO₂)',
-    series: ['gas_balanco.comp_H2', 'gas_balanco.comp_CO2', 'gc_tcd.pct_H2', 'gc_tcd.pct_CO2', 'gc_tcd.pct_C1', 'gc_tcd.pct_C2', 'gc_tcd.pct_C3'],
-    extras: [],
-  },
+  // em barras por temperatura (pedido do mantenedor, 09/10/2026)
+  { id: 'fid', label: 'Gás — FID (hidrocarbonetos)', series: ['gc_fid.wetness'], extras: ['gas_fid'] },
+  { id: 'tcd', label: 'Gás — TCD (H₂ e CO₂)', series: [], extras: ['gas_tcd'] },
   { id: 'py', label: 'Py-GC-MS', series: ['pygcms.pr_ph', 'pygcms.pr_nc17', 'pygcms.ph_nc18', 'pygcms.cpi'], extras: ['alkanes'] },
   { id: 'pyro', label: 'Pirogramas', series: [], extras: ['pyro'] },
 ]
@@ -288,6 +279,10 @@ export function SeriesTab() {
             ? list.some((s) => s.fraction === 'G')
             : e === 'gas_series'
               ? list.some((s) => hasGasComposition(s) && gasTemperature(s) != null)
+              : e === 'gas_fid'
+                ? list.some((s) => (hasGasComposition(s) || hasGcData(s, 'gc_fid')) && gasTemperature(s) != null)
+                : e === 'gas_tcd'
+                  ? list.some((s) => (hasGasComposition(s) || hasGcData(s, 'gc_tcd')) && gasTemperature(s) != null)
             : e === 'alkanes'
               ? list.some((s) => s.techniques?.includes('pygcms'))
               : list.some((s) => s.techniques?.includes('rockeval'))
@@ -308,6 +303,8 @@ export function SeriesTab() {
     vk: ['chnso'],
     gas: ['gas_balanco', 'gc_fid'],
     gas_series: ['gas_balanco'],
+    gas_fid: ['gas_balanco', 'gc_fid'],
+    gas_tcd: ['gas_balanco', 'gc_tcd'],
     alkanes: ['pygcms'],
     pyro: ['rockeval'],
   }
@@ -330,6 +327,16 @@ export function SeriesTab() {
     if (e === 'hi_tmax') return <HiTmaxChart key={e} samples={list} fractionLabel={fractionLabel} />
     if (e === 'vk') return <VanKrevelenChart key={e} samples={list} fractionLabel={fractionLabel} />
     if (e === 'gas') return <GasCompositionChart key={e} samples={list} />
+    if (e === 'gas_fid' || e === 'gas_tcd')
+      return (
+        <div key={e} className="xl:col-span-2">
+          {e === 'gas_fid' ? (
+            <GasBarsChart samples={list} keys={['C1', 'C2', 'C3', 'C4', 'C5p']} title="Gás — FID: hidrocarbonetos × temperatura" subtitle="C1, C2, C3, C4 e C5+ (soma ≥ C5)" />
+          ) : (
+            <GasBarsChart samples={list} keys={['H2', 'CO2']} title="Gás — TCD: H₂ e CO₂ × temperatura" subtitle="H₂ e CO₂" />
+          )}
+        </div>
+      )
     if (e === 'gas_series')
       return (
         <div key={e} className="xl:col-span-2">

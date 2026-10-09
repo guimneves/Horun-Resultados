@@ -2,6 +2,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  ErrorBar,
   Legend,
   Line,
   LineChart,
@@ -166,12 +167,8 @@ export function GasCompositionChart({ samples }: { samples: SampleRow[] }) {
   )
 }
 
-/** Composição do gás × temperatura na série de hidropirólise (pedido do
- * mantenedor, 09/10/2026): uma linha por componente — CO₂, H₂, C1, C2, C3,
- * C4 e C5+ (soma de tudo com 5 ou mais carbonos) —, em % (mol, sem o gás de
- * enchimento). Experimentos da mesma temperatura (A, B, C...) viram média. */
-/** Temperatura de uma amostra com composição de gás: a da amostra ou, se
- * faltar, a do código do experimento (HP320NA2 → 320). */
+/** Temperatura de uma amostra com dados de gás: a da amostra ou, se faltar,
+ * a do código do experimento (HP320NA2 → 320). */
 export function gasTemperature(s: SampleRow): number | null {
   if (s.temperature_c != null) return s.temperature_c
   const m = /^[A-Z]*?(\d{3})/i.exec((s.experiment_code ?? s.code).replace(/\s+/g, ''))
@@ -184,17 +181,46 @@ export function hasGasComposition(s: SampleRow): boolean {
   return Object.keys(s.values).some((k) => k.startsWith('gas_balanco.comp_') && s.values[k]?.mean != null)
 }
 
-export function GasSeriesChart({ samples }: { samples: SampleRow[] }) {
-  const order = ['CO2', 'H2', 'C1', 'C2', 'C3', 'C4', 'C5p']
-  const parts = order.map((k) => GAS_PARTS.find((p) => p.key === k)!)
-  const byTemp = new Map<number, { codes: string[]; values: Record<string, number[]> }>()
+/** Amostra com dados de gás do FID/TCD (planilhas "Dados FID"/"Dados TCD"). */
+export function hasGcData(s: SampleRow, tech: 'gc_fid' | 'gc_tcd'): boolean {
+  return Object.keys(s.values).some((k) => k.startsWith(`${tech}.pct_`) && s.values[k]?.mean != null)
+}
+
+type GasKey = 'H2' | 'CO2' | 'C1' | 'C2' | 'C3' | 'C4' | 'C5p'
+
+/** Gás × temperatura em BARRAS (pedido do mantenedor, 09/10/2026) — base dos
+ * gráficos "Composição do gás × temperatura" (empilhado, soma 100%),
+ * "Gás — FID" (C1–C5+) e "Gás — TCD" (H₂ e CO₂), lado a lado. Valor = composição
+ * da planilha de cálculo de gás / tabela consolidada (% molar sem o gás de
+ * enchimento); sem ela, o % de área do GC-FID/GC-TCD. Experimentos da mesma
+ * temperatura (A, B, C...) viram média ± desvio. */
+export function GasBarsChart({
+  samples,
+  keys,
+  title,
+  subtitle,
+  stacked = false,
+}: {
+  samples: SampleRow[]
+  keys: GasKey[]
+  title: string
+  subtitle: string
+  stacked?: boolean
+}) {
+  const parts = keys.map((k) => GAS_PARTS.find((p) => p.key === k)!)
+  const byTemp = new Map<number, { codes: string[]; sources: Set<string>; values: Record<string, number[]> }>()
   for (const s of samples) {
     const temp = gasTemperature(s)
-    if (temp == null || !hasGasComposition(s)) continue
-    const vals = parts.map((p) => [p.key, s.values[`gas_balanco.comp_${p.key}`]?.mean] as const).filter(([, v]) => v != null)
+    if (temp == null) continue
+    const fromBalance = parts.some((p) => s.values[`gas_balanco.comp_${p.key}`]?.mean != null)
+    const tech = (k: string) => (k === 'H2' || k === 'CO2' ? 'gc_tcd' : 'gc_fid')
+    const vals = parts
+      .map((p) => [p.key, fromBalance ? s.values[`gas_balanco.comp_${p.key}`]?.mean : s.values[`${tech(p.key)}.pct_${p.key}`]?.mean] as const)
+      .filter(([, v]) => v != null)
     if (!vals.length) continue
-    const entry = byTemp.get(temp) ?? { codes: [], values: {} }
+    const entry = byTemp.get(temp) ?? { codes: [], sources: new Set<string>(), values: {} }
     entry.codes.push((s.experiment_code ?? s.code).replace(' (gás)', ''))
+    entry.sources.add(fromBalance ? 'balanço' : 'GC')
     for (const [k, v] of vals) (entry.values[k] ??= []).push(v as number)
     byTemp.set(temp, entry)
   }
@@ -206,65 +232,83 @@ export function GasSeriesChart({ samples }: { samples: SampleRow[] }) {
   const rows = [...byTemp.entries()]
     .sort(([a], [b]) => a - b)
     .map(([temp, e]) => {
-      const row: Record<string, number | string | null> = { temp, codes: e.codes.join(', ') }
+      const row: Record<string, number | string | null> = { t: `${temp}`, temp, codes: e.codes.join(', '), source: [...e.sources].join(' + ') }
       for (const p of parts) {
         const xs = e.values[p.key]
         if (xs?.length) {
           const st = stats(xs)
           row[p.key] = st.mean
-          row[`${p.key}_sd`] = st.sd
+          row[`${p.key}_sd`] = st.sd ?? 0
+          row[`${p.key}_sdText`] = st.sd
         }
       }
       return row
     })
+  const onlyGc = rows.length > 0 && rows.every((r) => r.source === 'GC')
+  const sources = onlyGc ? [...new Set(keys.map((k) => (k === 'H2' || k === 'CO2' ? 'gc_tcd' : 'gc_fid')))] : ['gas_balanco']
   return (
     <ChartCard
-      title="Composição do gás × temperatura"
-      sources={['gas_balanco']}
-      subtitle="CO₂, H₂, C1–C4 e C5+ (soma ≥ C5) · % molar sem o gás de enchimento · média entre os experimentos da mesma temperatura"
-      empty={rows.length ? null : 'Sem composição de gás (importe a planilha de cálculo de gás ou a tabela consolidada).'}
+      title={title}
+      subtitle={`${subtitle} · ${onlyGc ? '% de área (GC)' : '% molar sem o gás de enchimento'}${stacked ? '' : ' · média ± desvio entre os experimentos da mesma temperatura'}`}
+      sources={sources}
+      empty={rows.length ? null : 'Sem dados de gás (importe a planilha de cálculo de gás, a tabela consolidada ou o GC).'}
       table={
         <SimpleTable
-          head={['Temp. (°C)', 'Experimentos', ...parts.map((p) => `${p.label} (%)`)]}
+          head={['Temp. (°C)', 'Experimentos', 'Fonte', ...parts.map((p) => `${p.label} (%)`)]}
           rows={rows.map((r) => [
             Number(r.temp),
             String(r.codes),
+            String(r.source),
             ...parts.map((p) =>
-              r[p.key] != null ? `${fmt(Number(r[p.key]))}${r[`${p.key}_sd`] != null ? ` ± ${fmt(Number(r[`${p.key}_sd`]))}` : ''}` : '—',
+              r[p.key] != null ? `${fmt(Number(r[p.key]))}${r[`${p.key}_sdText`] != null ? ` ± ${fmt(Number(r[`${p.key}_sdText`]))}` : ''}` : '—',
             ),
           ])}
         />
       }
     >
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={rows} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
+        <BarChart data={rows} margin={{ top: 8, right: 16, bottom: 8, left: 0 }} barGap={1} barCategoryGap={stacked ? '25%' : '18%'}>
           <CartesianGrid {...gridProps} />
           <XAxis
-            type="number"
-            dataKey="temp"
-            domain={['dataMin - 10', 'dataMax + 10']}
+            dataKey="t"
             {...axisProps}
             label={{ value: 'Temperatura (°C)', position: 'insideBottom', offset: -4, fill: 'var(--color-text-muted)', fontSize: 12 }}
             height={40}
           />
-          <YAxis {...axisProps} width={44} unit="%" tickFormatter={(v: number) => fmt(v)} />
+          <YAxis {...axisProps} width={44} unit="%" domain={stacked ? [0, 100] : [0, 'auto']} tickFormatter={(v: number) => fmt(v)} />
           <Tooltip {...tooltipStyle} labelFormatter={(t) => `${t} °C`} formatter={(v, name) => [`${fmt(Number(v))} %`, String(name)]} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          {parts.map((p) => (
-            <Line
+          {parts.map((p, i) => (
+            <Bar
               key={p.key}
               dataKey={p.key}
               name={p.label}
-              stroke={GAS_COLORS[p.key]}
-              strokeWidth={2}
-              dot={{ r: 3.5, strokeWidth: 1.5, stroke: 'var(--color-bg-elevated)', fill: GAS_COLORS[p.key] }}
-              connectNulls
+              fill={GAS_COLORS[p.key]}
+              stackId={stacked ? 'gas' : undefined}
+              stroke={stacked ? 'var(--color-bg-elevated)' : undefined}
+              strokeWidth={stacked ? 1 : 0}
+              radius={stacked ? (i === parts.length - 1 ? [4, 4, 0, 0] : 0) : [3, 3, 0, 0]}
               isAnimationActive={false}
-            />
+            >
+              {!stacked && <ErrorBar dataKey={`${p.key}_sd`} width={3} stroke="var(--color-text-muted)" direction="y" />}
+            </Bar>
           ))}
-        </LineChart>
+        </BarChart>
       </ResponsiveContainer>
     </ChartCard>
+  )
+}
+
+/** Composição do gás × temperatura (CO₂, H₂, C1–C4 e C5+), barras empilhadas. */
+export function GasSeriesChart({ samples }: { samples: SampleRow[] }) {
+  return (
+    <GasBarsChart
+      samples={samples}
+      keys={['CO2', 'H2', 'C1', 'C2', 'C3', 'C4', 'C5p']}
+      title="Composição do gás × temperatura"
+      subtitle="CO₂, H₂, C1–C4 e C5+ (soma ≥ C5), empilhados (soma 100%)"
+      stacked
+    />
   )
 }
 
