@@ -5,7 +5,7 @@
 - "Composição do gás × temperatura" vira barras empilhadas (soma 100%);
   "Gás — FID" e "Gás — TCD" viram um gráfico de barras lado a lado cada
   (C1–C5+ / H2 e CO2, média ± desvio por temperatura), no lugar dos gráficos
-  de linha por componente (). Fonte: composição do balanço de
+  de linha por componente (`GasBarsChart`). Fonte: composição do balanço de
   gás; sem ela, % de área do GC-FID/TCD.
 
 ### Correção: "Composição do gás × temperatura" não aparecia
