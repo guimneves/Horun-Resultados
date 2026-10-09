@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import type { AnalysisData, MassesResponse, MassKey, Mode, PyPeaks, PyroData, SampleRow, SeriesResponse } from '../api/types'
+import { ArticleView } from '../charts/ArticleCharts'
 import { SourceChips } from '../charts/ChartCard'
 import { hasMassData, MassChart } from '../charts/MassCharts'
 import { SeriesChart } from '../charts/SeriesChart'
@@ -59,13 +60,15 @@ const SECTIONS: { id: string; label: string; series: string[]; extras: Extra[] }
 // gás e betume das corridas + os gráficos do balanço de gás.
 const GAS_SERIES = ['gas_balanco.gas_mass_g', 'gas_balanco.gas_yield_mg_g', 'gc_fid.wetness']
 const MASS_ORDER: MassKey[] = ['oil_mass_g', 'gas_mass_g', 'bitumen_mass_g']
-type View = 'parametros' | 'massas'
+// 'artigo': figuras do artigo de hidropirólise (charts/ArticleCharts.tsx)
+type View = 'parametros' | 'massas' | 'artigo'
 const VIEW_KEY = 'resultados.series.view'
 const CUSTOM_KEY = (projectId: number) => `resultados.series.extra.${projectId}`
 
 function readView(): View {
   try {
-    return localStorage.getItem(VIEW_KEY) === 'massas' ? 'massas' : 'parametros'
+    const v = localStorage.getItem(VIEW_KEY)
+    return v === 'massas' || v === 'artigo' ? v : 'parametros'
   } catch {
     return 'parametros'
   }
@@ -370,6 +373,7 @@ export function SeriesTab() {
         options={[
           { value: 'parametros', label: 'Parâmetros' },
           { value: 'massas', label: 'Balanço de massas' },
+          { value: 'artigo', label: 'Artigo' },
         ]}
       />
       <div className="flex flex-wrap items-center gap-2">
@@ -453,6 +457,8 @@ export function SeriesTab() {
           </p>
         </section>
       )}
+
+      {view === 'artigo' && <ArticleView projectId={project.id} mode={mode} />}
 
       {view === 'parametros' && adding && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border p-3" style={card}>

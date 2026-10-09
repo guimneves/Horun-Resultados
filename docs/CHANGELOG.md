@@ -1,6 +1,16 @@
 # Changelog — Horun · Resultados
 
 ## Não lançado — 09/10/2026
+### Séries → "Artigo" (pedido do mantenedor)
+- Terceira vista da aba Séries com as figuras do Supporting Information do
+  artigo de hidropirólise (menos FRX, MEV e DRX), calculadas com os dados do
+  projeto: `GET /projects/{id}/article` (`services/article.py`) +
+  `charts/ArticleCharts.tsx`. Rendimentos em µmol/g COT₀ (COT da rocha
+  original; sem ela, µmol/g rocha); mols da tabela consolidada (massa ÷ massa
+  molar, agora guardada por componente) ou estimados pela composição e massa
+  total; consumo de S2 e taxa de transformação = (HI₀ − HI)/HI₀.
+  Testes: `tests/test_article.py`.
+
 ### Exportação de gráficos em PNG reformulada (pedido do mantenedor)
 - O PNG sai sempre com título, subtítulo, origem dos dados e a **legenda**
   (a legenda do Recharts é HTML, fora do <svg>, e sumia na imagem):

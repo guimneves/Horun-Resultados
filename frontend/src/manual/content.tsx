@@ -477,6 +477,16 @@ export const MANUAL_SECTIONS: ManualSection[] = [
             gás por massa de rocha, wetness e composição do gás.
           </li>
           <li>
+            A terceira vista, <strong>Artigo</strong>, monta as figuras no estilo do Supporting Information do artigo de hidropirólise
+            com os dados do projeto: <strong>1</strong> rendimento de C1–C5+, <strong>2</strong> rendimento de H₂ e CO₂ (µmol por g de
+            COT inicial — o COT da rocha original no Rock-Eval; sem ele, por g de rocha), <strong>3</strong> frações molares de H₂, CH₄ e
+            CO₂ e a participação do H₂ nos produtos, <strong>4</strong> Rock-Eval antes (rocha original) e depois (rocha hidropirolisada,
+            H/SE) — COT, S1, S2, HI, OI e Tmax —, <strong>5</strong> consumo de S2 e taxa de transformação, <strong>7</strong> massa de
+            rocha carregada e massa de gás recuperada, e <strong>8</strong> rendimento de H₂ × Tmax depois e × consumo de S2 (com a
+            temperatura ao lado de cada ponto). FRX, MEV e DRX ficam de fora. Os mols vêm da tabela consolidada de gás (massa de cada
+            componente); sem ela, são estimados pela composição e pela massa total de gás — o subtítulo avisa.
+          </li>
+          <li>
             Falta algum? <strong>+ Gráfico</strong>: escolha a técnica e o parâmetro e toque em <strong>Adicionar</strong>. Ele vai para{' '}
             <strong>Meus gráficos</strong> (guardado neste navegador).
           </li>

@@ -17,7 +17,7 @@ from app.core.identity import HorunIdentity, get_identity
 from app.core.permissions import require_editor
 from app.db.models import ImportBatch, Project
 from app.db.session import get_session
-from app.services import directory, importer, report, results
+from app.services import article, directory, importer, report, results
 from app.services.catalog import TECHNIQUES
 
 router = APIRouter(tags=["resultados"])
@@ -115,6 +115,19 @@ def series(
     if mode not in results.MODES:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Modo de validade inválido.")
     return results.series(session, project.id, technique, parameter, mode, split_replicates)
+
+
+@router.get("/projects/{project_id}/article")
+def article_data(
+    mode: str = "padrao",
+    project: Project = Depends(get_project),
+    session: Session = Depends(get_session),
+    _i: HorunIdentity = Depends(get_identity),
+):
+    """Séries → Artigo: dados das figuras do artigo de hidropirólise (services/article.py)."""
+    if mode not in results.MODES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Modo de validade inválido.")
+    return article.build(session, project.id, mode)
 
 
 @router.get("/projects/{project_id}/analysis-data")

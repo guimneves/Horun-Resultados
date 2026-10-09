@@ -164,6 +164,7 @@ def parse_workbook(wb, filename: str = "") -> ParseResult:
                 "component": name,
                 "original": clean_label(cell("original")),
                 "group": group,
+                "mm": to_float(cell("mm")),
                 "mol_pct": mol,
                 "mass_pct": to_float(cell("mass_pct")),
                 "mass_crom_g": to_float(cell("crom_g")),
