@@ -115,6 +115,9 @@ TECHNIQUES: dict[str, dict] = {
             Param("gas_yield_mg_g", "Gás gerado por massa de rocha", "mg/g", True, True),
             Param("initial_mass_g", "Massa inicial de amostra", "g"),
             Param("weighed_gas_g", "Massa de gás após pesagem", "g"),
+            # tabela consolidada de gás (parsers/gas_consolidated.py): massa por pressão/pesagem
+            Param("gas_mass_pressure_g", "Massa de gás gerada (pressão/pesagem)", "g"),
+            Param("gas_yield_pressure_mg_g", "Gás por massa de rocha (pressão/pesagem)", "mg/g", False, True),
             Param("pressure_closure_pct", "Fechamento do balanço de pressão", "%"),
             Param("comp_H2", "H2 (normalizado)", "%"),
             Param("comp_CO2", "CO2 (normalizado)", "%"),

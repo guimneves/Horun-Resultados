@@ -107,6 +107,21 @@ Identificação`; linhas seguintes = picos (n-C10..., Pristano, Fitano...).
 Derivados úteis: Pristano/Fitano, Pr/n-C17, Fi/n-C18, distribuição de
 n-alcanos, CPI quando houver os pares.
 
+### 3.4b Gás — tabela consolidada ("Tabela_final_consolidada de composição de gás_HP.xlsx", 09/10/2026)
+Modelo alternativo à "Planilha cálculo gás": um arquivo com todos os
+experimentos. Aba **"Detalhe"** (a fonte; "Tabela final" só soma por
+fórmula): Amostra (= código do experimento) | Linha na planilha original |
+Componente (original) | Componente (agrupado) | MM | mol% (final, sem N2) |
+% mássico | Massa gerada – cromatografia (g) | (mg/g) | Massa gerada –
+pressão/pesagem (g) | (mg/g). Aba **"Resumo"** (opcional): uma coluna por
+experimento — Massa inicial de amostra (g), Pressão inicial, Pressão de
+abertura do reator. Vira `gas_balanco` com a mesma chave da planilha de
+cálculo (código do experimento): `comp_*` = mol% somado por nº de carbonos
+(C5p = ≥ C5) e normalizado a 100; `gas_mass_g` = Σ massa por cromatografia;
+`gas_mass_pressure_g` = Σ massa por pressão/pesagem; `initial_mass_g`;
+`gas_yield_mg_g` e `gas_yield_pressure_mg_g`. Linhas sem código de
+experimento (notas) são puladas. Leitor: `parsers/gas_consolidated.py`.
+
 ### 3.5b LECO - Resíduo Insolúvel ("planilha_massas_amostras-LECO.xlsx", 09/10/2026)
 Aba **"Dados"**: linha de grupos (Data | Amostra | Massa do cadinho (g) |
 Massa da amostra (g) | Massa do cadinho com amostra (g) | Massa após

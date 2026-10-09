@@ -1,6 +1,18 @@
 # Changelog — Horun · Resultados
 
 ## Não lançado — 09/10/2026
+### Gás: tabela consolidada, séries FID/TCD e composição × temperatura (pedido do mantenedor)
+- Novo modelo de importação do Balanço de gás: a "Tabela final consolidada de
+  composição de gás" (`parsers/gas_consolidated.py`, ESPECIFICACAO 3.4b) —
+  composição CO₂, H₂, C1–C4, C5+ (mol% sem N₂, por nº de carbonos), massa de
+  gás por cromatografia e por pressão/pesagem, massa inicial e pressões. Mesma
+  chave da planilha de cálculo: atualiza em vez de duplicar. Parâmetros novos:
+  `gas_mass_pressure_g`, `gas_yield_pressure_mg_g`.
+- Séries: grupos "Gás — composição" (gráfico novo `GasSeriesChart`: CO₂, H₂,
+  C1, C2, C3, C4 e C5+ × temperatura, média entre experimentos da mesma
+  temperatura), "Gás — FID (hidrocarbonetos)" e "Gás — TCD (H₂ e CO₂)".
+- Testes sintéticos: `tests/test_gas_consolidated.py`.
+
 ### Novo modelo de importação: LECO - Resíduo Insolúvel (pedido do mantenedor)
 - Técnica `leco_ri` ("LECO - Resíduo Insolúvel") lida da planilha de massas
   das amostras (`parsers/leco_ri.py`, ESPECIFICACAO 3.5b): por réplica,

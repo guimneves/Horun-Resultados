@@ -16,7 +16,7 @@ const ANALYSIS_TYPES: { key: string; label: string; files: string }[] = [
   { key: 'rockeval', label: 'Rock-Eval', files: 'relatório .htm (Job report do GeoWorks)' },
   { key: 'gc_fid', label: 'GC-FID (gás)', files: 'planilha "Dados FID" de cada experimento' },
   { key: 'gc_tcd', label: 'GC-TCD (gás)', files: 'planilha "Dados TCD" de cada experimento' },
-  { key: 'gas_balanco', label: 'Balanço de gás', files: '"Planilha cálculo gás" de cada experimento' },
+  { key: 'gas_balanco', label: 'Balanço de gás', files: '"Planilha cálculo gás" de cada experimento, ou a tabela consolidada de gás (aba "Detalhe")' },
   { key: 'pygcms', label: 'Py-GC-MS', files: 'planilha com uma aba por amostra' },
   { key: '', label: 'Vários / não sei (detectar)', files: 'qualquer um dos acima, ou um .zip com pastas' },
 ]

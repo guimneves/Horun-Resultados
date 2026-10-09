@@ -257,6 +257,14 @@ export const MANUAL_SECTIONS: ManualSection[] = [
             célula da planilha disser outra coisa, aparece um aviso para conferir.
           </li>
           <li>
+            <strong>Gás, modelo alternativo</strong>: a <strong>tabela consolidada de composição de gás</strong> (um arquivo com todos os
+            experimentos; abas <strong>Detalhe</strong> e <strong>Resumo</strong>), em <strong>Balanço de gás</strong>. De cada experimento
+            entram: a composição em CO₂, H₂, C1, C2, C3, C4 e C5+ (mol% sem N₂, somada por número de carbonos; C5+ = tudo com 5 ou mais
+            carbonos), a massa de gás gerada por <strong>cromatografia</strong> e por <strong>pressão/pesagem</strong>, a massa inicial de
+            amostra e as pressões. Importar a tabela depois da planilha de cálculo de gás (ou o contrário) <strong>atualiza</strong> a
+            mesma medição do experimento — não duplica.
+          </li>
+          <li>
             <strong>Py-GC-MS</strong>: a planilha com uma aba por amostra (picos com "Identificação").
           </li>
         </Bullets>
@@ -454,8 +462,10 @@ export const MANUAL_SECTIONS: ManualSection[] = [
           <li>
             Na aba <strong>Séries</strong>, os gráficos aparecem todos juntos, em grupos: <strong>Matéria orgânica</strong> (COT, C total,
             HI, OI, Tmax, S1, S2, HI × Tmax e <strong>COT (Rock-Eval) × C total (LECO)</strong>, com a reta ajustada e o <strong>R²</strong>
-            ), <strong>Elementar</strong> (H/C, O/C, N, S, Van Krevelen), <strong>Py-GC-MS</strong> e <strong>Pirogramas</strong>. Só
-            aparecem os que têm dados no projeto. Use os botões do alto para ver um grupo só.
+            ), <strong>Elementar</strong> (H/C, O/C, N, S, Van Krevelen), <strong>Gás — composição</strong> (CO₂, H₂, C1, C2, C3, C4 e
+            C5+ num gráfico só, por temperatura), <strong>Gás — FID</strong> (hidrocarbonetos C1 a C5+ e wetness),{' '}
+            <strong>Gás — TCD</strong> (H₂ e CO₂), <strong>Py-GC-MS</strong> e <strong>Pirogramas</strong>. Só aparecem os que têm dados
+            no projeto. Use os botões do alto para ver um grupo só.
           </li>
           <li>
             No alto da aba, troque <strong>Parâmetros</strong> por <strong>Balanço de massas</strong> (a escolha fica guardada neste

@@ -315,3 +315,29 @@ def leco_ri_flat_xlsx(rows: list[tuple]) -> bytes:
     for day, name, cad, amo, apos, obs in rows:
         ws.append([dt.datetime(2026, 1, day), name, *cad, *amo, *apos, obs])
     return _xlsx(wb)
+
+
+def gas_consolidated_xlsx(experiments: dict[str, list[tuple]], initial_masses: dict[str, float] | None = None) -> bytes:
+    """Tabela consolidada de gás: aba "Detalhe" (uma linha por pico) + "Resumo".
+    experiments: {código: [(componente agrupado, mol%, massa cromatografia g, massa pressão g)]}."""
+    import openpyxl
+
+    wb = openpyxl.Workbook()
+    wb.active.title = "Tabela final"
+    wb["Tabela final"].append(["Consolidado – Gás gerado (fórmulas da aba Detalhe)"])
+    det = wb.create_sheet("Detalhe")
+    det.append(["Amostra", "Linha na planilha original", "Componente (original)", "Componente (agrupado)", "MM (g/mol)",
+                "mol% (final, sem N2)", "% mássico", "Massa gerada - cromatografia (g)", "Massa gerada - cromatografia (mg/g amostra)",
+                "Massa gerada - pressão/pesagem (g)", "Massa gerada - pressão/pesagem (mg/g amostra)"])  # fmt: skip
+    for code, comps in experiments.items():
+        for i, (name, mol, crom, press) in enumerate(comps, start=11):
+            det.append([code, i, name, name, None, mol, None, crom, None, press, None])
+    det.append(["Fonte: nota sem código de experimento"])
+    if initial_masses:
+        res = wb.create_sheet("Resumo")
+        res.append(["Resumo por amostra – massas geradas"])
+        res.append([])
+        res.append(["Parâmetro", *initial_masses])
+        res.append(["Massa inicial de amostra (g)", *initial_masses.values()])
+        res.append(["Pressão inicial (psi g)", *[25 for _ in initial_masses]])
+    return _xlsx(wb)

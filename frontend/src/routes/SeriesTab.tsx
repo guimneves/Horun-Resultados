@@ -4,7 +4,7 @@ import type { AnalysisData, MassesResponse, MassKey, Mode, PyPeaks, PyroData, Sa
 import { SourceChips } from '../charts/ChartCard'
 import { hasMassData, MassChart } from '../charts/MassCharts'
 import { SeriesChart } from '../charts/SeriesChart'
-import { AlkaneChart, CorrelationChart, GasCompositionChart, HiTmaxChart, PyrogramChart, VanKrevelenChart } from '../charts/MoreCharts'
+import { AlkaneChart, CorrelationChart, GasCompositionChart, GasSeriesChart, HiTmaxChart, PyrogramChart, VanKrevelenChart } from '../charts/MoreCharts'
 import { Button, card, Dropdown, ErrorBox, inputClass, inputStyle, muted, Segmented } from '../components/ui'
 import { useApp } from '../context/AppContext'
 import { fractionAllowed, FRACTION_CHOICES, type FractionChoice } from '../lib/fractionFilter'
@@ -13,7 +13,7 @@ import { useProject } from './ProjectLayout'
 import { MODE_OPTIONS } from './SamplesTab'
 
 // Painel de séries: grupos de gráficos (só aparecem os que têm dados no projeto).
-type Extra = 'toc_leco' | 'hi_tmax' | 'vk' | 'gas' | 'alkanes' | 'pyro'
+type Extra = 'toc_leco' | 'hi_tmax' | 'vk' | 'gas' | 'gas_series' | 'alkanes' | 'pyro'
 const SECTIONS: { id: string; label: string; series: string[]; extras: Extra[] }[] = [
   {
     id: 'mo',
@@ -22,6 +22,35 @@ const SECTIONS: { id: string; label: string; series: string[]; extras: Extra[] }
     extras: ['toc_leco', 'hi_tmax'],
   },
   { id: 'el', label: 'Elementar', series: ['chnso.HC_at', 'chnso.OC_at', 'chnso.H', 'chnso.N', 'chnso.S', 'leco.S', 'leco_ri.RI_pct'], extras: ['vk'] },
+  // Gases da hidropirólise (pedido do mantenedor, 09/10/2026): composição
+  // (CO2, H2, C1–C5+) num gráfico só, e as séries separadas pelo detector —
+  // FID = hidrocarbonetos, TCD = H2 e CO2 (da planilha de cálculo de gás ou da
+  // tabela consolidada; % de área quando vierem as planilhas "Dados FID/TCD").
+  { id: 'gas', label: 'Gás — composição', series: [], extras: ['gas_series'] },
+  {
+    id: 'fid',
+    label: 'Gás — FID (hidrocarbonetos)',
+    series: [
+      'gas_balanco.comp_C1',
+      'gas_balanco.comp_C2',
+      'gas_balanco.comp_C3',
+      'gas_balanco.comp_C4',
+      'gas_balanco.comp_C5p',
+      'gc_fid.pct_C1',
+      'gc_fid.pct_C2',
+      'gc_fid.pct_C3',
+      'gc_fid.pct_C4',
+      'gc_fid.pct_C5p',
+      'gc_fid.wetness',
+    ],
+    extras: [],
+  },
+  {
+    id: 'tcd',
+    label: 'Gás — TCD (H₂ e CO₂)',
+    series: ['gas_balanco.comp_H2', 'gas_balanco.comp_CO2', 'gc_tcd.pct_H2', 'gc_tcd.pct_CO2', 'gc_tcd.pct_C1', 'gc_tcd.pct_C2', 'gc_tcd.pct_C3'],
+    extras: [],
+  },
   { id: 'py', label: 'Py-GC-MS', series: ['pygcms.pr_ph', 'pygcms.pr_nc17', 'pygcms.ph_nc18', 'pygcms.cpi'], extras: ['alkanes'] },
   { id: 'pyro', label: 'Pirogramas', series: [], extras: ['pyro'] },
 ]
@@ -253,6 +282,8 @@ export function SeriesTab() {
           ? list.some((s) => s.values['chnso.HC_at'] && s.values['chnso.OC_at'])
           : e === 'gas'
             ? list.some((s) => s.fraction === 'G')
+            : e === 'gas_series'
+              ? list.some((s) => s.fraction === 'G' && s.temperature_c != null && Object.keys(s.values).some((k) => k.startsWith('gas_balanco.comp_')))
             : e === 'alkanes'
               ? list.some((s) => s.techniques?.includes('pygcms'))
               : list.some((s) => s.techniques?.includes('rockeval'))
@@ -272,6 +303,7 @@ export function SeriesTab() {
     hi_tmax: ['rockeval'],
     vk: ['chnso'],
     gas: ['gas_balanco', 'gc_fid'],
+    gas_series: ['gas_balanco'],
     alkanes: ['pygcms'],
     pyro: ['rockeval'],
   }
@@ -294,6 +326,12 @@ export function SeriesTab() {
     if (e === 'hi_tmax') return <HiTmaxChart key={e} samples={list} fractionLabel={fractionLabel} />
     if (e === 'vk') return <VanKrevelenChart key={e} samples={list} fractionLabel={fractionLabel} />
     if (e === 'gas') return <GasCompositionChart key={e} samples={list} />
+    if (e === 'gas_series')
+      return (
+        <div key={e} className="xl:col-span-2">
+          <GasSeriesChart samples={list} />
+        </div>
+      )
     if (e === 'alkanes')
       return (
         <div key={e} className="xl:col-span-2">
