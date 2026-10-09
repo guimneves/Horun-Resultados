@@ -5,7 +5,7 @@ import { ArticleView } from '../charts/ArticleCharts'
 import { SourceChips } from '../charts/ChartCard'
 import { hasMassData, MassChart } from '../charts/MassCharts'
 import { SeriesChart } from '../charts/SeriesChart'
-import { AlkaneChart, CorrelationChart, GasCompositionChart, GasSeriesChart, HiTmaxChart, PyrogramChart, VanKrevelenChart } from '../charts/MoreCharts'
+import { AlkaneChart, CorrelationChart, GasCompositionChart, gasTemperature, GasSeriesChart, hasGasComposition, HiTmaxChart, PyrogramChart, VanKrevelenChart } from '../charts/MoreCharts'
 import { SelectChartsButton } from '../components/ChartSelection'
 import { Button, card, Dropdown, ErrorBox, inputClass, inputStyle, muted, Segmented } from '../components/ui'
 import { useApp } from '../context/AppContext'
@@ -287,7 +287,7 @@ export function SeriesTab() {
           : e === 'gas'
             ? list.some((s) => s.fraction === 'G')
             : e === 'gas_series'
-              ? list.some((s) => s.fraction === 'G' && s.temperature_c != null && Object.keys(s.values).some((k) => k.startsWith('gas_balanco.comp_')))
+              ? list.some((s) => hasGasComposition(s) && gasTemperature(s) != null)
             : e === 'alkanes'
               ? list.some((s) => s.techniques?.includes('pygcms'))
               : list.some((s) => s.techniques?.includes('rockeval'))
@@ -351,11 +351,12 @@ export function SeriesTab() {
   const massCharts = MASS_ORDER.filter((m) => hasMassData(masses.data, m))
   const gasSeries = GAS_SERIES.filter(hasSeries)
   const gasComposition = hasExtra('gas')
+  const gasByTemperature = hasExtra('gas_series')
   const balanceSources = Array.from(
     new Set([
       ...(massCharts.length ? ['Condições experimentais'] : []),
       ...gasSeries.map((c) => c.split('.')[0]),
-      ...(gasComposition ? EXTRA_SOURCES.gas : []),
+      ...(gasComposition || gasByTemperature ? EXTRA_SOURCES.gas : []),
     ]),
   )
   const groups = [
@@ -437,7 +438,7 @@ export function SeriesTab() {
           <ErrorBox message={masses.error} />
           {masses.data === null && !masses.error ? (
             <p style={muted}>Carregando…</p>
-          ) : massCharts.length === 0 && gasSeries.length === 0 && !gasComposition ? (
+          ) : massCharts.length === 0 && gasSeries.length === 0 && !gasComposition && !gasByTemperature ? (
             <p style={muted}>
               Sem massas nem dados de gás ainda. Digite as massas de óleo, gás e betume em Condições experimentais, ou importe a planilha de cálculo de gás.
             </p>
@@ -446,6 +447,8 @@ export function SeriesTab() {
               {massCharts.map((m) => (
                 <MassChart key={m} data={masses.data as MassesResponse} mass={m} />
               ))}
+              {/* composição × temperatura também aqui, junto dos outros gráficos de gás */}
+              {gasByTemperature && extra('gas_series')}
               {gasSeries.map(chart)}
               {gasComposition && extra('gas')}
             </div>

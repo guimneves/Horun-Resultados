@@ -170,18 +170,33 @@ export function GasCompositionChart({ samples }: { samples: SampleRow[] }) {
  * mantenedor, 09/10/2026): uma linha por componente — CO₂, H₂, C1, C2, C3,
  * C4 e C5+ (soma de tudo com 5 ou mais carbonos) —, em % (mol, sem o gás de
  * enchimento). Experimentos da mesma temperatura (A, B, C...) viram média. */
+/** Temperatura de uma amostra com composição de gás: a da amostra ou, se
+ * faltar, a do código do experimento (HP320NA2 → 320). */
+export function gasTemperature(s: SampleRow): number | null {
+  if (s.temperature_c != null) return s.temperature_c
+  const m = /^[A-Z]*?(\d{3})/i.exec((s.experiment_code ?? s.code).replace(/\s+/g, ''))
+  return m ? Number(m[1]) : null
+}
+
+/** Amostra com composição do gás (de qualquer fração: o gás pode ter sido
+ * ligado a uma amostra que não é a "(gás)"). */
+export function hasGasComposition(s: SampleRow): boolean {
+  return Object.keys(s.values).some((k) => k.startsWith('gas_balanco.comp_') && s.values[k]?.mean != null)
+}
+
 export function GasSeriesChart({ samples }: { samples: SampleRow[] }) {
   const order = ['CO2', 'H2', 'C1', 'C2', 'C3', 'C4', 'C5p']
   const parts = order.map((k) => GAS_PARTS.find((p) => p.key === k)!)
   const byTemp = new Map<number, { codes: string[]; values: Record<string, number[]> }>()
   for (const s of samples) {
-    if (s.fraction !== 'G' || s.temperature_c == null) continue
+    const temp = gasTemperature(s)
+    if (temp == null || !hasGasComposition(s)) continue
     const vals = parts.map((p) => [p.key, s.values[`gas_balanco.comp_${p.key}`]?.mean] as const).filter(([, v]) => v != null)
     if (!vals.length) continue
-    const entry = byTemp.get(s.temperature_c) ?? { codes: [], values: {} }
+    const entry = byTemp.get(temp) ?? { codes: [], values: {} }
     entry.codes.push((s.experiment_code ?? s.code).replace(' (gás)', ''))
     for (const [k, v] of vals) (entry.values[k] ??= []).push(v as number)
-    byTemp.set(s.temperature_c, entry)
+    byTemp.set(temp, entry)
   }
   const stats = (xs: number[]) => {
     const mean = xs.reduce((a, b) => a + b, 0) / xs.length

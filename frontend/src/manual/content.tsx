@@ -474,7 +474,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
             cheios) e cada réplica (pontos vazados); valores 0 ou vazios não entram. Com mais de uma atmosfera, cada uma ganha uma linha com
             traço diferente. Os dados vêm de <strong>Condições experimentais</strong> (gás: planilha ou valor editado — o valor editado vale
             em todos os gráficos, tabelas e exportações). Abaixo, os gráficos do gás que antes ficavam no grupo Gás: massa de gás gerada,
-            gás por massa de rocha, wetness e composição do gás.
+            gás por massa de rocha, wetness, composição do gás por experimento e a <strong>composição do gás × temperatura</strong> (CO₂, H₂, C1–C4 e C5+ num gráfico só — o mesmo do grupo Gás — composição).
           </li>
           <li>
             A terceira vista, <strong>Artigo</strong>, monta as figuras no estilo do Supporting Information do artigo de hidropirólise

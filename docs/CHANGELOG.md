@@ -1,6 +1,12 @@
 # Changelog — Horun · Resultados
 
 ## Não lançado — 09/10/2026
+### Correção: "Composição do gás × temperatura" não aparecia
+- O gráfico só aparecia na vista Parâmetros e só para amostras da fração G
+  com temperatura preenchida. Agora aparece também em Balanço de massas e vale
+  para qualquer amostra com composição de gás; sem temperatura na amostra,
+  usa a do código do experimento (HP320NA2 → 320 °C).
+
 ### Séries → "Artigo" (pedido do mantenedor)
 - Terceira vista da aba Séries com as figuras do Supporting Information do
   artigo de hidropirólise (menos FRX, MEV e DRX), calculadas com os dados do
