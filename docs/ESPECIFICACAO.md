@@ -107,15 +107,19 @@ Identificação`; linhas seguintes = picos (n-C10..., Pristano, Fitano...).
 Derivados úteis: Pristano/Fitano, Pr/n-C17, Fi/n-C18, distribuição de
 n-alcanos, CPI quando houver os pares.
 
-### 3.5b LECO - Resíduo Insolúvel (planilha .xlsx do laboratório, 09/10/2026)
-Uma aba, cabeçalho `Amostra | Cod. Experimento | RI1 | RI2 | RI3 | Média`
-(achado pelo rótulo nas primeiras linhas; quantas colunas `RIn` vierem).
-Cada `RIn` = réplica do parâmetro `leco_ri.RI` (unidade como na planilha — a
-confirmar); a coluna Média (fórmula) é ignorada. `Cod. Experimento` vira a
-sugestão de experimento (só se for código de verdade — "Rocha virgem" não).
-Linhas sem RI são puladas com aviso. Sugestões de código: "… - SEM EXTRAÇÃO"
-→ `SE`; fração separada por `_`/`.`/espaço ("HP300NA_E") → junta. Leitor:
-`parsers/leco_ri.py`.
+### 3.5b LECO - Resíduo Insolúvel ("planilha_massas_amostras-LECO.xlsx", 09/10/2026)
+Aba **"Dados"**: linha de grupos (Data | Amostra | Massa do cadinho (g) |
+Massa da amostra (g) | Massa do cadinho com amostra (g) | Massa após
+tratamento (g) | Resíduo Insolúvel | Observações), com a réplica (1, 2, 3)
+na linha de baixo; as colunas "com amostra" e "Resíduo Insolúvel" são
+fórmulas (I = C + F; O = I − L). Aba **"Tabela"** (opcional): o mesmo em
+layout plano (Cadinho n, Amostra n, Após n) — só é lida se não houver a
+"Dados" (no exemplo real as duas divergem em alguns valores).
+Por réplica o leitor refaz a conta com as massas: `RI` (g) = cadinho +
+amostra − após; `RI_pct` (%) = RI ÷ massa da amostra × 100 (decisão do
+mantenedor: resíduo em g, mostrar também em %); `sample_mass` (g).
+Réplica sem alguma das três massas é ignorada; Data → data da análise;
+Observações → `extra.notes`. Leitor: `parsers/leco_ri.py`.
 
 ### 3.6 Tabela de literatura (opcional)
 Planilha de um artigo de referência = dados publicados (parâmetros por

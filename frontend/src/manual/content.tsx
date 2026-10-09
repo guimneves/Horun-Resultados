@@ -239,12 +239,14 @@ export const MANUAL_SECTIONS: ManualSection[] = [
             resultados.
           </li>
           <li>
-            <strong>LECO - Resíduo Insolúvel</strong>: a planilha com as colunas <strong>Amostra</strong>,{' '}
-            <strong>Cod. Experimento</strong>, <strong>RI1</strong>, <strong>RI2</strong>, <strong>RI3</strong> (pode ter mais réplicas) e{' '}
-            <strong>Média</strong>. Cada RI vira uma réplica; a média e o desvio são recalculados (a coluna Média da planilha não é
-            usada). O <strong>Cod. Experimento</strong> vira o experimento sugerido quando o código da amostra não traz (ex.: HP300H →
-            HP300NA). Linhas sem nenhum RI são puladas. Nomes escritos de outro jeito ganham sugestão no padrão: "HP355 - SEM
-            EXTRAÇÃO" → HP355SE, "HP300NA_E" → HP300NAE — confira na prévia.
+            <strong>LECO - Resíduo Insolúvel</strong>: a <strong>planilha de massas das amostras</strong> (aba{' '}
+            <strong>Dados</strong>: Data, Amostra, Massa do cadinho, Massa da amostra, Massa do cadinho com amostra, Massa após
+            tratamento, Resíduo Insolúvel e Observações, cada uma com as réplicas 1, 2 e 3). Para cada réplica o Horun refaz a conta
+            com as massas: <strong>resíduo (g) = cadinho + amostra − massa após o tratamento</strong> e{' '}
+            <strong>resíduo (%) = resíduo (g) ÷ massa da amostra × 100</strong> — as duas aparecem nas tabelas, a % nas séries. Réplica
+            sem alguma das massas fica de fora. Se o arquivo também tiver a aba <strong>Tabela</strong> (mesmos dados, sem
+            agrupamento), só a <strong>Dados</strong> é lida. Nomes com espaço são entendidos ("HP 320 H" → HP320H); "HP 280 sem
+            extração" vira HP280SE e "HP 280 E1" vira HP280E alíquota 1 — confira na prévia.
           </li>
           <li>
             <strong>Rock-Eval</strong>: o relatório <strong>.htm</strong> (Job report do GeoWorks) — traz a tabela e os pirogramas.

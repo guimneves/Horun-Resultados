@@ -12,55 +12,64 @@ from app.parsers.leco_ri import code_suggestion
 from tests import synthetic as syn
 from tests.conftest import IC, PESQ, confirm, upload
 
+# (dia, amostra, cadinho x3, amostra x3, após o tratamento x3, observações) — massas inventadas
 ROWS = [
-    ("HP300H", "HP300NA", 0.10, 0.11, 0.12),
-    ("HP320SE", "HP320NB", 0.20, 0.22, None),
-    ("HP355 - SEM EXTRAÇÃO", "HP355NB", 0.30, 0.31, 0.32),
-    ("HP300NA_E", "HP300NA", 0.05, 0.06, 0.07),
-    ("Rocha teste", "Rocha virgem", 0.40, 0.41, 0.42),
-    ("HP340H", "HP340NA", None, None, None),  # sem valores: ignorada
-    (None, "HP360NA", None, None, None),  # só o experimento: ignorada
+    (1, "HP 300 H", (40.0, 39.0, 38.0), (0.25, 0.25, 0.25), (40.15, 39.14, 38.16), ""),
+    (2, "HP 320 sem extração", (40.0, 39.0, 38.0), (0.20, 0.25, 0.25), (40.10, 39.15, None), "réplica 3 perdida"),
+    (3, "HP 280 E1", (40.0, 39.0, 38.0), (0.25, 0.25, 0.25), (40.05, 39.05, 38.05), ""),
+    (4, "Rocha teste", (40.0, 39.0, 38.0), (0.25, 0.25, 0.25), (40.20, 39.20, 38.20), ""),
+    (5, "HP 340 H", (None, None, None), (None, None, None), (None, None, None), ""),  # vazia: ignorada
 ]
 
 
-def test_parser_reads_by_header_and_suggests_codes():
-    r = parse_file("Resíduo Insolúvel.xlsx", syn.leco_ri_xlsx(ROWS))
+def test_parser_computes_grams_and_percent_from_masses():
+    r = parse_file("planilha_massas.xlsx", syn.leco_ri_xlsx(ROWS, flat_copy=True))
     assert r.technique == "leco_ri" and r.format_label == "LECO - Resíduo Insolúvel"
+    assert any('Lida a aba "Dados"' in w for w in r.warnings)  # a aba plana repetida fica de fora
     by_name = {rec.raw_name: rec for rec in r.records}
-    assert set(by_name) == {"HP300H", "HP320SE", "HP355 - SEM EXTRAÇÃO", "HP300NA_E", "Rocha teste"}
-    assert [(v.parameter, v.value, v.replicate) for v in by_name["HP300H"].values] == [
-        ("RI", 0.10, 1),
-        ("RI", 0.11, 2),
-        ("RI", 0.12, 3),
-    ]
-    assert len(by_name["HP320SE"].values) == 2  # réplica vazia não entra
-    assert by_name["HP300H"].experiment.code == "HP300NA"
-    assert by_name["Rocha teste"].experiment is None  # "Rocha virgem" não é código de experimento
-    assert by_name["HP355 - SEM EXTRAÇÃO"].code_hint == "HP355SE"
-    assert by_name["HP300NA_E"].code_hint == "HP300NAE"
-    assert any("sem nenhuma réplica" in w for w in r.warnings)
+    assert set(by_name) == {"HP 300 H", "HP 320 sem extração", "HP 280 E1", "Rocha teste"}
+    hp300 = by_name["HP 300 H"]
+    ri = {v.replicate: v.value for v in hp300.values if v.parameter == "RI"}
+    pct = {v.replicate: v.value for v in hp300.values if v.parameter == "RI_pct"}
+    # resíduo (g) = cadinho + amostra − após; % = g / amostra × 100
+    assert ri == {1: pytest.approx(0.10), 2: pytest.approx(0.11), 3: pytest.approx(0.09)}
+    assert pct == {1: pytest.approx(40.0), 2: pytest.approx(44.0), 3: pytest.approx(36.0)}
+    assert {v.unit for v in hp300.values if v.parameter == "RI"} == {"g"}
+    assert hp300.analyzed_at == "2026-01-01"
+    # réplica sem a massa final não entra
+    assert sum(v.parameter == "RI" for v in by_name["HP 320 sem extração"].values) == 2
+    assert by_name["HP 320 sem extração"].code_hint == "HP320SE"
+    assert by_name["HP 280 E1"].code_hint == "HP280E.1"
+    assert by_name["HP 320 sem extração"].extra["notes"] == "réplica 3 perdida"
+
+
+def test_flat_layout_alone_is_read():
+    r = parse_file("tabela.xlsx", syn.leco_ri_flat_xlsx(ROWS[:1]))
+    assert r.technique == "leco_ri"
+    pct = sorted(v.value for v in r.records[0].values if v.parameter == "RI_pct")
+    assert pct == [pytest.approx(36.0), pytest.approx(40.0), pytest.approx(44.0)]
 
 
 def test_code_suggestions():
-    assert code_suggestion("HP355NB.E") == "HP355NBE"
-    assert code_suggestion("HP280NBE.1") is None  # alíquota: o código já é reconhecido
+    assert code_suggestion("HP 330 sem extração") == "HP330SE"
+    assert code_suggestion("HP 320 E2") == "HP320E.2"
+    assert code_suggestion("HP 320 H") is None  # o próprio código já é lido (HP320H)
     assert code_suggestion("Rocha araripe 80mesh") is None
 
 
-def test_sheet_without_values_is_error():
+def test_sheet_without_masses_is_error():
     with pytest.raises(ParseError):
-        parse_file("x.xlsx", syn.leco_ri_xlsx([("HP300H", "HP300NA", None, None, None)]))
+        parse_file("x.xlsx", syn.leco_ri_xlsx([ROWS[-1]]))
 
 
-def test_import_uses_experiment_from_sheet(client, project):
+def test_import_shows_percent_and_grams(client, project):
     pid = project["id"]
-    prev = upload(client, pid, {"Resíduo Insolúvel.xlsx": syn.leco_ri_xlsx(ROWS[:3])})
-    confirm(client, pid, prev)
+    confirm(client, pid, upload(client, pid, {"planilha_massas.xlsx": syn.leco_ri_xlsx(ROWS[:3])}))
     samples = {s["code"]: s for s in client.get(f"projects/{pid}/samples", headers=PESQ).json()["samples"]}
-    assert samples["HP300H"]["experiment_code"] == "HP300NA"
-    assert samples["HP355SE"]["fraction"] == "SE"
-    ri = samples["HP300H"]["values"]["leco_ri.RI"]
-    assert ri["n"] == 3 and ri["mean"] == pytest.approx(0.11)
+    assert samples["HP320SE"]["fraction"] == "SE"
+    values = samples["HP300H"]["values"]
+    assert values["leco_ri.RI_pct"]["n"] == 3 and values["leco_ri.RI_pct"]["mean"] == pytest.approx(40.0)
+    assert values["leco_ri.RI"]["mean"] == pytest.approx(0.10)
 
 
 def _report(client, pid, body, who=PESQ):
@@ -93,7 +102,7 @@ def test_report_has_summary_first_and_one_sheet_per_technique(client, project):
     start = next(i for i, row in enumerate(cells) if row[0] == "Todas as réplicas")
     reps = [row for row in cells[start + 2 :] if row[0]]
     assert len(reps) == 8
-    assert {row[0] for row in reps} == {"HP300H", "HP320SE", "HP355SE"}
+    assert {row[0] for row in reps} == {"HP300H", "HP320SE", "HP280E"}
 
 
 def test_report_only_chosen_techniques_and_samples(client, project):

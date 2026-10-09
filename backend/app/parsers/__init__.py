@@ -72,7 +72,7 @@ def _parse_xlsx(content: bytes, filename: str, path_hint: str) -> ParseResult:
         raise ParseError(
             "Planilha não reconhecida. Formatos aceitos: \"Dados FID\", \"Dados TCD\", "
             "\"Planilha cálculo gás\" (aba \"Dados FID-TCD\"), Py-GC-MS (uma aba por amostra) e "
-            "LECO - Resíduo Insolúvel (colunas Amostra, RI1, RI2...)."
+            "LECO - Resíduo Insolúvel (planilha de massas das amostras)."
         )
     finally:
         wb.close()

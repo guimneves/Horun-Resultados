@@ -268,15 +268,50 @@ def zip_of(files: dict[str, bytes]) -> bytes:
     return buf.getvalue()
 
 
-def leco_ri_xlsx(rows: list[tuple]) -> bytes:
-    """Planilha do Resíduo Insolúvel: Amostra | Cod. Experimento | RI1 | RI2 | RI3 | Média
-    (a Média vem como fórmula, como no arquivo do laboratório)."""
+def leco_ri_xlsx(rows: list[tuple], flat_copy: bool = False) -> bytes:
+    """"Planilha de massas das amostras" do LECO, como a do laboratório: aba
+    "Dados" com linha de grupos + linha de réplicas (1, 2, 3) e fórmulas nas
+    colunas calculadas. rows: (data, amostra, [cadinho x3], [amostra x3], [após x3], obs).
+    flat_copy: acrescenta a aba "Tabela" (layout plano) com os mesmos dados."""
+    import datetime as dt
+
+    import openpyxl
+    from openpyxl.utils import get_column_letter as col
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Dados"
+    ws.append(["Dados de massas das amostras"])
+    groups = ["Massa do cadinho (g)", "Massa da amostra (g)", "Massa do cadinho com amostra (g)", "Massa após tratamento (g)", "Resíduo Insolúvel"]
+    head = ["Data", "Amostra"]
+    for g in groups:
+        head += [g, None, None]
+    ws.append(head + ["Observações"])
+    ws.append([None, None] + ["1", "2", "3"] * len(groups))
+    for r, (day, name, cad, amo, apos, obs) in enumerate(rows, start=4):
+        line = [dt.datetime(2026, 1, day), name, *cad, *amo]
+        line += [f"={col(3 + k)}{r}+{col(6 + k)}{r}" for k in range(3)]
+        line += list(apos)
+        line += [f"={col(9 + k)}{r}-{col(12 + k)}{r}" for k in range(3)]
+        ws.append(line + [obs])
+    if flat_copy:
+        flat = wb.create_sheet("Tabela")
+        flat.append(["Data", "Amostra", "Cadinho 1", "Cadinho 2", "Cadinho 3", "Amostra 1", "Amostra 2", "Amostra 3", "Após 1", "Após 2", "Após 3", "Observações"])
+        for day, name, cad, amo, apos, obs in rows:
+            flat.append([dt.datetime(2026, 1, day), name, *cad, *amo, *apos, obs])
+    return _xlsx(wb)
+
+
+def leco_ri_flat_xlsx(rows: list[tuple]) -> bytes:
+    """Só o layout plano (aba "Tabela")."""
+    import datetime as dt
+
     import openpyxl
 
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "Planilha1"
-    ws.append(["Amostra", "Cod. Experimento", "RI1", "RI2", "RI3", "Média"])
-    for i, row in enumerate(rows, start=2):
-        ws.append([*row, f"=AVERAGE(C{i}:E{i})"])
+    ws.title = "Tabela"
+    ws.append(["Data", "Amostra", "Cadinho 1", "Cadinho 2", "Cadinho 3", "Amostra 1", "Amostra 2", "Amostra 3", "Após 1", "Após 2", "Após 3", "Observações"])
+    for day, name, cad, amo, apos, obs in rows:
+        ws.append([dt.datetime(2026, 1, day), name, *cad, *amo, *apos, obs])
     return _xlsx(wb)

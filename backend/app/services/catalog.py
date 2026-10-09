@@ -44,13 +44,15 @@ TECHNIQUES: dict[str, dict] = {
             Param("mass", "Massa", "g"),
         ],
     },
-    # Planilha do laboratório (Amostra | Cod. Experimento | RI1 | RI2 | RI3 | Média),
-    # parsers/leco_ri.py. Unidade como vem na planilha (a confirmar com o laboratório).
+    # "Planilha de massas das amostras" do LECO (parsers/leco_ri.py): por réplica,
+    # resíduo (g) = cadinho + amostra − massa após o tratamento; % = g ÷ amostra × 100.
     "leco_ri": {
         "label": "LECO - Resíduo Insolúvel",
         "instrument": "LECO",
         "params": [
-            Param("RI", "Resíduo insolúvel", "", True),
+            Param("RI_pct", "Resíduo insolúvel", "%", True, True),
+            Param("RI", "Resíduo insolúvel", "g", True),
+            Param("sample_mass", "Massa da amostra", "g"),
         ],
     },
     "rockeval": {

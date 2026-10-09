@@ -12,7 +12,7 @@ import { useProject } from './ProjectLayout'
 const ANALYSIS_TYPES: { key: string; label: string; files: string }[] = [
   { key: 'chnso', label: 'CHNSO', files: 'PDF "Results Summary for Element %" (ou os "Single Sample Result")' },
   { key: 'leco', label: 'LECO', files: 'CSV exportado do Cornerstone' },
-  { key: 'leco_ri', label: 'LECO - Resíduo Insolúvel', files: 'planilha com as colunas Amostra, Cod. Experimento, RI1, RI2, RI3 (e Média)' },
+  { key: 'leco_ri', label: 'LECO - Resíduo Insolúvel', files: 'planilha de massas das amostras (cadinho, amostra e massa após o tratamento, réplicas 1–3)' },
   { key: 'rockeval', label: 'Rock-Eval', files: 'relatório .htm (Job report do GeoWorks)' },
   { key: 'gc_fid', label: 'GC-FID (gás)', files: 'planilha "Dados FID" de cada experimento' },
   { key: 'gc_tcd', label: 'GC-TCD (gás)', files: 'planilha "Dados TCD" de cada experimento' },
