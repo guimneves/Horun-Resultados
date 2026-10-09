@@ -5,6 +5,7 @@ import { SourceChips } from '../charts/ChartCard'
 import { hasMassData, MassChart } from '../charts/MassCharts'
 import { SeriesChart } from '../charts/SeriesChart'
 import { AlkaneChart, CorrelationChart, GasCompositionChart, GasSeriesChart, HiTmaxChart, PyrogramChart, VanKrevelenChart } from '../charts/MoreCharts'
+import { SelectChartsButton } from '../components/ChartSelection'
 import { Button, card, Dropdown, ErrorBox, inputClass, inputStyle, muted, Segmented } from '../components/ui'
 import { useApp } from '../context/AppContext'
 import { fractionAllowed, FRACTION_CHOICES, type FractionChoice } from '../lib/fractionFilter'
@@ -374,6 +375,7 @@ export function SeriesTab() {
       <div className="flex flex-wrap items-center gap-2">
         {view === 'parametros' && <Segmented label="Grupo de gráficos" value={section} onChange={setSection} options={groups} />}
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          <SelectChartsButton />
           {view === 'parametros' && <Button onClick={() => setAdding((v) => !v)}>+ Gráfico</Button>}
           <Dropdown label={`Opções${optionsActive ? ` (${optionsActive})` : ''}`} ariaLabel="Opções dos gráficos">
             <div className="space-y-2 p-2 text-sm" onClick={(e) => e.stopPropagation()}>

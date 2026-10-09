@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useNavigate, useOutletContext, useParams } f
 import { api, errorText } from '../api/client'
 import type { Project } from '../api/types'
 import { PROJECT_TABS } from '../components/Shell'
+import { ChartSelectionProvider } from '../components/ChartSelection'
 import { ExportReportModal } from '../components/ExportReport'
 import { ProjectMembersModal } from '../components/ProjectMembers'
 import { Button, Dropdown, ErrorBox, Field, inputClass, inputStyle, MenuItem, Modal, muted } from '../components/ui'
@@ -179,7 +180,10 @@ export function ProjectLayout() {
         )}
       </nav>
 
-      <Outlet context={{ project, readOnly, canEdit } satisfies ProjectCtx} />
+      {/* "Baixar vários PNG": seleção de gráficos vale em todas as abas do projeto */}
+      <ChartSelectionProvider zipName={`graficos_${project.name}`}>
+        <Outlet context={{ project, readOnly, canEdit } satisfies ProjectCtx} />
+      </ChartSelectionProvider>
 
       {editing && (
         <Modal title="Editar projeto" onClose={() => setEditing(false)}>

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { SelectChartsButton } from '../components/ChartSelection'
 import type { Mode } from '../api/types'
 import { CompareBarChart } from '../charts/MoreCharts'
 import { card, Empty, inputClass, inputStyle, muted } from '../components/ui'
@@ -34,7 +35,7 @@ export function CompareTab() {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+      <div className="grid grid-cols-1 items-center gap-2 md:grid-cols-2">
         <select className={inputClass} style={inputStyle} value={mode} onChange={(e) => setMode(e.target.value as Mode)} aria-label="Validade">
           {MODE_OPTIONS.map((m) => (
             <option key={m.value} value={m.value}>
@@ -42,6 +43,9 @@ export function CompareTab() {
             </option>
           ))}
         </select>
+        <div className="md:justify-self-end">
+          <SelectChartsButton />
+        </div>
       </div>
       <SamplePicker samples={samples} selected={selected} onChange={setSelected} max={16} />
       {chosen.length === 0 ? (

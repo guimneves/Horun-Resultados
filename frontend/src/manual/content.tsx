@@ -500,7 +500,14 @@ export const MANUAL_SECTIONS: ManualSection[] = [
             <strong>Opções</strong> marque <strong>Separar réplicas A, B, C</strong> — cada réplica ganha um tipo de traço.
           </li>
           <li>
-            <strong>Ver tabela</strong> mostra os números do gráfico; <strong>Baixar PNG</strong> salva a imagem.
+            <strong>Ver tabela</strong> mostra os números do gráfico; <strong>Baixar PNG</strong> salva a imagem — sempre com o título, o
+            subtítulo, a origem dos dados (ex.: <strong>Dados: Rock-Eval 7S</strong>) e a <strong>legenda</strong> do gráfico.
+          </li>
+          <li>
+            Vários de uma vez: toque em <strong>Baixar vários PNG</strong> (no alto das abas Séries e Comparar), marque{' '}
+            <strong>incluir</strong> no canto de cada gráfico (ou <strong>Todos da tela</strong>) e toque em <strong>Baixar</strong> na barra
+            de baixo. Um gráfico sai como PNG; dois ou mais saem num <strong>.zip</strong>, um PNG por gráfico, numerados na ordem da tela.
+            Gráficos em "Ver tabela" também entram.
           </li>
         </Steps>
         <Tip>

@@ -1,6 +1,17 @@
 # Changelog — Horun · Resultados
 
 ## Não lançado — 09/10/2026
+### Exportação de gráficos em PNG reformulada (pedido do mantenedor)
+- O PNG sai sempre com título, subtítulo, origem dos dados e a **legenda**
+  (a legenda do Recharts é HTML, fora do <svg>, e sumia na imagem):
+  `lib/chartExport.ts` desenha tudo num canvas, com as cores do tema e a
+  fonte da página; ícones da legenda vão como estão na tela (traço, losango).
+- "Baixar vários PNG" (Séries e Comparar; `components/ChartSelection.tsx`,
+  provedor em `ProjectLayout`): marca os gráficos e baixa de uma vez — um
+  gráfico → PNG; dois ou mais → .zip (escrito no navegador, sem biblioteca),
+  numerado na ordem da tela. Gráfico em "Ver tabela" continua montado fora da
+  tela e também exporta.
+
 ### Gás: tabela consolidada, séries FID/TCD e composição × temperatura (pedido do mantenedor)
 - Novo modelo de importação do Balanço de gás: a "Tabela final consolidada de
   composição de gás" (`parsers/gas_consolidated.py`, ESPECIFICACAO 3.4b) —
