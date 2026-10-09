@@ -11,11 +11,12 @@
   cada corrida (massa de gás, composição, massa de rocha).
 
 ### Gráficos de gás em barras (pedido do mantenedor)
-- "Composição do gás × temperatura" vira barras empilhadas (soma 100%);
+- "Composição do gás × temperatura" vira barras lado a lado (como FID e TCD);
   "Gás — FID" e "Gás — TCD" viram um gráfico de barras lado a lado cada
   (C1–C5+ / H2 e CO2, média ± desvio por temperatura), no lugar dos gráficos
   de linha por componente (`GasBarsChart`). Fonte: composição do balanço de
   gás; sem ela, % de área do GC-FID/TCD.
+- Nos três, botão "Barras | Pontos e linha" (escolha guardada no navegador).
 
 ### Correção: "Composição do gás × temperatura" não aparecia
 - O gráfico só aparecia na vista Parâmetros e só para amostras da fração G

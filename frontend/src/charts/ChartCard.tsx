@@ -31,8 +31,11 @@ export function ChartCard({
   filename,
   empty,
   sources = [],
+  actions,
 }: {
   title: string
+  /** Controles extras no cabeçalho (ex.: trocar barras ↔ pontos e linha). */
+  actions?: ReactNode
   subtitle?: string
   /** Técnicas de onde vêm os dados (chaves do catálogo) — viram etiquetas. */
   sources?: string[]
@@ -94,7 +97,8 @@ export function ChartCard({
           )}
         </div>
         {!empty && (
-          <div className="flex gap-1 print:hidden">
+          <div className="flex flex-wrap items-center gap-1 print:hidden">
+            {actions}
             {table && (
               <Button variant="ghost" onClick={() => setShowTable(!showTable)}>
                 {showTable ? 'Ver gráfico' : 'Ver tabela'}

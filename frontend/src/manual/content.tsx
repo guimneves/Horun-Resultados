@@ -463,9 +463,9 @@ export const MANUAL_SECTIONS: ManualSection[] = [
             Na aba <strong>Séries</strong>, os gráficos aparecem todos juntos, em grupos: <strong>Matéria orgânica</strong> (COT, C total,
             HI, OI, Tmax, S1, S2, HI × Tmax e <strong>COT (Rock-Eval) × C total (LECO)</strong>, com a reta ajustada e o <strong>R²</strong>
             ), <strong>Elementar</strong> (H/C, O/C, N, S, Van Krevelen), <strong>Gás — composição</strong> (CO₂, H₂, C1, C2, C3, C4 e
-            C5+ em barras empilhadas por temperatura, somando 100%), <strong>Gás — FID</strong> (barras lado a lado de C1 a C5+, e
-            wetness), <strong>Gás — TCD</strong> (barras de H₂ e CO₂; nas barras lado a lado, o traço é o desvio entre os experimentos da
-            mesma temperatura), <strong>Py-GC-MS</strong> e <strong>Pirogramas</strong>. Só aparecem os que têm dados
+            C5+ em barras lado a lado por temperatura), <strong>Gás — FID</strong> (barras lado a lado de C1 a C5+, e
+            wetness), <strong>Gás — TCD</strong> (barras de H₂ e CO₂; o traço é o desvio entre os experimentos da mesma temperatura; no alto
+            de cada um, troque entre <strong>Barras</strong> e <strong>Pontos e linha</strong> — a escolha fica guardada neste navegador), <strong>Py-GC-MS</strong> e <strong>Pirogramas</strong>. Só aparecem os que têm dados
             no projeto. Use os botões do alto para ver um grupo só.
           </li>
           <li>

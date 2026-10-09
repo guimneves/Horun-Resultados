@@ -18,6 +18,8 @@ import {
 } from 'recharts'
 import type { AnalysisData, PyPeaks, PyroData, SampleRow } from '../api/types'
 import { dashFor, fractionColor, GAS_COLORS, seriesColor } from '../lib/colors'
+import { useState } from 'react'
+import { Segmented } from '../components/ui'
 import { fmt, fmtMeanSd } from '../lib/format'
 import { axisProps, ChartCard, gridProps, SimpleTable, tooltipStyle } from './ChartCard'
 import { pointId, pointLabels, pointText, PointTooltip } from './PointLabels'
@@ -188,6 +190,19 @@ export function hasGcData(s: SampleRow, tech: 'gc_fid' | 'gc_tcd'): boolean {
 
 type GasKey = 'H2' | 'CO2' | 'C1' | 'C2' | 'C3' | 'C4' | 'C5p'
 
+// Barras ou pontos e linha — a mesma escolha vale para os gráficos de gás
+// (composição, FID, TCD) e fica guardada neste navegador.
+type GasStyle = 'barras' | 'linhas'
+const GAS_STYLE_KEY = 'resultados.gas.estilo'
+
+function readGasStyle(): GasStyle {
+  try {
+    return localStorage.getItem(GAS_STYLE_KEY) === 'linhas' ? 'linhas' : 'barras'
+  } catch {
+    return 'barras'
+  }
+}
+
 /** Gás × temperatura em BARRAS (pedido do mantenedor, 09/10/2026) — base dos
  * gráficos "Composição do gás × temperatura" (empilhado, soma 100%),
  * "Gás — FID" (C1–C5+) e "Gás — TCD" (H₂ e CO₂), lado a lado. Valor = composição
@@ -208,6 +223,16 @@ export function GasBarsChart({
   stacked?: boolean
 }) {
   const parts = keys.map((k) => GAS_PARTS.find((p) => p.key === k)!)
+  const [style, setStyleState] = useState<GasStyle>(readGasStyle)
+  const setStyle = (v: GasStyle) => {
+    setStyleState(v)
+    try {
+      localStorage.setItem(GAS_STYLE_KEY, v)
+    } catch {
+      /* sem armazenamento: vale só nesta visita */
+    }
+  }
+  const lines = style === 'linhas' && !stacked
   const byTemp = new Map<number, { codes: string[]; sources: Set<string>; values: Record<string, number[]> }>()
   for (const s of samples) {
     const temp = gasTemperature(s)
@@ -252,6 +277,19 @@ export function GasBarsChart({
       subtitle={`${subtitle} · ${onlyGc ? '% de área (GC)' : '% molar sem o gás de enchimento'}${stacked ? '' : ' · média ± desvio entre os experimentos da mesma temperatura'}`}
       sources={sources}
       empty={rows.length ? null : 'Sem dados de gás (importe a planilha de cálculo de gás, a tabela consolidada ou o GC).'}
+      actions={
+        stacked ? undefined : (
+          <Segmented
+            label="Tipo de gráfico"
+            value={style}
+            onChange={setStyle}
+            options={[
+              { value: 'barras', label: 'Barras' },
+              { value: 'linhas', label: 'Pontos e linha' },
+            ]}
+          />
+        )
+      }
       table={
         <SimpleTable
           head={['Temp. (°C)', 'Experimentos', 'Fonte', ...parts.map((p) => `${p.label} (%)`)]}
@@ -267,47 +305,78 @@ export function GasBarsChart({
       }
     >
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={rows} margin={{ top: 8, right: 16, bottom: 8, left: 0 }} barGap={1} barCategoryGap={stacked ? '25%' : '18%'}>
-          <CartesianGrid {...gridProps} />
-          <XAxis
-            dataKey="t"
-            {...axisProps}
-            label={{ value: 'Temperatura (°C)', position: 'insideBottom', offset: -4, fill: 'var(--color-text-muted)', fontSize: 12 }}
-            height={40}
-          />
-          <YAxis {...axisProps} width={44} unit="%" domain={stacked ? [0, 100] : [0, 'auto']} tickFormatter={(v: number) => fmt(v)} />
-          <Tooltip {...tooltipStyle} labelFormatter={(t) => `${t} °C`} formatter={(v, name) => [`${fmt(Number(v))} %`, String(name)]} />
-          <Legend wrapperStyle={{ fontSize: 12 }} />
-          {parts.map((p, i) => (
-            <Bar
-              key={p.key}
-              dataKey={p.key}
-              name={p.label}
-              fill={GAS_COLORS[p.key]}
-              stackId={stacked ? 'gas' : undefined}
-              stroke={stacked ? 'var(--color-bg-elevated)' : undefined}
-              strokeWidth={stacked ? 1 : 0}
-              radius={stacked ? (i === parts.length - 1 ? [4, 4, 0, 0] : 0) : [3, 3, 0, 0]}
-              isAnimationActive={false}
-            >
-              {!stacked && <ErrorBar dataKey={`${p.key}_sd`} width={3} stroke="var(--color-text-muted)" direction="y" />}
-            </Bar>
-          ))}
-        </BarChart>
+        {lines ? (
+          <LineChart data={rows} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
+            <CartesianGrid {...gridProps} />
+            <XAxis
+              type="number"
+              dataKey="temp"
+              domain={['dataMin - 10', 'dataMax + 10']}
+              {...axisProps}
+              label={{ value: 'Temperatura (°C)', position: 'insideBottom', offset: -4, fill: 'var(--color-text-muted)', fontSize: 12 }}
+              height={40}
+            />
+            <YAxis {...axisProps} width={44} unit="%" domain={[0, 'auto']} tickFormatter={(v: number) => fmt(v)} />
+            <Tooltip {...tooltipStyle} labelFormatter={(t) => `${t} °C`} formatter={(v, name) => [`${fmt(Number(v))} %`, String(name)]} />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
+            {parts.map((p) => (
+              <Line
+                key={p.key}
+                dataKey={p.key}
+                name={p.label}
+                stroke={GAS_COLORS[p.key]}
+                strokeWidth={2}
+                dot={{ r: 4, strokeWidth: 1.5, stroke: 'var(--color-bg-elevated)', fill: GAS_COLORS[p.key] }}
+                connectNulls
+                isAnimationActive={false}
+              >
+                <ErrorBar dataKey={`${p.key}_sd`} width={4} stroke={GAS_COLORS[p.key]} direction="y" />
+              </Line>
+            ))}
+          </LineChart>
+        ) : (
+          <BarChart data={rows} margin={{ top: 8, right: 16, bottom: 8, left: 0 }} barGap={1} barCategoryGap={stacked ? '25%' : '18%'}>
+            <CartesianGrid {...gridProps} />
+            <XAxis
+              dataKey="t"
+              {...axisProps}
+              label={{ value: 'Temperatura (°C)', position: 'insideBottom', offset: -4, fill: 'var(--color-text-muted)', fontSize: 12 }}
+              height={40}
+            />
+            <YAxis {...axisProps} width={44} unit="%" domain={stacked ? [0, 100] : [0, 'auto']} tickFormatter={(v: number) => fmt(v)} />
+            <Tooltip {...tooltipStyle} labelFormatter={(t) => `${t} °C`} formatter={(v, name) => [`${fmt(Number(v))} %`, String(name)]} />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
+            {parts.map((p, i) => (
+              <Bar
+                key={p.key}
+                dataKey={p.key}
+                name={p.label}
+                fill={GAS_COLORS[p.key]}
+                stackId={stacked ? 'gas' : undefined}
+                stroke={stacked ? 'var(--color-bg-elevated)' : undefined}
+                strokeWidth={stacked ? 1 : 0}
+                radius={stacked ? (i === parts.length - 1 ? [4, 4, 0, 0] : 0) : [3, 3, 0, 0]}
+                isAnimationActive={false}
+              >
+                {!stacked && <ErrorBar dataKey={`${p.key}_sd`} width={3} stroke="var(--color-text-muted)" direction="y" />}
+              </Bar>
+            ))}
+          </BarChart>
+        )}
       </ResponsiveContainer>
     </ChartCard>
   )
 }
 
-/** Composição do gás × temperatura (CO₂, H₂, C1–C4 e C5+), barras empilhadas. */
+/** Composição do gás × temperatura (CO₂, H₂, C1–C4 e C5+), barras lado a
+ * lado como as do FID e do TCD (pedido do mantenedor, 09/10/2026). */
 export function GasSeriesChart({ samples }: { samples: SampleRow[] }) {
   return (
     <GasBarsChart
       samples={samples}
       keys={['CO2', 'H2', 'C1', 'C2', 'C3', 'C4', 'C5p']}
       title="Composição do gás × temperatura"
-      subtitle="CO₂, H₂, C1–C4 e C5+ (soma ≥ C5), empilhados (soma 100%)"
-      stacked
+      subtitle="CO₂, H₂, C1–C4 e C5+ (soma ≥ C5)"
     />
   )
 }
