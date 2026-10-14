@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import type { AnalysisData, MassesResponse, MassKey, Mode, PyPeaks, PyroData, SampleRow, SeriesResponse } from '../api/types'
 import { ArticleView } from '../charts/ArticleCharts'
+import { SpigolonView } from '../charts/SpigolonCharts'
 import { SourceChips } from '../charts/ChartCard'
 import { hasMassData, MassChart } from '../charts/MassCharts'
 import { SeriesChart } from '../charts/SeriesChart'
@@ -52,7 +53,8 @@ const SECTIONS: { id: string; label: string; series: string[]; extras: Extra[] }
 const GAS_SERIES = ['gas_balanco.gas_mass_g', 'gas_balanco.gas_yield_mg_g', 'gc_fid.wetness']
 const MASS_ORDER: MassKey[] = ['oil_mass_g', 'gas_mass_g', 'bitumen_mass_g']
 // 'artigo': figuras do artigo de hidropirólise (charts/ArticleCharts.tsx)
-type View = 'parametros' | 'massas' | 'artigo'
+// 'spigolon': parâmetros do Rock-Eval × taxa de transformação (charts/SpigolonCharts.tsx)
+type View = 'parametros' | 'massas' | 'artigo' | 'spigolon'
 const VIEW_KEY = 'resultados.series.view'
 const CUSTOM_KEY = (projectId: number) => `resultados.series.extra.${projectId}`
 // Temperaturas ocultadas nos gráficos (Opções → Temperaturas), por projeto, neste navegador.
@@ -70,7 +72,7 @@ function readHiddenTemps(projectId: number): number[] {
 function readView(): View {
   try {
     const v = localStorage.getItem(VIEW_KEY)
-    return v === 'massas' || v === 'artigo' ? v : 'parametros'
+    return v === 'massas' || v === 'artigo' || v === 'spigolon' ? v : 'parametros'
   } catch {
     return 'parametros'
   }
@@ -249,7 +251,7 @@ export function AlkaneSection({ projectId, samples, mode, initial }: { projectId
 
 export function SeriesTab() {
   const { project } = useProject()
-  const { catalog, fractionLabel, paramLabel, techniqueLabel } = useApp()
+  const { catalog, fractions, fractionLabel, paramLabel, techniqueLabel } = useApp()
   const [mode, setMode] = useState<Mode>('padrao')
   const [split, setSplit] = useState(false)
   const [onlyFraction, setOnlyFraction] = useState<FractionChoice>('todas')
@@ -431,6 +433,7 @@ export function SeriesTab() {
           { value: 'parametros', label: 'Parâmetros' },
           { value: 'massas', label: 'Balanço de massas' },
           { value: 'artigo', label: 'Artigo' },
+          { value: 'spigolon', label: 'Artigo Spigolon' },
         ]}
       />
       <div className="flex flex-wrap items-center gap-2">
@@ -550,6 +553,7 @@ export function SeriesTab() {
         </section>
       )}
 
+      {view === 'spigolon' && <SpigolonView projectId={project.id} samples={list} allSamples={samples ?? []} fractions={fractions} />}
       {view === 'artigo' && <ArticleView projectId={project.id} mode={mode} hiddenTemps={hiddenTemps} />}
 
       {view === 'parametros' && adding && (

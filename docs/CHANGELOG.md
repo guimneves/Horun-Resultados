@@ -1,5 +1,14 @@
 # Changelog — Horun · Resultados
 
+## Não lançado — 14/10/2026
+### Séries → "Artigo Spigolon" (pedido do mantenedor)
+- Nova vista: S2, COT, S1, HI, PI, OI, Tmax, S3 e MINC × taxa de transformação
+  TR = (S2₀ − S2ₕ)/S2₀ × 100 (`charts/SpigolonCharts.tsx`). Caixa "Rocha
+  original (S2₀)" para escolher a amostra original (padrão: fração O sem
+  temperatura; guardada no navegador por projeto). Uma linha por fração,
+  temperatura ao lado do ponto, linha tracejada = rocha original. Respeita
+  fração e temperaturas ocultas das Opções.
+
 ## Não lançado — 09/10/2026
 ### Séries: ocultar temperaturas (pedido do mantenedor)
 - Opções → "Temperaturas nos gráficos": desmarca temperaturas, que saem de

@@ -491,6 +491,13 @@ export const MANUAL_SECTIONS: ManualSection[] = [
             massa de gás, composição ou massa de rocha aparecem listadas num aviso, com o que falta em cada uma.
           </li>
           <li>
+            A vista <strong>Artigo Spigolon</strong> mostra os parâmetros do Rock-Eval (S2, COT, S1, HI, PI, OI, Tmax, S3, MINC) pela{' '}
+            <strong>taxa de transformação</strong>: TR = (S2₀ − S2ₕ)/S2₀ × 100, com S2₀ da rocha original e S2ₕ de cada amostra da série de
+            hidropirólise. Em <strong>Rocha original (S2₀)</strong>, escolha qual amostra é a original (vem marcada a da fração "Rocha
+            original", se houver; a escolha fica guardada neste navegador). Uma linha por fração, o número ao lado de cada ponto é a
+            temperatura e a linha tracejada é o valor da rocha original.
+          </li>
+          <li>
             Falta algum? <strong>+ Gráfico</strong>: escolha a técnica e o parâmetro e toque em <strong>Adicionar</strong>. Ele vai para{' '}
             <strong>Meus gráficos</strong> (guardado neste navegador).
           </li>
