@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { SelectChartsButton } from '../components/ChartSelection'
 import type { Mode } from '../api/types'
 import { CompareBarChart } from '../charts/MoreCharts'
+import { hasTg, TgSection } from '../charts/TgCharts'
 import { card, Empty, inputClass, inputStyle, muted } from '../components/ui'
 import { useApp } from '../context/AppContext'
 import { fmtMeanSd, fmtTemp } from '../lib/format'
@@ -29,6 +30,8 @@ export function CompareTab() {
   const hasPy = chosen.some((s) => s.techniques?.includes('pygcms'))
   const reIds = useMemo(() => chosen.filter((s) => s.techniques?.includes('rockeval')).map((s) => s.id), [chosen])
   const pyIds = useMemo(() => chosen.filter((s) => s.techniques?.includes('pygcms')).map((s) => s.id), [chosen])
+  const tgIds = useMemo(() => chosen.filter(hasTg).map((s) => s.id), [chosen])
+  const withTemperature = project.profile?.temperature_axis ?? true
 
   if (samples === null) return <p style={muted}>Carregando…</p>
   if (!samples.length) return <Empty>Nenhuma amostra ainda. Comece pela aba Importar.</Empty>
@@ -60,9 +63,11 @@ export function CompareTab() {
                   {chosen.map((s) => (
                     <th key={s.id} className="px-3 py-2 text-right font-medium whitespace-nowrap">
                       {s.code}
-                      <div className="text-xs font-normal">
-                        {fractionLabel(s.fraction)} · {fmtTemp(s.temperature_c)}
-                      </div>
+                      {withTemperature && (
+                        <div className="text-xs font-normal">
+                          {fractionLabel(s.fraction)} · {fmtTemp(s.temperature_c)}
+                        </div>
+                      )}
                     </th>
                   ))}
                 </tr>
@@ -86,7 +91,13 @@ export function CompareTab() {
           </div>
           {columns.length > 0 && (
             <div className="space-y-2">
-              <select className={inputClass} style={inputStyle} value={activeColumn} onChange={(e) => setColumn(e.target.value)} aria-label="Parâmetro do gráfico">
+              <select
+                className={inputClass}
+                style={inputStyle}
+                value={activeColumn}
+                onChange={(e) => setColumn(e.target.value)}
+                aria-label="Parâmetro do gráfico"
+              >
                 {columns.map((c) => (
                   <option key={c} value={c}>
                     {techniqueLabel(c.split('.')[0])} · {paramLabel(c)}
@@ -97,6 +108,7 @@ export function CompareTab() {
             </div>
           )}
           {hasRe && <PyroSection projectId={project.id} samples={samples} mode={mode} initial={reIds} />}
+          {tgIds.length > 0 && <TgSection projectId={project.id} mode={mode} ids={tgIds} />}
           {hasPy && <AlkaneSection projectId={project.id} samples={samples} mode={mode} initial={pyIds} />}
         </>
       )}

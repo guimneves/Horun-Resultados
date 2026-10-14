@@ -53,6 +53,26 @@ export interface Project {
   created_by: string
   counts: { samples: number; analyses: number; experiments: number }
   can_manage_members: boolean
+  /** Perfil já resolvido pelo servidor (backend/app/services/profiles.py). */
+  profile: ProjectProfile
+}
+
+/** Tipo de amostra, análises e parâmetros do projeto (docs/PERFIS_DE_PROJETO.md). */
+export interface ProjectProfile {
+  version: number
+  sample_type: string
+  sample_type_label: string
+  /** Tem o eixo "temperatura de hidropirólise" (abas Séries e Condições experimentais)? */
+  temperature_axis: boolean
+  recipes: string[]
+  parameters: Record<string, string[]>
+}
+
+/** GET /profiles — o que existe para montar um perfil. */
+export interface ProfileOptions {
+  default_sample_type: string
+  sample_types: { key: string; label: string; description: string; recipes: string[]; status: string; temperature_axis: boolean }[]
+  recipes: { key: string; label: string; instrument: string; status: string }[]
 }
 
 /** Pessoa com acesso a um projeto (níveis 3–5; níveis 1–2 veem todos). */
@@ -227,6 +247,15 @@ export interface PyroData {
   oxi: CurveSet | null
 }
 
+/** Curva do TG (backend/app/parsers/tg.py): massa em % da inicial e DTG = dm/dT (%/°C). */
+export interface TgData {
+  time_s: number[] | null
+  temperature: number[]
+  mass_pct: number[]
+  dtg: (number | null)[]
+  points: number
+}
+
 export interface PyPeaks {
   peaks: { rt_min: number | null; area: number | null; id: string; n_carbon: number | null }[]
 }
@@ -237,6 +266,8 @@ export interface PreviewMeasurement {
   raw_name: string
   replicate: number | null
   aliquot: number | null
+  /** Região da amostra no MEV-EDS (pasta "externo", "folha externa"...). */
+  region?: string | null
   key: string
   n_values: number
   updates_existing: boolean

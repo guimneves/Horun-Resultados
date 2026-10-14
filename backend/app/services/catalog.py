@@ -82,6 +82,16 @@ TECHNIQUES: dict[str, dict] = {
             Param("Sindex", "S index", ""),
             Param("quantity", "Massa", "mg"),
             Param("PI", "PI = S1/(S1+S2)", "", False, True),
+            # relatório "multiheating" (tabaco): picos Q1–Q5 e frações de carbono
+            Param("Q1", "Q1", "mg/g"),
+            Param("Q2", "Q2", "mg/g"),
+            Param("Q3", "Q3", "mg/g"),
+            Param("Q4", "Q4", "mg/g"),
+            Param("Q5", "Q5", "mg/g"),
+            Param("PC", "PC (carbono pirolisável)", "%"),
+            Param("RC", "RC (carbono residual)", "%"),
+            Param("TotalHCGas", "HC total — gás", "%"),
+            Param("TotalHCLiquid", "HC total — líquido", "%"),
         ],
     },
     "gc_fid": {
@@ -139,6 +149,52 @@ TECHNIQUES: dict[str, dict] = {
             Param("n_peaks", "Picos identificados", ""),
         ],
     },
+    # Cornerstone, sinal bruto do detector (parsers/leco_raw.py): áreas relativas
+    # (soma do sinal, menos a média dos brancos) — NÃO são % sem massa e calibração.
+    "leco_bruto": {
+        "label": "LECO — sinal bruto",
+        "instrument": "LECO (Cornerstone, sinal bruto)",
+        "params": [
+            Param("area_C", "Área do sinal de C", "u.a.", True),
+            Param("area_S_low", "Área do sinal de S (baixo)", "u.a.", True),
+            Param("area_S_high", "Área do sinal de S (alto)", "u.a."),
+            Param("duration_s", "Duração da corrida", "s"),
+        ],
+    },
+    # Shimadzu TGA-50 / TA-60, exportação ASCII (parsers/tg.py). Perdas em pontos
+    # percentuais da massa inicial; DTG = dm/dT da curva suavizada.
+    "tg": {
+        "label": "TG",
+        "instrument": "Shimadzu TGA-50",
+        "params": [
+            Param("loss_150", "Perda até 150 °C (umidade)", "%", True),
+            Param("loss_150_400", "Perda 150–400 °C", "%", True),
+            Param("loss_400_600", "Perda 400–600 °C", "%", True),
+            Param("loss_600_900", "Perda 600–900 °C", "%"),
+            Param("residue_pct", "Resíduo final", "%", True),
+            Param("dtg_peak_c", "Pico da DTG", "°C", True),
+            Param("t_final_c", "Temperatura final", "°C"),
+            Param("mass_mg", "Massa da amostra", "mg"),
+        ],
+    },
+}
+
+# MEV-EDS (Oxford AZtec, "Quantity analysis"): % em massa (wt_) e atômica (at_)
+# por elemento. Elemento fora desta lista entra só como aviso na importação.
+EDS_ELEMENTS: list[tuple[str, str]] = [
+    ("B", "Boron"), ("C", "Carbon"), ("N", "Nitrogen"), ("O", "Oxygen"), ("F", "Fluorine"), ("Na", "Sodium"),
+    ("Mg", "Magnesium"), ("Al", "Aluminium"), ("Si", "Silicon"), ("P", "Phosphorus"), ("S", "Sulfur"), ("Cl", "Chlorine"),
+    ("K", "Potassium"), ("Ca", "Calcium"), ("Ti", "Titanium"), ("V", "Vanadium"), ("Cr", "Chromium"), ("Mn", "Manganese"),
+    ("Fe", "Iron"), ("Co", "Cobalt"), ("Ni", "Nickel"), ("Cu", "Copper"), ("Zn", "Zinc"), ("Br", "Bromine"),
+    ("Rb", "Rubidium"), ("Sr", "Strontium"), ("Zr", "Zirconium"), ("Nb", "Niobium"), ("Mo", "Molybdenum"), ("Ba", "Barium"),
+    ("Pb", "Lead"),
+]  # fmt: skip
+EDS_MAIN = {"C", "O", "K", "Ca", "Cl", "Mg", "Si"}
+TECHNIQUES["mev_eds"] = {
+    "label": "MEV-EDS",
+    "instrument": "MEV-EDS (Oxford AZtec)",
+    "params": [Param(f"wt_{sym}", f"{sym} (massa)", "% massa", sym in EDS_MAIN) for sym, _name in EDS_ELEMENTS]
+    + [Param(f"at_{sym}", f"{sym} (atômica)", "% atômica") for sym, _name in EDS_ELEMENTS],
 }
 
 TECHNIQUE_ORDER = list(TECHNIQUES)

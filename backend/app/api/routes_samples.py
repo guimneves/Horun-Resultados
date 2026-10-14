@@ -19,8 +19,8 @@ from app.core.identity import HorunIdentity, get_identity
 from app.core.permissions import require_editor
 from app.db.models import Analysis, AnalysisValue, Experiment, FractionType, Project, Sample, SampleAlias, utcnow
 from app.db.session import get_session
-from app.services import audit, deletion, importer, masses, results
-from app.services.codes import normalize_code, parse_experiment_code, parse_sample_code
+from app.services import audit, deletion, importer, masses, profiles, results
+from app.services.codes import normalize_code, parse_experiment_code
 
 router = APIRouter(tags=["amostras"])
 
@@ -221,7 +221,7 @@ def create_sample(
     norm = normalize_code(body.code)
     if session.exec(select(Sample).where(Sample.project_id == project.id, Sample.code_norm == norm)).first():
         raise HTTPException(status.HTTP_409_CONFLICT, "Já existe uma amostra com esse código neste projeto.")
-    info = parse_sample_code(body.code)
+    info = profiles.code_reader(project.profile_json)(body.code)
     fraction = body.fraction or info.fraction
     _check_fraction(session, fraction)
     if body.experiment_id is not None:
@@ -481,8 +481,9 @@ def bulk_samples(
     se ainda não existir. Códigos já cadastrados são só listados."""
     ensure_open(project)
     created, existing = [], []
+    reader = profiles.code_reader(project.profile_json)  # rocha: HP300H...; tabaco: produto + réplica
     for code in split_codes(body.codes):
-        info = parse_sample_code(code)
+        info = reader(code)
         # "RO-1" ou "HP320E.1" → a amostra é RO / HP320E (réplica e alíquota não são amostras)
         target = info.base_code if info.recognized and info.base_code else code
         norm = normalize_code(target)

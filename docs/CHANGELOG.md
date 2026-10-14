@@ -1,6 +1,24 @@
 # Changelog — Horun · Resultados
 
 ## Não lançado — 14/10/2026
+### Projetos de tabaco (pedido do mantenedor)
+- Tipo de amostra **Tabaco** pronto (`services/profiles.py`): análises CHNS,
+  LECO, LECO — sinal bruto, Rock-Eval, TG e MEV-EDS; sem eixo de temperatura
+  (abas Séries e Condições experimentais somem; temperatura/experimento saem
+  da prévia). Rocha continua igual (mesma lista de análises).
+- Leitor de nomes de tabaco (`codes.parse_tobacco_code`): produto + réplica —
+  tira "_1", " - rep 2", "-1", "(Triplicata)", "(triturado)", "-Corrected",
+  data, nº da corrida, sigla "XY-" e prefixos "Ch_"/"Charuto". A importação, o
+  cadastro e o cadastro em lote usam o leitor do tipo do projeto.
+- Leitores novos: **TG** (ASCII do TGA-50/TA-60, UTF-16 ou cp1252, % ou mg;
+  perdas por faixa, resíduo, pico da DTG, curva), **MEV-EDS** ("Quantity
+  analysis.csv" do AZtec; amostra e região pelas pastas; espectros brutos
+  ignorados), **LECO — sinal bruto** (áreas relativas com desconto do branco)
+  e Rock-Eval **multiheating** (sem coluna Analysis; curvas pela ordem; Q1–Q5,
+  PC, RC). Especificação: seções 3.3, 3.7–3.9.
+- Tela: "Tipo de amostra" no novo projeto / editar projeto (aviso ao trocar com
+  amostras); passo 1 da importação mostra as análises do tipo; região do EDS na
+  prévia; curvas TG/DTG sobrepostas em Comparar e no detalhe da amostra.
 ### Séries → "Artigo Spigolon" (pedido do mantenedor)
 - Nova vista: S2, COT, S1, HI, PI, OI, Tmax, S3 e MINC × taxa de transformação
   TR = (S2₀ − S2ₕ)/S2₀ × 100 (`charts/SpigolonCharts.tsx`). Caixa "Rocha

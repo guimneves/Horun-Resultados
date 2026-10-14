@@ -25,6 +25,7 @@ import json
 import posixpath
 import re
 import zipfile
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from fastapi import HTTPException, status
@@ -45,9 +46,13 @@ from app.db.models import (
 from app.parsers import NotResultsFile, ParseError, ParseResult, parse_file
 from app.parsers.common import Record
 from app.parsers.leco import is_diagnostic_zip
-from app.services import audit, storage
+from app.services import audit, profiles, storage
 from app.services.catalog import TECHNIQUES
-from app.services.codes import FRACTION_GAS, FRACTION_STANDARD, normalize_code, parse_experiment_code, parse_sample_code
+from app.services.codes import FRACTION_GAS, FRACTION_STANDARD, CodeInfo, normalize_code, parse_experiment_code, parse_sample_code
+
+# Leitor de códigos do tipo de amostra do projeto (profiles.code_reader):
+# rocha → parse_sample_code (HP300H...), tabaco → parse_tobacco_code.
+CodeReader = Callable[[str], CodeInfo]
 
 MAX_ZIP_MEMBERS = 3000
 MAX_ZIP_TOTAL_BYTES = 600 * 1024 * 1024
@@ -178,20 +183,24 @@ class Planned:
     duplicate_of: str | None = None  # mesma medição já vem de outro arquivo do lote
 
 
-def row_name(record: Record) -> str:
+def row_name(record: Record, reader: CodeReader = parse_sample_code) -> str:
     """Nome da LINHA da prévia: o nome como está no arquivo, sem a réplica de
     análise ("HP300-2" → "HP300"); alíquotas (".1") ficam em linhas próprias,
-    para a pessoa decidir (ex.: juntar HP320E.1 e HP320E.2 em HP320E)."""
+    para a pessoa decidir (ex.: juntar HP320E.1 e HP320E.2 em HP320E).
+    Outros tipos de amostra (tabaco): o produto lido pelo leitor do tipo
+    ("Ch_Produto_X_1" → "Produto X")."""
     if record.fraction_hint == FRACTION_GAS and record.code_hint:
         return record.code_hint
     raw = (record.raw_name or "").strip()
+    if reader is not parse_sample_code:
+        return reader(record.code_hint or raw).base_code or raw
     if parse_sample_code(raw).replicate is not None:
         return _REPLICATE_TAIL_RE.sub("", raw).strip() or raw
     return raw
 
 
-def _suggest(record: Record) -> dict:
-    info = parse_sample_code(record.code_hint or record.raw_name)
+def _suggest(record: Record, reader: CodeReader = parse_sample_code) -> dict:
+    info = reader(record.code_hint or record.raw_name)
     if record.fraction_hint == FRACTION_GAS:
         exp = record.code_hint or info.base_code
         return {
@@ -204,7 +213,7 @@ def _suggest(record: Record) -> dict:
             "replicate": None,
             "aliquot": None,
         }
-    kind = "standard" if record.kind == "standard" or info.kind == "standard" else "sample"
+    kind = "standard" if record.kind == "standard" or info.kind == "standard" else "blank" if info.kind == "blank" else "sample"
     # o arquivo pode dizer de que experimento a amostra saiu (ex. coluna "Cod.
     # Experimento" do Resíduo Insolúvel) — vale quando o código não traz
     sheet_exp = record.experiment.code if record.experiment else None
@@ -221,7 +230,7 @@ def _suggest(record: Record) -> dict:
     }
 
 
-def _plan(outcomes: list[FileOutcome]) -> dict[str, dict]:
+def _plan(outcomes: list[FileOutcome], reader: CodeReader = parse_sample_code) -> dict[str, dict]:
     """Agrupa as medições por nome no arquivo. Mesma medição em dois arquivos
     do lote: vale a fonte de maior prioridade (e, empatado, a mais nova)."""
     best: dict[tuple[str, str], tuple[tuple[int, str], Planned]] = {}
@@ -230,7 +239,7 @@ def _plan(outcomes: list[FileOutcome]) -> dict[str, dict]:
         if out.status != "ok" or out.result is None:
             continue
         for rec in out.result.records:
-            sug = _suggest(rec)
+            sug = _suggest(rec, reader)
             rep = sug["replicate"] if sug["replicate"] is not None else rec.extra.get("replicate_hint")
             p = Planned(rec, out, rep, sug["aliquot"])
             planned.append(p)
@@ -248,9 +257,9 @@ def _plan(outcomes: list[FileOutcome]) -> dict[str, dict]:
 
     rows: dict[str, dict] = {}
     for p in planned:
-        name = row_name(p.record)
+        name = row_name(p.record, reader)
         norm = normalize_code(name)
-        sug = _suggest(p.record)
+        sug = _suggest(p.record, reader)
         row = rows.setdefault(
             norm,
             {
@@ -313,7 +322,7 @@ def _already_imported(session: Session, stored: StoredFile) -> list[str]:
 
 
 def build_preview(session: Session, project: Project, outcomes: list[FileOutcome], batch: ImportBatch) -> dict:
-    rows = _plan(outcomes)
+    rows = _plan(outcomes, profiles.code_reader(project.profile_json))
     samples = _samples_by_norm(session, project.id)
     by_id = {s.id: s for s in samples.values()}
     aliases = _aliases(session, project.id)
@@ -347,6 +356,7 @@ def build_preview(session: Session, project: Project, outcomes: list[FileOutcome
                         "raw_name": p.record.raw_name,
                         "replicate": p.replicate,
                         "aliquot": p.aliquot,
+                        "region": p.record.extra.get("region") or None,
                         "key": p.record.key,
                         "n_values": len(p.record.values),
                         "updates_existing": (p.record.technique, p.record.key) in keys,
@@ -484,7 +494,7 @@ def confirm(session: Session, project: Project, batch: ImportBatch, decisions: l
     if batch.status == "confirmed":
         raise HTTPException(status.HTTP_409_CONFLICT, "Esta importação já foi confirmada.")
     outcomes = _reparse(session, batch)
-    rows = _plan(outcomes)
+    rows = _plan(outcomes, profiles.code_reader(project.profile_json))
     by_row = {d.get("row"): d for d in decisions if d.get("row")}
     samples = _samples_by_norm(session, project.id)
     by_id = {s.id: s for s in samples.values()}

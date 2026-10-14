@@ -341,3 +341,112 @@ def gas_consolidated_xlsx(experiments: dict[str, list[tuple]], initial_masses: d
         res.append(["Massa inicial de amostra (g)", *initial_masses.values()])
         res.append(["Pressão inicial (psi g)", *[25 for _ in initial_masses]])
     return _xlsx(wb)
+
+
+# ---------------------------------------------------------------- tabaco (14/10/2026)
+# Mesma estrutura dos arquivos do projeto de tabaco; nomes e números inventados.
+
+
+def _tg_mass(temp: float) -> float:
+    """Curva inventada: umidade (~100 °C, 8 %), pirólise principal (~320 °C,
+    50 %), 2ª etapa (~480 °C, 10 %) → resíduo ~32 %."""
+    import math
+
+    def step(t0: float, width: float, amount: float) -> float:
+        return amount / (1 + math.exp(-(temp - t0) / width))
+
+    return 100 - step(100, 12, 8) - step(320, 25, 50) - step(480, 20, 10)
+
+
+def tg_txt(sample_name: str, weight_mg: float = 8.0, unit: str = "%", encoding: str = "utf-16", t_end: float = 1000.0) -> bytes:
+    """Exportação ASCII do TGA-50: utf-16 (variante nova, "File Name:" no topo)
+    ou cp1252 ("[TA Ascii File]", os "-Corrected"). unit "%" ou "mg"."""
+    head = []
+    if encoding == "utf-16":
+        head += [f"File Name:\tC:\\TAData\\Sintetico\\{sample_name}.tad", "", "[File Information]", f"File Name:\t{sample_name}.tad",
+                 f"Sample Name:\t{sample_name}", "Acquisition Date\t26/05/04", "Acquisition Time\t10:20:30(-0300)", "Detector:\tTGA-50",
+                 "Operator:\tSintetico", "Atmosphere:\tNitrogen", "Flow Rate:\t100[ml/min]", "Cell:\tPlatinum",
+                 f"Sample Weight:\t{weight_mg:.3f}[mg]", "", "", "[Program]", "Temp Rate\tHold Temp\tHold Time", "[C/min ]\t[  C   ]\t[  min  ]",
+                 "20.00\t1000.0\t0", "", ""]  # fmt: skip
+    else:
+        head += ["[TA Ascii File]", "TGA-50", "", f"File Name :\tC:\\TAData\\Sintetico\\{sample_name}-Corrected.txt", "", "[File Information]",
+                 f"File Name:\t {sample_name} .tad", f"Sample Name:\t{sample_name} ", "Lot No:\t", "Acquire Date:\t26/05/04",
+                 "Acquire Time:\t10:20:30(-0300)", "Detector Type:\tTGA-50", "Operator:\tSint\xe9tico", "Atmosphere:\tNitrogen",
+                 "Gas Flow:\t100[ml/min]", f"Sample Weight:\t{weight_mg:.3f}[mg]", "", "", "[DataCorrectHistory]",
+                 "Smoothing-TGA:\t26/05/05 10:00:00(-0300)", "\t100Points", "", ""]  # fmt: skip
+    lines = [*head, "[Data]", "Time\tTemp\tTGA", f"sec\tC\t{unit}"]
+    t0 = 25.0
+    seconds = int((t_end - t0) / 20 * 60)
+    for s in range(seconds + 1):
+        temp = t0 + s * 20 / 60
+        m = _tg_mass(temp) / _tg_mass(t0) * 100
+        value = m if unit == "%" else m / 100 * weight_mg
+        lines.append(f"{s:.2f}\t{temp:.2f}\t{value:.4f}")
+    text = "\r\n".join(lines) + "\r\n\r\n"
+    return text.encode("utf-16") if encoding == "utf-16" else text.encode("cp1252")
+
+
+def eds_quantity_csv(elements: list[tuple[str, float, float]]) -> bytes:
+    """"Spectrum NN Quantity analysis.csv" do AZtec: (nome em inglês, % atômica, % massa)."""
+    lines = ["AV;20000", "PC;1e-09", "Total number of counts;1000000", "Mode;Quality", "Profile;Resolution", "Real time;40", "Live time;30", ""]
+    lines.append("Element,Atomic %,Weight %")
+    lines += [f"{name},{at:.2f}%,{wt:.2f}%" for name, at, wt in elements]
+    return ("\r\n".join(lines) + "\r\n").encode("utf-8")
+
+
+def eds_spectrum_csv() -> bytes:
+    lines = ["AV;20000", "PC;1e-09", "Total number of counts;1000000", "", "Energy [eV];Counts"]
+    lines += [f"{10 * i};{(i * 7) % 13}" for i in range(1, 50)]
+    return ("\r\n".join(lines) + "\r\n").encode("utf-8")
+
+
+def eds_msa() -> bytes:
+    return b"#FORMAT      : EMSA/MAS Spectral Data File\r\n#VERSION     : 1.0\r\n#TITLE       : Spectrum\r\n#NPOINTS     : 3\r\n#SPECTRUM    :\r\n1, 2, 3\r\n#ENDOFDATA   :\r\n"
+
+
+def leco_raw_csv(sets: list[tuple[str, int, float]], blank_height: float = 1.0, n_blanks: int = 3, seconds: int = 60) -> bytes:
+    """Sinal bruto do Cornerstone (1 linha por segundo). sets: (nome, réplica,
+    altura do pico de C); S baixo = 1/10 de C; S alto vazio às vezes."""
+    out = ['"Set","Rep","Time","Carbon","Sulfur Low","Sulfur High","Furnace Power","Furnace Temperature"']
+    clock = 0
+
+    def run(name: str, rep: int, height: float) -> None:
+        nonlocal clock
+        for s in range(seconds):
+            clock += 1
+            hh, mm, ss = 10 + clock // 3600, (clock // 60) % 60, clock % 60
+            c = height if 10 <= s < 20 else 0.0
+            s_high = "" if s % 7 == 0 else f"{c / 100}"
+            out.append(f'"{name}","{rep}","2026-05-04 {hh:02d}:{mm:02d}:{ss:02d}","{c}","{c / 10}","{s_high}","1200.0","1350.0"')
+
+    for name, rep, height in sets:
+        run(name, rep, height)
+    for rep in range(1, n_blanks + 1):
+        run("Blank", rep, blank_height)
+    return ("﻿" + "\r\n".join(out) + "\r\n").encode("utf-8")
+
+
+RE_MULTI_HEADER = ["Sample", "MINC (%)", "OI", "HI", "Q1 (mg/g)", "Q2 (mg/g)", "Q3 (mg/g)", "Q4 (mg/g)", "Q5 (mg/g)", "Tmax (°C)",
+                   "TOC (%)", "Total HC Gas (%)", "Total HC Liquid (%)", "PC (%)", "RC (%)"]  # fmt: skip
+
+
+def rockeval_multiheating_htm(rows: list[dict]) -> bytes:
+    """Relatório "multiheating": SEM coluna Analysis; curveData na ordem das
+    linhas, com o nome da corrida. rows: {"sample", "run", "toc", "q1", "curves": bool}."""
+    header = ["\xa0" + h.replace(" ", "\xa0") + "\xa0" for h in RE_MULTI_HEADER]
+    table = [[r["sample"], "0.40", "50", "300", str(r["q1"]), "10.0", "20.0", "5.0", "", "420", str(r["toc"]), "", "", "8.0", "40.0"] for r in rows]
+    parts = ["<!DOCTYPE html><html><head><script>", 'var reportTitle = "Job report / sintetico";']
+    parts.append("var dataTableHeader = " + json.dumps(header, ensure_ascii=False) + ";\n")
+    parts.append("var dataTableArray = " + json.dumps(table) + ";\n")
+    links = []
+    for i, r in enumerate(rows):
+        if r.get("curves", True):
+            n = 30
+            data = [list(range(n)), [200 + 10 * t for t in range(n)], [float(t % 5 + i) for t in range(n)], None, None, None, None, None, None, None]
+            parts.append(f"var pyroData{i} = {json.dumps(data)};\n")
+            links.append(f'["{r["run"]}",pyroData{i},null]')
+        else:
+            links.append(f'["{r["run"]}",null,null]')
+    parts.append("var curveData = [" + ",\n".join(links) + "];\n")
+    parts.append("</script></head><body></body></html>")
+    return "".join(parts).encode("utf-8")

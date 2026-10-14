@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, errorText } from '../api/client'
-import type { Project } from '../api/types'
+import type { ProfileOptions, Project } from '../api/types'
 import { Button, card, Empty, ErrorBox, Field, inputClass, inputStyle, Modal, muted } from '../components/ui'
 import { useApp } from '../context/AppContext'
 
@@ -9,14 +9,33 @@ export function ProjectForm({ initial, onDone, onCancel }: { initial?: Project; 
   const [name, setName] = useState(initial?.name ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
   const [color, setColor] = useState(initial?.color ?? '#15216f')
+  const [sampleType, setSampleType] = useState(initial?.profile?.sample_type ?? '')
+  const [options, setOptions] = useState<ProfileOptions | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    api
+      .get<ProfileOptions>('/profiles')
+      .then((o) => {
+        setOptions(o)
+        setSampleType((cur) => cur || o.default_sample_type)
+      })
+      .catch(() => setOptions(null))
+  }, [])
+
+  const types = options?.sample_types.filter((t) => t.status === 'pronto' || t.key === initial?.profile?.sample_type) ?? []
+  const chosenType = types.find((t) => t.key === sampleType)
+  const typeChanged = !!initial && !!sampleType && sampleType !== initial.profile?.sample_type
+  const hasData = !!initial && initial.counts.samples > 0
 
   async function save() {
     setBusy(true)
     setError(null)
     try {
-      const body = { name, description, color }
+      // tipo de amostra: na criação sempre; na edição só se mudou (não apaga análises/parâmetros escolhidos)
+      const profile = sampleType && (!initial || typeChanged) ? { profile: { sample_type: sampleType } } : {}
+      const body = { name, description, color, ...profile }
       const saved = initial ? await api.patch<Project>(`/projects/${initial.id}`, body) : await api.post<Project>('/projects', body)
       onDone(saved)
     } catch (err) {
@@ -34,6 +53,28 @@ export function ProjectForm({ initial, onDone, onCancel }: { initial?: Project; 
       <Field label="Descrição">
         <textarea className={inputClass} style={inputStyle} rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
       </Field>
+      {types.length > 0 && (
+        <Field label="Tipo de amostra">
+          <select className={inputClass} style={inputStyle} value={sampleType} onChange={(e) => setSampleType(e.target.value)}>
+            {types.map((t) => (
+              <option key={t.key} value={t.key}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+          {chosenType && (
+            <p className="mt-1 text-xs" style={muted}>
+              {chosenType.description}
+            </p>
+          )}
+        </Field>
+      )}
+      {typeChanged && hasData && (
+        <p className="rounded-md border px-3 py-2 text-sm" style={{ borderColor: '#e0b252', background: '#fff8e6', color: '#7a5200' }} role="alert">
+          Este projeto já tem {initial?.counts.samples} amostra(s). Trocar o tipo não apaga nem altera nada do que já foi importado, mas muda como os nomes das
+          próximas importações são lidos, as análises oferecidas na importação e as abas do projeto.
+        </p>
+      )}
       <Field label="Cor">
         <input type="color" className="h-10 w-20 rounded border" style={inputStyle} value={color} onChange={(e) => setColor(e.target.value)} />
       </Field>

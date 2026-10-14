@@ -17,7 +17,7 @@ import {
   ZAxis,
 } from 'recharts'
 import { api } from '../api/client'
-import type { AnalysisData, PyPeaks, PyroData, SampleDetail, SampleRow } from '../api/types'
+import type { AnalysisData, PyPeaks, PyroData, SampleDetail, SampleRow, TgData } from '../api/types'
 import { inputClass, inputStyle, Segmented } from '../components/ui'
 import { useApp } from '../context/AppContext'
 import { fractionColor } from '../lib/colors'
@@ -25,6 +25,7 @@ import { fmt, fmtTemp } from '../lib/format'
 import { axisProps, ChartCard, gridProps, SimpleTable, tooltipStyle } from './ChartCard'
 import { AlkaneChart, GasCompositionChart, PyrogramChart } from './MoreCharts'
 import { pointId, pointLabels, pointText, PointTooltip } from './PointLabels'
+import { TgChart, TgSignalSwitch, type TgSignal } from './TgCharts'
 
 // Gráficos do detalhe de UMA amostra: as curvas dela e onde ela fica em
 // relação às outras amostras do projeto. A amostra aberta sempre em destaque
@@ -287,11 +288,24 @@ function ReplicatesChart({ detail, options }: { detail: SampleDetail; options: {
 
 // ---------------------------------------------------------------- conjunto
 
-export function SampleCharts({ projectId, detail, samples }: { projectId: number; detail: SampleDetail; samples: SampleRow[] }) {
+export function SampleCharts({
+  projectId,
+  detail,
+  samples,
+  temperatureAxis = true,
+}: {
+  projectId: number
+  detail: SampleDetail
+  samples: SampleRow[]
+  /** Projeto com eixo de temperatura (rocha)? Tabaco: sem "Na série". */
+  temperatureAxis?: boolean
+}) {
   const { catalog, paramLabel, techniqueLabel } = useApp()
   const techs = useMemo(() => new Set(detail.analyses.map((a) => a.technique)), [detail])
   const [curves, setCurves] = useState<AnalysisData<PyroData>[]>([])
   const [peaks, setPeaks] = useState<AnalysisData<PyPeaks>[]>([])
+  const [tg, setTg] = useState<AnalysisData<TgData>[]>([])
+  const [tgSignal, setTgSignal] = useState<TgSignal>('mass')
   const [signal, setSignal] = useState('HC')
   const [xAxis, setXAxis] = useState<'Temp' | 'Time'>('Temp')
 
@@ -307,6 +321,11 @@ export function SampleCharts({ projectId, detail, samples }: { projectId: number
         .get<AnalysisData<PyPeaks>[]>(`/projects/${projectId}/analysis-data?technique=pygcms&mode=todas&sample_ids=${detail.id}`)
         .then(setPeaks)
         .catch(() => setPeaks([]))
+    if (techs.has('tg'))
+      api
+        .get<AnalysisData<TgData>[]>(`/projects/${projectId}/analysis-data?technique=tg&mode=todas&sample_ids=${detail.id}`)
+        .then(setTg)
+        .catch(() => setTg([]))
   }, [projectId, detail.id, techs])
 
   // parâmetros principais que a amostra tem (para "Na série" e "Réplicas")
@@ -340,6 +359,12 @@ export function SampleCharts({ projectId, detail, samples }: { projectId: number
       </div>
     ),
     peaks.length > 0 && <AlkaneChart key="alk" data={peaks} />,
+    tg.length > 0 && (
+      <div key="tg" className="space-y-2">
+        <TgSignalSwitch value={tgSignal} onChange={setTgSignal} />
+        <TgChart curves={tg} signal={tgSignal} />
+      </div>
+    ),
     detail.fraction === 'G' && <GasCompositionChart key="gas" samples={[detail]} />,
     <ElementsChart key="el" detail={detail} />,
     <ProjectScatter
@@ -365,7 +390,7 @@ export function SampleCharts({ projectId, detail, samples }: { projectId: number
       xLabel="O/C atômica"
       yLabel="H/C atômica"
     />,
-    <SeriesPosition key="serie" detail={detail} samples={samples} options={options} />,
+    temperatureAxis && <SeriesPosition key="serie" detail={detail} samples={samples} options={options} />,
     <ReplicatesChart key="reps" detail={detail} options={options} />,
   ].filter(Boolean)
 

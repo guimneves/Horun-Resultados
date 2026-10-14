@@ -5,8 +5,11 @@ laboratório quer usá-lo também em outros projetos: tabaco, incrustações etc
 Cada um tem **outras análises** (equipamentos), **outros parâmetros** e
 **outro tipo de amostra**. Este documento fixa a ideia e o que já está pronto.
 
-> **Estado:** só a fundação no servidor. **Nenhuma mudança na tela.** Projeto
-> sem perfil gravado se comporta exatamente como antes.
+> **Estado (14/10/2026):** o tipo de amostra **já muda o módulo**: tela de
+> criar/editar projeto ("Tipo de amostra"), leitor de nomes na importação e no
+> cadastro, análises do passo 1 da importação e abas (sem Séries e Condições
+> experimentais quando o tipo não tem eixo de temperatura). **Tabaco está
+> pronto** (seção 6). Projeto sem perfil gravado se comporta exatamente como antes.
 
 ## 1. A ideia em três peças
 
@@ -35,18 +38,22 @@ Na hora de **criar um projeto** (tela futura), a pessoa escolherá:
   - `ProjectProfile.resolved()` devolve o perfil com os padrões preenchidos.
     É isso que o resto do módulo vai consultar.
   - `options_json()` lista tipos de amostra e receitas, com `status`.
-- API (sem tela):
+- API (tela: "Tipo de amostra" em Novo projeto / Editar projeto):
   - `POST /api/projects` e `PATCH /api/projects/{id}` aceitam `"profile"`,
     por exemplo `{"sample_type": "rocha_hidropirolise", "recipes": ["leco",
     "rockeval"], "parameters": {"rockeval": ["TOC", "HI"]}}`.
   - Todo projeto devolvido pela API traz `"profile"` já resolvido.
   - `GET /api/profiles` lista os tipos de amostra e as receitas disponíveis.
 - Testes: `backend/tests/test_profiles.py`.
-- Tipos registrados: `rocha_hidropirolise` (pronto, padrão), `tabaco` e
-  `incrustacao` (planejados, só para o desenho não esquecê-los).
+- Tipos registrados: `rocha_hidropirolise` (pronto, padrão), `tabaco`
+  (pronto, 14/10/2026) e `incrustacao` (planejado).
 
-**O perfil ainda não muda nada.** Importação, séries, tabela e tela ignoram o
-perfil por enquanto. Isso é proposital.
+**O que o perfil já muda** (14/10/2026): `profiles.code_reader()` escolhe o
+leitor de nomes (rocha → `parse_sample_code`, tabaco → `parse_tobacco_code`)
+para importação, cadastro e cadastro em lote; `temperature_axis` (no perfil
+resolvido) esconde Séries/Condições experimentais e os campos de temperatura e
+experimento da prévia; o passo 1 da importação mostra as receitas do perfil
+(rocha: a lista de sempre). Colunas padrão por `parameters` ainda não.
 
 ## 3. Onde o perfil vai entrar (próximos passos, em ordem)
 
@@ -86,3 +93,22 @@ perfil por enquanto. Isso é proposital.
 - Formato versionado (`version`). Se o formato mudar, `load()` converte as
   versões antigas.
 - Nenhum dado real em teste ou exemplo (mesma regra do resto do repositório).
+
+## 6. Tabaco (pronto em 14/10/2026)
+
+- Receitas: `chnso`, `leco`, `leco_bruto` (sinal bruto do Cornerstone),
+  `rockeval` (inclusive o relatório "multiheating"), `tg` (TGA-50), `mev_eds`
+  (Oxford AZtec). Formatos: ESPECIFICACAO.md 3.3, 3.7–3.9.
+- Amostra = produto; fração "X"; sem temperatura nem experimento.
+- Nomes (`codes.parse_tobacco_code`): tira réplica no fim ("_1", " 2",
+  " - rep 2", "-rep 2", " -1", dígito colado "SABOR1"), "(Triplicata)",
+  "(triturado)", "-Corrected", data "AAAA-MM-DD Ch1", data no começo, nº da
+  corrida ("2-..."), sigla ("PX-Nome", "P - Nome"; sigla colada só antes de
+  palavra com minúsculas, para não cortar marcas em maiúsculas) e o prefixo do
+  tipo ("Ch_", "Cha_", "Char_", "Charuto"). "_" vira espaço. Comparação por
+  `normalize_code`. "Blank" → branco; padrões → padrão; "Spectrum NN" fica inteiro.
+- Em aberto com o laboratório: nomes que não casam sozinhos (número por extenso × algarismo, "de" × "da") ficam por conta dos apelidos; "(folha
+  externa)" no TG e "_FOLHA_EXTERNA" no Rock-Eval continuam como amostras
+  próprias (regiões do produto); calibração do LECO bruto (massa + padrão)
+  para chegar a % de C/S; faixas de temperatura do TG (150/400/600/900 °C)
+  são uma primeira escolha.

@@ -83,6 +83,15 @@ HTML com `<script>` contendo variáveis JavaScript:
 Extrair com regex + json (os arrays são JSON válido). Guardar a tabela e as
 curvas (para sobrepor pirogramas). Futuro: buscar direto do módulo RE7S.
 
+**Variante "multiheating"** (projeto de tabaco, 14/10/2026): o cabeçalho é
+Sample, MINC (%), OI, HI, Q1–Q5 (mg/g), Tmax (°C), TOC (%), Total HC Gas (%),
+Total HC Liquid (%), PC (%), RC (%) — **sem** Analysis, Date, Method. O
+`curveData` traz o nome da corrida (`"AAAA-MM-DD-AMOSTRA"`) na MESMA ORDEM das
+linhas da tabela: sem Analysis, as curvas são ligadas pela posição (se o nº de
+curvas e de linhas bater; senão, aviso e sem curvas) e o nome da corrida vira a
+chave da medição (data da análise = a data no começo do nome). Parâmetros novos
+no catálogo: `Q1`–`Q5`, `PC`, `RC`, `TotalHCGas`, `TotalHCLiquid`.
+
 ### 3.4 Cromatografia de gás — GC-FID e GC-TCD (planilhas .xlsx do laboratório)
 - `... Dados FID ....xlsx` e `... Dados TCD ....xlsx`: aba "Dados FID"/"Dados
   TCD": B2 = amostra (`AMOSTRA:` | `HP300NA`); a partir da linha 6:
@@ -135,6 +144,53 @@ amostra − após; `RI_pct` (%) = RI ÷ massa da amostra × 100 (decisão do
 mantenedor: resíduo em g, mostrar também em %); `sample_mass` (g).
 Réplica sem alguma das três massas é ignorada; Data → data da análise;
 Observações → `extra.notes`. Leitor: `parsers/leco_ri.py`.
+
+### 3.7 TG — Shimadzu TGA-50 / TA-60, exportação ASCII (projeto de tabaco, 14/10/2026)
+Duas variantes: **UTF-16 com BOM** (começa por "File Name:") e **cp1252**
+(começa por "[TA Ascii File]", arquivos "-Corrected.txt" com
+`[DataCorrectHistory]`). Seções por rótulo: `[File Information]` ("Sample
+Name:", "Sample Weight:	8.000[mg]", "Atmosphere:", "Acquire Date" ou
+"Acquisition Date" em aa/mm/dd) e `[Data]`: cabeçalho `Time	Temp	TGA`,
+linha de unidades (`sec	C	%` **ou** `sec	C	mg`) e linhas numéricas até a
+linha em branco. Em mg, a massa vira % do **1º ponto** (aviso). O arquivo
+binário do TA-60 ("TA-60 FILE VER2.00", .tad sem extensão) fica **ignorado**
+com o pedido de exportar em ASCII.
+Parâmetros (`tg`, pontos percentuais da massa inicial): `loss_150` (umidade,
+100 − m(150 °C)), `loss_150_400`, `loss_400_600`, `loss_600_900` (m(início) −
+m(fim) da faixa; m(T) = 1º ponto com temperatura ≥ T; faixa não alcançada →
+sem valor e aviso), `residue_pct` (massa no ponto de temperatura máxima),
+`t_final_c`, `dtg_peak_c` (mínimo de dm/dT, média móvel de 15 pontos e
+diferença central ±5 pontos, só com aquecimento > 0,5 °C), `mass_mg` ("Sample
+Weight"). Curva em `data` (temperatura, massa %, DTG, tempo; ≤ 800 pontos).
+Nome: o do **arquivo** quando ele traz a réplica ("Amostra - rep 2
+(Triplicata).txt"), senão o "Sample Name". Leitor: `parsers/tg.py`.
+
+### 3.8 MEV-EDS — Oxford AZtec (projeto de tabaco, 14/10/2026)
+Pastas `MEV/<amostra>/[<região>/]eds[N]/Sample 1/Spectrum NN/`. Só o
+**"Spectrum NN Quantity analysis.csv"** é de resultados: linhas `CHAVE;valor`
+(AV = tensão em V, contagens...), linha em branco, `Element,Atomic %,Weight %`
+e linhas `Carbon,55.00%,45.00%`. "Spectrum NN Spectrum.csv" (`Energy
+[eV];Counts`), `.msa` (EMSA), imagens e PDFs nas pastas do MEV → **ignorados**.
+Parâmetros (`mev_eds`): `wt_<símbolo>` (% massa) e `at_<símbolo>` (% atômica)
+para 31 elementos (nome em inglês → símbolo, inclusive "Aluminum"/"Sulphur");
+elemento fora da lista → aviso. A amostra vem das **pastas** (`path_hint` do
+.zip): a pasta antes de `eds*`; se essa for uma região (externo, interno,
+folha externa, miolo, capa, talo...), a amostra é a anterior e a região vai
+para `extra.region` (mostrada na prévia; faz parte da chave da medição). Nº do
+espectro = réplica. Sem pastas: nome = "Spectrum NN" (a pessoa liga na
+prévia). Leitor: `parsers/mev_eds.py`.
+
+### 3.9 LECO — sinal bruto do Cornerstone (projeto de tabaco, 14/10/2026)
+CSV com `"Set","Rep","Time","Carbon","Sulfur Low","Sulfur High","Furnace
+Power","Furnace Temperature"`, **uma linha por segundo** (~250 s por
+corrida), um Set por amostra com réplicas e os brancos ("Blank", réplicas
+1–3); células vazias = 0. Não há massa nem calibração → não dá % de C/S.
+Leitor `parsers/leco_raw.py` (técnica `leco_bruto`): por Set/Rep soma C, S
+baixo e S alto e desconta a **média dos brancos do mesmo arquivo**:
+`area_C`, `area_S_low`, `area_S_high` (u.a.) e `duration_s`; curva (tempo ×
+sinais, ≤ 600 pontos) em `data`; brancos → `kind = blank` (ignorados por
+padrão); aviso fixo "áreas RELATIVAS, não %". Detecção: 1ª linha com Set,
+Rep, Time, Carbon e **sem** Name (o CSV de resultados da 3.2 tem Name).
 
 ### 3.6 Tabela de literatura (opcional)
 Planilha de um artigo de referência = dados publicados (parâmetros por

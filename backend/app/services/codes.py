@@ -212,3 +212,59 @@ def experiment_code_from_text(*texts: str | None) -> str | None:
             run = re.sub(r"\s+", "", m.group(2)).upper()
             return f"HP{m.group(1)}{run}"
     return None
+
+
+# ------------------------------------------------------------------ tabaco
+#
+# Projetos de tabaco (perfil "tabaco", docs/PERFIS_DE_PROJETO.md): a amostra é
+# um PRODUTO (charuto, cigarro, folha...) e cada equipamento escreve o nome do
+# seu jeito — "Ch_Produto_X_1" (CHNS), "Produto X - rep 2" (TG),
+# "PRODUTO X" (LECO), "CHARUTO_PRODUTOX" (Rock-Eval). O leitor tira o
+# que é ruído (réplica no fim, "(Triplicata)", "-Corrected", data, número da
+# corrida, prefixo do tipo de produto "Ch_"/"Charuto") e a comparação usa
+# `normalize_code` (sem acento, caixa e espaços), para o mesmo produto casar
+# entre as técnicas. O que não casar a pessoa liga na prévia e o nome fica
+# lembrado (SampleAlias). Sem fração (X) e sem temperatura.
+
+_TOBACCO_NOISE_RE = re.compile(r"\((?:triplicata|duplicata|triturad[oa]|moid[oa])\)", re.IGNORECASE)
+_TOBACCO_CORRECTED_RE = re.compile(r"[\s_-]*corrected\s*$", re.IGNORECASE)
+_TOBACCO_DATE_RE = re.compile(r"\s+\d{4}-\d{2}-\d{2}(?:\s+C?h\d+)?\s*$", re.IGNORECASE)
+_TOBACCO_LEADING_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}[\s_-]+")
+# número da corrida ("2-Charuto...") ou sigla do produto ("PX-Produto X", "P - Produto", "7P - 7 produtos");
+# sigla colada só antes de palavra com minúsculas (não corta marcas como "XYZ-AMARELO")
+_TOBACCO_RUN_RE = re.compile(r"^(?:\d{1,2}-(?=\D)|[A-Z0-9]{1,3}(?:\s+-\s+|-(?=[A-ZÀ-Ý][a-zà-ÿ])))")
+_TOBACCO_TYPE_RE = re.compile(r"^(?:charuto[\s_-]*|(?:char|cha|ch)_)", re.IGNORECASE)
+_TOBACCO_REP_RE = re.compile(r"^(?P<base>.*?\S)\s*-?\s*\brep\.?\s*(?P<rep>\d{1,2})$", re.IGNORECASE)
+_TOBACCO_TAIL_RE = re.compile(r"^(?P<base>.*?[^\s_-])[\s_-]+(?P<rep>\d{1,2})$")
+_TOBACCO_GLUED_RE = re.compile(r"^(?P<base>.*[A-Za-z]{2})(?P<rep>\d)$")  # "MARCA_SABOR1"
+_TOBACCO_BLANKS = ("blank", "branco", "brancos")
+_SPECTRUM_RE = re.compile(r"^spectrum\s*\d+$", re.IGNORECASE)
+
+
+def parse_tobacco_code(raw: str) -> CodeInfo:
+    """Nome no arquivo → produto (base) + réplica. Ver o bloco acima."""
+    raw = (raw or "").strip()
+    text = _TOBACCO_NOISE_RE.sub(" ", raw)
+    text = _TOBACCO_CORRECTED_RE.sub("", text.strip())
+    text = _TOBACCO_DATE_RE.sub("", text.strip())
+    text = _TOBACCO_LEADING_DATE_RE.sub("", text.strip())
+    text = re.sub(r"\s+", " ", text).strip()
+    plain = strip_accents(text).lower()
+    if plain in _TOBACCO_BLANKS or any(plain == s or plain.startswith(s + " ") for s in _STANDARDS):
+        kind = "blank" if plain in _TOBACCO_BLANKS else "standard"
+        return CodeInfo(raw=raw, base_code=text, fraction=FRACTION_STANDARD if kind == "standard" else FRACTION_OTHER, kind=kind, recognized=True)
+    if _SPECTRUM_RE.match(text):  # espectro do EDS enviado sem pastas: o nome é o rótulo, sem réplica
+        return CodeInfo(raw=raw, base_code=text, fraction=FRACTION_OTHER)
+
+    rep = None
+    for rx in (_TOBACCO_REP_RE, _TOBACCO_TAIL_RE, _TOBACCO_GLUED_RE):
+        m = rx.match(text)
+        if m:
+            text, rep = m.group("base"), int(m.group("rep"))
+            break
+    text = _TOBACCO_RUN_RE.sub("", text.strip()).strip()
+    stripped = _TOBACCO_TYPE_RE.sub("", text).strip()
+    if stripped and re.search(r"[A-Za-z]", stripped):
+        text = stripped
+    base = re.sub(r"\s+", " ", text.replace("_", " ")).strip(" -")
+    return CodeInfo(raw=raw, base_code=base or raw, fraction=FRACTION_OTHER, replicate=rep, recognized=bool(base))

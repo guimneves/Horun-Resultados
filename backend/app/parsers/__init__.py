@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import io
 
-from app.parsers import chnso, gas_consolidated, gc, leco, leco_ri, pygcms, rockeval
+from app.parsers import chnso, gas_consolidated, gc, leco, leco_raw, leco_ri, mev_eds, pygcms, rockeval, tg
 from app.parsers.common import NotResultsFile, ParseError, ParseResult
 from app.services.derived import add_derived
 
@@ -28,11 +28,21 @@ def _pdf_first_text(content: bytes) -> str:
         raise ParseError(f"Não foi possível ler o PDF ({exc.__class__.__name__}).") from exc
 
 
-def _parse_pdf(content: bytes, filename: str) -> ParseResult:
+def _in_eds_folder(path_hint: str) -> bool:
+    return any(mev_eds.is_eds_dir(p) or p.strip().upper() == "MEV" for p in path_hint.replace("\\", "/").split("/"))
+
+
+# PNG, JPEG, TIFF (II/MM), BMP, GIF — micrografias e figuras do MEV
+_IMAGE_MAGIC = (b"\x89PNG", b"\xff\xd8\xff", b"II*\x00", b"MM\x00*", b"BM", b"GIF8")
+
+
+def _parse_pdf(content: bytes, filename: str, path_hint: str = "") -> ParseResult:
     text = _pdf_first_text(content)
     if chnso.is_eurovector(" ".join(text.split())):
         return chnso.parse(content, filename)
     leco.reject_if_diagnostic_pdf(text)
+    if _in_eds_folder(path_hint):
+        raise NotResultsFile("PDF do relatório do MEV-EDS (figuras e espectro) — os números vêm do \"Quantity analysis.csv\".")
     raise ParseError(
         "PDF não reconhecido. Do CHNSO, importe o \"Results Summary for Element %\"; "
         "do LECO, o CSV exportado do Cornerstone."
@@ -87,12 +97,28 @@ def parse_file(filename: str, content: bytes, path_hint: str = "") -> ParseResul
     if not content:
         raise ParseError("Arquivo vazio.")
     if content[:5] == b"%PDF-":
-        result = _parse_pdf(content, base)
+        result = _parse_pdf(content, base, path_hint)
     elif content[:2] == b"PK":
         result = _parse_xlsx(content, base, path_hint)
+    elif content.startswith(_IMAGE_MAGIC):
+        raise NotResultsFile("Imagem (micrografia/figura) — não é arquivo de resultados.")
+    elif tg.is_binary_tad(content):
+        result = tg.parse(content, base)  # levanta NotResultsFile com o pedido de exportar em ASCII
+    elif content[:2] in (b"\xff\xfe", b"\xfe\xff"):  # texto UTF-16 (exportação do TA-60)
+        if not tg.looks_like_tg(tg.decode(content)):
+            raise ParseError("Arquivo de texto UTF-16 não reconhecido (esperado: exportação ASCII do TG).")
+        result = tg.parse(content, base)
     else:
         head = content[:200000].decode("utf-8-sig", errors="replace")
-        if rockeval.looks_like_rockeval(head) or (
+        if mev_eds.looks_like_eds_spectrum(head):
+            mev_eds.reject_spectrum()
+        if mev_eds.looks_like_eds_quantity(head):
+            result = mev_eds.parse(content, base, path_hint)
+        elif tg.looks_like_tg(tg.decode(content[:20000])):
+            result = tg.parse(content, base)
+        elif leco_raw.looks_like_leco_raw(leco.decode(content[:20000])):
+            result = leco_raw.parse(content, base)
+        elif rockeval.looks_like_rockeval(head) or (
             "<html" in head.lower() and rockeval.looks_like_rockeval(content.decode("utf-8-sig", errors="replace"))
         ):
             result = rockeval.parse(content, base)
@@ -102,8 +128,9 @@ def parse_file(filename: str, content: bytes, path_hint: str = "") -> ParseResul
             raise ParseError("Este HTML não é um relatório do Rock-Eval (GeoWorks \"Job report\").")
         else:
             raise ParseError(
-                "Formato não reconhecido. Aceitos: PDF do CHNSO (EuroVector), CSV do LECO, relatório .htm do "
-                "Rock-Eval, planilhas de GC-FID/TCD, de cálculo de gás e de Py-GC-MS (ou um .zip com eles)."
+                "Formato não reconhecido. Aceitos: PDF do CHNSO (EuroVector), CSV do LECO (resultados ou sinal "
+                "bruto), relatório .htm do Rock-Eval, planilhas de GC-FID/TCD, de cálculo de gás e de Py-GC-MS, "
+                "TG (ASCII do TGA-50) e MEV-EDS (\"Quantity analysis.csv\") — ou um .zip com eles."
             )
     for record in result.records:
         add_derived(record)

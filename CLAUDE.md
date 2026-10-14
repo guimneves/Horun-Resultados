@@ -1,13 +1,14 @@
 # Horun · Resultados — guia para o Claude Code
 
 Módulo do Horun que reúne os resultados das análises (CHNSO, LECO, LECO - Resíduo Insolúvel, Rock-Eval,
-GC-FID/TCD, balanço de gás, Py-GC-MS) por projeto, com tabelas e séries por
-temperatura. Backend FastAPI+SQLModel (`backend/`), frontend React+Vite (`frontend/`).
+GC-FID/TCD, balanço de gás, Py-GC-MS; e, nos projetos de tabaco, TG, MEV-EDS e
+LECO sinal bruto) por projeto, com tabelas e séries por temperatura. Backend FastAPI+SQLModel (`backend/`), frontend React+Vite (`frontend/`).
 
 **Leia primeiro:** `docs/ESPECIFICACAO.md` (requisitos e formatos verificados),
 `docs/ESTADO_E_PLANOS.md` (estado, decisões, perguntas em aberto) e
 `docs/CHANGELOG.md`. Projetos de outros tipos (tabaco, incrustações):
-`docs/PERFIS_DE_PROJETO.md` (fundação pronta, sem tela). Regras da plataforma: `../Horun Core/Prompt_Horun_Modulo.md`.
+`docs/PERFIS_DE_PROJETO.md` (tipo de amostra na tela; **tabaco pronto**, leitor de nomes
+`codes.parse_tobacco_code`; rocha inalterada). Regras da plataforma: `../Horun Core/Prompt_Horun_Modulo.md`.
 
 ## Regras do projeto
 
@@ -55,7 +56,7 @@ temperatura. Backend FastAPI+SQLModel (`backend/`), frontend React+Vite (`fronte
 ## Comandos
 
 ```bash
-cd backend && .venv/Scripts/python -m pytest -q        # 162 passam
+cd backend && .venv/Scripts/python -m pytest -q        # 192 passam
 cd frontend && npx tsc -b && npx oxlint && npm run build
 ```
 

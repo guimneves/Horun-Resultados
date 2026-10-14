@@ -18,7 +18,8 @@ def test_project_without_profile_gets_the_default(client):
     p = client.post("projects", json={"name": "Sem perfil"}, headers=COORD).json()
     prof = p["profile"]
     assert prof["sample_type"] == "rocha_hidropirolise"
-    assert prof["recipes"] == list(profiles.RECIPES)  # todas as análises de hoje
+    assert prof["recipes"] == list(profiles.ROCK_RECIPES)  # as análises de rocha de sempre (sem as de tabaco)
+    assert prof["temperature_axis"] is True
     assert prof["parameters"]["rockeval"] == ["TOC", "Tmax", "S1", "S2", "HI", "OI"]  # os "main" do catálogo
     assert "profile_json" not in p
 
@@ -44,7 +45,7 @@ def test_create_and_patch_with_profile(client):
     "profile, message",
     [
         ({"sample_type": "marte"}, "Tipo de amostra desconhecido"),
-        ({"sample_type": "tabaco"}, "ainda não está pronto"),
+        ({"sample_type": "incrustacao"}, "ainda não está pronto"),
         ({"recipes": ["icp"]}, "Análise desconhecida"),
         ({"recipes": ["leco"], "parameters": {"rockeval": ["TOC"]}}, "fora do perfil"),
         ({"parameters": {"leco": ["XYZ"]}}, "Parâmetro desconhecido"),
@@ -58,12 +59,12 @@ def test_invalid_profiles_are_refused(client, profile, message):
 
 def test_unreadable_stored_profile_falls_back_to_default():
     assert profiles.load("{não é json").sample_type == "rocha_hidropirolise"
-    assert profiles.load("").resolved()["recipes"] == list(profiles.RECIPES)
+    assert profiles.load("").resolved()["recipes"] == list(profiles.ROCK_RECIPES)
 
 
 def test_profile_options_lists_types_and_recipes(client):
     data = client.get("profiles", headers=PESQ).json()
     types = {t["key"]: t["status"] for t in data["sample_types"]}
-    assert types == {"rocha_hidropirolise": "pronto", "tabaco": "planejado", "incrustacao": "planejado"}
+    assert types == {"rocha_hidropirolise": "pronto", "tabaco": "pronto", "incrustacao": "planejado"}
     leco = next(r for r in data["recipes"] if r["key"] == "leco")
     assert leco["instrument"] == "LECO SC832" and leco["status"] == "pronto"

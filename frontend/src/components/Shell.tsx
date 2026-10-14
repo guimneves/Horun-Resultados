@@ -5,11 +5,13 @@ import { UNDER_CORE } from '../lib/underCore'
 
 // Abas do projeto. Importar vira botão no cabeçalho e Histórico fica no menu
 // "Projeto" (ProjectLayout) — menos coisas disputando a atenção.
+// `temperature`: só aparece em projetos com eixo de temperatura (rocha —
+// hidropirólise); projetos de tabaco não têm séries nem experimentos.
 export const PROJECT_TABS = [
   { to: 'amostras', label: 'Amostras' },
-  { to: 'series', label: 'Séries' },
+  { to: 'series', label: 'Séries', temperature: true },
   { to: 'comparar', label: 'Comparar' },
-  { to: 'experimentos', label: 'Condições experimentais' },
+  { to: 'experimentos', label: 'Condições experimentais', temperature: true },
 ]
 
 /** "← Voltar ao Horun": link comum (recarrega a página) para a raiz do Core.

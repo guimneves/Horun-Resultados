@@ -5,6 +5,7 @@ import { SampleCharts } from '../charts/SampleCharts'
 import { Button, Dropdown, ErrorBox, Field, inputClass, inputStyle, MenuItem, Modal, muted, ValidityBadge } from '../components/ui'
 import { useApp } from '../context/AppContext'
 import { fmt, fmtMeanSd, fmtTemp } from '../lib/format'
+import { useProject } from './ProjectLayout'
 
 function ValidationButtons({ valid, onSet }: { valid: boolean | null; onSet: (v: boolean | null) => void }) {
   return (
@@ -117,6 +118,7 @@ export function SampleDetailModal({
   onChanged: () => void
 }) {
   const { me, catalog, fractions, techniqueLabel, paramLabel, fractionLabel } = useApp()
+  const { project } = useProject()
   const [detail, setDetail] = useState<SampleDetail | null>(null)
   const [experiments, setExperiments] = useState<Experiment[]>([])
   const [editing, setEditing] = useState(false)
@@ -328,7 +330,7 @@ export function SampleDetailModal({
             </div>
           )}
 
-          <SampleCharts projectId={projectId} detail={detail} samples={samples} />
+          <SampleCharts projectId={projectId} detail={detail} samples={samples} temperatureAxis={project.profile?.temperature_axis ?? true} />
 
           {summaryCards.length > 0 && (
             <section>

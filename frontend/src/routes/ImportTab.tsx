@@ -18,8 +18,25 @@ const ANALYSIS_TYPES: { key: string; label: string; files: string }[] = [
   { key: 'gc_tcd', label: 'GC-TCD (gás)', files: 'planilha "Dados TCD" de cada experimento' },
   { key: 'gas_balanco', label: 'Balanço de gás', files: '"Planilha cálculo gás" de cada experimento, ou a tabela consolidada de gás (aba "Detalhe")' },
   { key: 'pygcms', label: 'Py-GC-MS', files: 'planilha com uma aba por amostra' },
+  // análises dos projetos de tabaco (aparecem só quando o tipo de amostra as usa)
+  {
+    key: 'leco_bruto',
+    label: 'LECO — sinal bruto',
+    files: 'CSV do sinal bruto do Cornerstone (colunas Set, Rep, Time, Carbon...) — dá áreas relativas, não %',
+  },
+  { key: 'tg', label: 'TG (termogravimetria)', files: 'exportação ASCII (.txt) do TGA-50/TA-60, uma por réplica' },
+  { key: 'mev_eds', label: 'MEV-EDS', files: '.zip com as pastas do MEV (amostra/região/eds/...) com os "Quantity analysis.csv"' },
   { key: '', label: 'Vários / não sei (detectar)', files: 'qualquer um dos acima, ou um .zip com pastas' },
 ]
+
+// Análises que só aparecem em projetos de outros tipos (rocha continua com a lista de sempre)
+const NOT_FOR_ROCK = new Set(['leco_bruto', 'tg', 'mev_eds'])
+
+/** Botões do passo 1: rocha → a lista de sempre; outros tipos → as análises do perfil. */
+function analysisTypesFor(profile: { temperature_axis: boolean; recipes: string[] } | undefined) {
+  if (!profile || profile.temperature_axis) return ANALYSIS_TYPES.filter((t) => !NOT_FOR_ROCK.has(t.key))
+  return ANALYSIS_TYPES.filter((t) => t.key === '' || profile.recipes.includes(t.key))
+}
 
 const STATUS: Record<string, { label: string; color: string }> = {
   ok: { label: 'lido', color: '#1b6b34' },
@@ -57,6 +74,8 @@ const SOURCE_LABEL: Record<string, string> = {
 
 function RowEditor({ row, d, samples, onChange }: { row: PreviewRow; d: Decision; samples: SampleRow[]; onChange: (patch: Partial<Decision>) => void }) {
   const { fractions } = useApp()
+  const { project } = useProject()
+  const withTemperature = project.profile?.temperature_axis ?? true
   return (
     <div className="space-y-2">
       <select
@@ -87,23 +106,28 @@ function RowEditor({ row, d, samples, onChange }: { row: PreviewRow; d: Decision
               </option>
             ))}
           </select>
-          <input
-            className={inputClass}
-            style={inputStyle}
-            inputMode="decimal"
-            placeholder="Temperatura (°C)"
-            value={d.temperature_c}
-            onChange={(e) => onChange({ temperature_c: e.target.value })}
-            aria-label="Temperatura"
-          />
-          <input
-            className={inputClass}
-            style={inputStyle}
-            placeholder="Experimento (ex.: HP300NA)"
-            value={d.experiment_code}
-            onChange={(e) => onChange({ experiment_code: e.target.value })}
-            aria-label="Experimento"
-          />
+          {/* temperatura e experimento só existem em projetos de rocha (hidropirólise) */}
+          {withTemperature && (
+            <>
+              <input
+                className={inputClass}
+                style={inputStyle}
+                inputMode="decimal"
+                placeholder="Temperatura (°C)"
+                value={d.temperature_c}
+                onChange={(e) => onChange({ temperature_c: e.target.value })}
+                aria-label="Temperatura"
+              />
+              <input
+                className={inputClass}
+                style={inputStyle}
+                placeholder="Experimento (ex.: HP300NA)"
+                value={d.experiment_code}
+                onChange={(e) => onChange({ experiment_code: e.target.value })}
+                aria-label="Experimento"
+              />
+            </>
+          )}
         </div>
       )}
     </div>
@@ -127,6 +151,7 @@ export function ImportTab() {
   const [error, setError] = useState<string | null>(null)
 
   const samples = useMemo(() => [...(existing ?? [])].sort((a, b) => a.code.localeCompare(b.code)), [existing])
+  const analysisTypes = analysisTypesFor(project.profile)
 
   if (readOnly) return <Empty>Projeto arquivado — não recebe importações.</Empty>
   if (!canEdit) return <Empty>Seu cargo permite ver os resultados, mas não importar. Peça a um(a) pesquisador(a) ou coordenador(a).</Empty>
@@ -202,6 +227,7 @@ export function ImportTab() {
       .map(([k, v]) => `${paramLabel(k, false)} ${fmt(v)}`)
       .join(' · ')
 
+  const regionsOf = (r: PreviewRow) => Array.from(new Set(r.measurements.map((m) => m.region).filter((x): x is string => !!x)))
   const rowInfo = (r: PreviewRow) => (
     <>
       <div className="font-semibold">{r.name}</div>
@@ -209,6 +235,7 @@ export function ImportTab() {
         {r.techniques.map(techniqueLabel).join(', ')} · {r.n_measurements} medição(ões)
         {r.replicates.length > 1 && ` · réplicas ${r.replicates.join(', ')}`}
         {r.aliquots.length > 0 && ` · alíquota ${r.aliquots.join(', ')}`}
+        {regionsOf(r).length > 0 && ` · região ${regionsOf(r).join(', ')}`}
       </div>
       {r.updates_existing && (
         <div className="text-xs" style={{ color: '#8a6d00' }}>
@@ -287,7 +314,7 @@ export function ImportTab() {
       <section className="rounded-lg border p-3 md:p-4" style={card}>
         <h2 className="mb-2 font-semibold">1. Qual análise você vai importar?</h2>
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-          {ANALYSIS_TYPES.map((t) => (
+          {analysisTypes.map((t) => (
             <button
               key={t.key || 'auto'}
               type="button"

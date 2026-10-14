@@ -4,10 +4,13 @@
 Fundação (08/10/2026) para projetos além da maturação de rochas — tabaco,
 incrustações etc. Desenho completo e próximos passos: docs/PERFIS_DE_PROJETO.md.
 
-Por enquanto o perfil só é GUARDADO e VALIDADO (Project.profile_json, API de
-projetos aceita/devolve "profile"); nada na importação, nas séries ou na tela
-muda com ele. Projeto sem perfil gravado = perfil padrão do tipo
-"rocha_hidropirolise", que é exatamente o comportamento de hoje.
+O perfil é guardado e validado (Project.profile_json, API de projetos
+aceita/devolve "profile"). Desde 14/10/2026 o TIPO DE AMOSTRA já muda o
+módulo: quem lê os códigos das amostras na importação (`code_reader`), quais
+análises aparecem no passo "1. Qual análise?" e se o projeto tem o eixo de
+temperatura (abas Séries e Condições experimentais). Projeto sem perfil
+gravado = perfil padrão do tipo "rocha_hidropirolise", exatamente o
+comportamento de antes.
 
 Três peças:
 
@@ -27,7 +30,10 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 
+from collections.abc import Callable
+
 from app.services.catalog import TECHNIQUES, param
+from app.services.codes import CodeInfo, parse_sample_code, parse_tobacco_code
 
 PROFILE_VERSION = 1
 DEFAULT_SAMPLE_TYPE = "rocha_hidropirolise"
@@ -54,6 +60,9 @@ _PARSER_OF = {
     "gc_tcd": "gc",
     "gas_balanco": "gc",
     "pygcms": "pygcms",
+    "leco_bruto": "leco_raw",
+    "tg": "tg",
+    "mev_eds": "mev_eds",
 }
 
 RECIPES: dict[str, ImportRecipe] = {
@@ -70,7 +79,20 @@ class SampleType:
     code_reader: str  # quem interpreta os códigos das amostras (app/services/codes.py hoje)
     recipes: tuple[str, ...]  # análises que fazem sentido para este tipo (padrão do perfil)
     status: str = "pronto"  # "pronto" | "planejado"
+    # o projeto tem o eixo "temperatura de hidropirólise" (abas Séries e
+    # Condições experimentais, temperatura e experimento na importação)?
+    temperature_axis: bool = False
 
+
+# Análises do projeto de rocha — as de antes dos perfis (as receitas novas de
+# tabaco não aparecem para rocha; o arquivo continua sendo reconhecido se vier).
+ROCK_RECIPES = ("chnso", "leco", "leco_ri", "rockeval", "gc_fid", "gc_tcd", "gas_balanco", "pygcms")
+
+# Quem lê os códigos das amostras (SampleType.code_reader → função de app/services/codes.py)
+CODE_READERS: dict[str, Callable[[str], CodeInfo]] = {
+    "codes.parse_code": parse_sample_code,
+    "codes.parse_tobacco_code": parse_tobacco_code,
+}
 
 SAMPLE_TYPES: dict[str, SampleType] = {
     "rocha_hidropirolise": SampleType(
@@ -78,18 +100,21 @@ SAMPLE_TYPES: dict[str, SampleType] = {
         label="Rocha — maturação artificial (hidropirólise)",
         description="Rocha geradora, frações H/E/SE/G por temperatura; códigos HP300H, HP355NBE...",
         code_reader="codes.parse_code",
-        recipes=tuple(RECIPES),
+        recipes=ROCK_RECIPES,
+        temperature_axis=True,
     ),
-    # Planejados: só registram a intenção. Receitas, leitura de códigos e
-    # parâmetros serão definidos com o laboratório (docs/PERFIS_DE_PROJETO.md).
+    # Tabaco (14/10/2026, arquivos de exemplo do laboratório): a amostra é o
+    # produto (charuto, cigarro, folha...), lido por codes.parse_tobacco_code.
     "tabaco": SampleType(
         key="tabaco",
         label="Tabaco",
-        description="A definir com o laboratório.",
-        code_reader="",
-        recipes=("chnso",),
-        status="planejado",
+        description="Produtos de tabaco (charutos, cigarros, folhas): CHNS, LECO, Rock-Eval, TG e MEV-EDS. "
+        "A amostra é o produto; réplicas (\"_1\", \" - rep 2\") e prefixos (\"Ch_\", \"Charuto\") saem do nome.",
+        code_reader="codes.parse_tobacco_code",
+        recipes=("chnso", "leco", "leco_bruto", "rockeval", "tg", "mev_eds"),
     ),
+    # Planejado: só registra a intenção. Receitas, leitura de códigos e
+    # parâmetros serão definidos com o laboratório (docs/PERFIS_DE_PROJETO.md).
     "incrustacao": SampleType(
         key="incrustacao",
         label="Incrustações",
@@ -121,6 +146,7 @@ class ProjectProfile:
             "version": self.version,
             "sample_type": self.sample_type,
             "sample_type_label": st.label,
+            "temperature_axis": st.temperature_axis,
             "recipes": recipes,
             "parameters": params,
         }
@@ -167,6 +193,12 @@ def load(profile_json: str | None) -> ProjectProfile:
         return ProjectProfile()
 
 
+def code_reader(profile_json: str | None) -> Callable[[str], CodeInfo]:
+    """Leitor de códigos do tipo de amostra do projeto (rocha → parse_sample_code)."""
+    st = SAMPLE_TYPES[load(profile_json).sample_type]
+    return CODE_READERS.get(st.code_reader, parse_sample_code)
+
+
 def dump(profile: ProjectProfile) -> str:
     return json.dumps(
         {"version": profile.version, "sample_type": profile.sample_type, "recipes": profile.recipes, "parameters": profile.parameters},
@@ -179,7 +211,14 @@ def options_json() -> dict:
     return {
         "default_sample_type": DEFAULT_SAMPLE_TYPE,
         "sample_types": [
-            {"key": s.key, "label": s.label, "description": s.description, "recipes": list(s.recipes), "status": s.status}
+            {
+                "key": s.key,
+                "label": s.label,
+                "description": s.description,
+                "recipes": list(s.recipes),
+                "status": s.status,
+                "temperature_axis": s.temperature_axis,
+            }
             for s in SAMPLE_TYPES.values()
         ],
         "recipes": [{"key": r.key, "label": r.label, "instrument": r.instrument, "status": r.status} for r in RECIPES.values()],
