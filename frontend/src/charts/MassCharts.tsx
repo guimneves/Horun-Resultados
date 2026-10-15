@@ -1,5 +1,7 @@
 import { CartesianGrid, ComposedChart, ErrorBar, Legend, Line, ResponsiveContainer, Scatter, Tooltip, XAxis, YAxis } from 'recharts'
 import type { MassesResponse, MassKey } from '../api/types'
+import { ChartLook } from '../components/ChartLook'
+import { lineLook, useChartPrefs } from '../lib/chartPrefs'
 import { atmosphereDash, MASS_COLORS } from '../lib/colors'
 import { fmt, fmtMeanSd } from '../lib/format'
 import { axisProps, ChartCard, gridProps, SimpleTable, tooltipStyle } from './ChartCard'
@@ -27,7 +29,9 @@ export function hasMassData(data: MassesResponse | null, mass: MassKey): boolean
  * uma linha por atmosfera quando há mais de uma, e as réplicas como pontos
  * vazados. Valores 0 ou vazios ficam de fora. */
 export function MassChart({ data, mass }: { data: MassesResponse; mass: MassKey }) {
-  const color = MASS_COLORS[mass]
+  const prefs = useChartPrefs()
+  const style = prefs.styleOf('linhas', 'linhas')
+  const color = prefs.color(`massa:${mass}`, MASS_COLORS[mass])
   const title = MASS_TITLES[mass]
   const multi = data.atmospheres.length > 1
   const groups = data.groups.filter((g) => g.temperature_c != null && g.replicates.some((r) => has(r[mass])))
@@ -60,6 +64,9 @@ export function MassChart({ data, mass }: { data: MassesResponse; mass: MassKey 
       subtitle="média ± desvio-padrão das réplicas (A, B, C) · pontos vazados = réplicas · valores 0 ou vazios não entram"
       sources={MASS_SOURCES[mass]}
       filename={title}
+      actions={
+        <ChartLook scope="linhas" styles={['linhas', 'pontos']} fallback="linhas" colors={[{ key: `massa:${mass}`, label: title, color: MASS_COLORS[mass] }]} />
+      }
       empty={groups.length ? null : `Sem ${title.toLowerCase()} nas corridas do projeto.`}
       table={<SimpleTable head={['Amostra', 'Temp. (°C)', 'Média ± desvio (g)', 'n', 'Réplicas (g)']} rows={rows} />}
     >
@@ -95,18 +102,7 @@ export function MassChart({ data, mass }: { data: MassesResponse; mass: MassKey 
           />
           <Legend wrapperStyle={{ fontSize: 12 }} />
           {lines.map((l) => (
-            <Line
-              key={`m-${l.atm}`}
-              name={`Média${suffix(l.atm)}`}
-              data={l.means}
-              dataKey="mean"
-              stroke={color}
-              strokeWidth={2}
-              strokeDasharray={l.dash}
-              dot={{ r: 4, strokeWidth: 2, stroke: 'var(--color-bg-elevated)', fill: color }}
-              activeDot={{ r: 6 }}
-              isAnimationActive={false}
-            >
+            <Line key={`m-${l.atm}`} name={`Média${suffix(l.atm)}`} data={l.means} dataKey="mean" {...lineLook(style, color, l.dash)} isAnimationActive={false}>
               <ErrorBar dataKey="sdBar" width={6} strokeWidth={1.5} stroke={color} direction="y" />
             </Line>
           ))}

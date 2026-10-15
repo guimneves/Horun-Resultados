@@ -18,6 +18,8 @@ import {
 import { api } from '../api/client'
 import type { Mode } from '../api/types'
 import { Button, ErrorBox, inputClass, inputStyle, muted } from '../components/ui'
+import { ChartLook } from '../components/ChartLook'
+import { lineLook, useChartPrefs, type ColorEntry } from '../lib/chartPrefs'
 import { GAS_COLORS } from '../lib/colors'
 import { fmt } from '../lib/format'
 import { axisProps, ChartCard, gridProps, SimpleTable, tooltipStyle } from './ChartCard'
@@ -75,7 +77,15 @@ const xTemp = {
   label: { value: 'Temperatura (°C)', position: 'insideBottom' as const, offset: -4, fill: 'var(--color-text-muted)', fontSize: 12 },
   height: 40,
 }
-const dot = (color: string) => ({ r: 4, strokeWidth: 1.5, stroke: 'var(--color-bg-elevated)', fill: color })
+// Tipo (pontos e linha / só pontos) e cores escolhíveis — lib/chartPrefs.ts,
+// escopo 'linhas' (o mesmo das séries × temperatura).
+function useLook() {
+  const prefs = useChartPrefs()
+  const style = prefs.styleOf('linhas', 'linhas')
+  return { prefs, style, width: style === 'pontos' ? 0 : 2 }
+}
+const lookActions = (colors: ColorEntry[]) => <ChartLook scope="linhas" styles={['linhas', 'pontos']} fallback="linhas" colors={colors} />
+
 const val = (s?: Stat) => (s?.mean != null ? s.mean : null)
 const cell = (s?: Stat) => (s?.mean != null ? `${fmt(s.mean)}${s.sd != null ? ` ± ${fmt(s.sd)}` : ''}` : '—')
 
@@ -91,9 +101,12 @@ function YieldChart({ data, groups, title, figure }: { data: ArticleData; groups
       ),
     }))
     .filter((r) => groups.some((k) => (r as Record<string, unknown>)[k] != null))
+  const { prefs, style } = useLook()
+  const gc = (k: Group) => prefs.color(`gas:${k}`, GAS_COLORS[k])
   return (
     <ChartCard
       title={`${figure} — ${title}`}
+      actions={lookActions(groups.map((k) => ({ key: `gas:${k}`, label: LABELS[k], color: GAS_COLORS[k] })))}
       subtitle={`Rendimento (${data.yield_unit}) × temperatura${data.yields_estimated ? ' · mols estimados pela composição e massa total de gás' : ''}`}
       sources={['gas_balanco']}
       empty={
@@ -118,8 +131,8 @@ function YieldChart({ data, groups, title, figure }: { data: ArticleData; groups
           <Tooltip {...tooltipStyle} labelFormatter={(t) => `${t} °C`} formatter={(v, n) => [`${fmt(Number(v))} ${data.yield_unit}`, String(n)]} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
           {groups.map((k) => (
-            <Line key={k} dataKey={k} name={LABELS[k]} stroke={GAS_COLORS[k]} strokeWidth={2} dot={dot(GAS_COLORS[k])} connectNulls isAnimationActive={false}>
-              <ErrorBar dataKey={`${k}_sd`} width={4} stroke={GAS_COLORS[k]} direction="y" />
+            <Line key={k} dataKey={k} name={LABELS[k]} {...lineLook(style, gc(k))} connectNulls isAnimationActive={false}>
+              <ErrorBar dataKey={`${k}_sd`} width={4} stroke={gc(k)} direction="y" />
             </Line>
           ))}
         </LineChart>
@@ -129,15 +142,19 @@ function YieldChart({ data, groups, title, figure }: { data: ArticleData; groups
 }
 
 function MoleFractionChart({ data }: { data: ArticleData }) {
-  const parts = [
-    { key: 'H2', label: 'H₂', color: GAS_COLORS.H2, shape: 'circle' },
-    { key: 'C1', label: 'CH₄', color: GAS_COLORS.C1, shape: 'square' },
-    { key: 'CO2', label: 'CO₂', color: GAS_COLORS.CO2, shape: 'triangle' },
-  ] as const
+  const { prefs, width } = useLook()
+  const parts = (
+    [
+      { key: 'H2', label: 'H₂', shape: 'circle' },
+      { key: 'C1', label: 'CH₄', shape: 'square' },
+      { key: 'CO2', label: 'CO₂', shape: 'triangle' },
+    ] as const
+  ).map((p) => ({ ...p, color: prefs.color(`gas:${p.key}`, GAS_COLORS[p.key]) }))
   const rows = data.gas.map((g) => ({ temperature_c: g.temperature_c, H2: val(g.mole_pct.H2), C1: val(g.mole_pct.C1), CO2: val(g.mole_pct.CO2) }))
   return (
     <ChartCard
       title="Figura 3a — Frações molares de H₂, CH₄ e CO₂"
+      actions={lookActions(parts.map((p) => ({ key: `gas:${p.key}`, label: p.label, color: GAS_COLORS[p.key] })))}
       subtitle="% molar sem o gás de enchimento (N₂) × temperatura"
       sources={['gas_balanco']}
       empty={rows.some((r) => r.H2 != null || r.CO2 != null) ? null : 'Sem composição de gás.'}
@@ -161,7 +178,7 @@ function MoleFractionChart({ data }: { data: ArticleData }) {
               dataKey={p.key}
               name={p.label}
               stroke={p.color}
-              strokeWidth={2}
+              strokeWidth={width}
               legendType={p.shape}
               dot={<Marker shape={p.shape} color={p.color} />}
               connectNulls
@@ -186,7 +203,8 @@ function SimpleLineChart({
   subtitle,
   rows,
   yLabel,
-  color,
+  color: defaultColor,
+  colorKey,
   sources,
   unit,
   table,
@@ -196,16 +214,21 @@ function SimpleLineChart({
   rows: { temperature_c: number; y: number | null; sd?: number | null }[]
   yLabel: string
   color: string
+  /** chave da cor escolhível (lib/chartPrefs.ts) */
+  colorKey: string
   sources: string[]
   unit: string
   table: { head: string[]; rows: (string | number)[][] }
 }) {
+  const { prefs, style } = useLook()
+  const color = prefs.color(colorKey, defaultColor)
   const shown = rows.filter((r) => r.y != null).map((r) => ({ ...r, sdBar: r.sd ?? 0 }))
   return (
     <ChartCard
       title={title}
       subtitle={subtitle}
       sources={sources}
+      actions={lookActions([{ key: colorKey, label: yLabel, color: defaultColor }])}
       empty={shown.length ? null : 'Sem dados para esta figura.'}
       table={<SimpleTable {...table} />}
     >
@@ -216,7 +239,7 @@ function SimpleLineChart({
           <YAxis {...axisProps} width={56} domain={['auto', 'auto']} tickFormatter={(v: number) => fmt(v)} />
           <Tooltip {...tooltipStyle} labelFormatter={(t) => `${t} °C`} formatter={(v) => [`${fmt(Number(v))}${unit ? ` ${unit}` : ''}`, yLabel]} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          <Line dataKey="y" name={yLabel} stroke={color} strokeWidth={2} dot={dot(color)} isAnimationActive={false}>
+          <Line dataKey="y" name={yLabel} {...lineLook(style, color)} isAnimationActive={false}>
             <ErrorBar dataKey="sdBar" width={4} stroke={color} direction="y" />
           </Line>
         </LineChart>
@@ -239,9 +262,16 @@ function BeforeAfterChart({ data, param }: { data: ArticleData; param: (typeof R
   const rows = data.residue
     .filter((r) => r.after[param.key]?.mean != null)
     .map((r) => ({ temperature_c: r.temperature_c, after: r.after[param.key].mean, before: before ?? null, sdBar: r.after[param.key].sd ?? 0 }))
+  const { prefs, style, width } = useLook()
+  const cBefore = prefs.color('artigo:antes', BEFORE)
+  const cAfter = prefs.color('artigo:depois', AFTER)
   return (
     <ChartCard
       title={`Figura 4 — ${param.label} antes e depois`}
+      actions={lookActions([
+        { key: 'artigo:antes', label: 'Antes (rocha original)', color: BEFORE },
+        { key: 'artigo:depois', label: 'Depois (hidropirolisada)', color: AFTER },
+      ])}
       subtitle={`${param.unit} · antes = rocha original (${data.toc0_samples.join(', ') || '—'}) · depois = rocha hidropirolisada (H/SE)`}
       sources={['rockeval']}
       empty={rows.length ? null : 'Sem Rock-Eval da rocha hidropirolisada.'}
@@ -259,17 +289,17 @@ function BeforeAfterChart({ data, param }: { data: ArticleData; param: (typeof R
           <YAxis {...axisProps} width={52} domain={['auto', 'auto']} tickFormatter={(v: number) => fmt(v)} />
           <Tooltip {...tooltipStyle} labelFormatter={(t) => `${t} °C`} formatter={(v, n) => [`${fmt(Number(v))} ${param.unit}`, String(n)]} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          {before != null && <Line dataKey="before" name="Antes" stroke={BEFORE} strokeWidth={2} dot={dot(BEFORE)} isAnimationActive={false} />}
+          {before != null && <Line dataKey="before" name="Antes" {...lineLook(style, cBefore)} isAnimationActive={false} />}
           <Line
             dataKey="after"
             name="Depois"
-            stroke={AFTER}
-            strokeWidth={2}
+            stroke={cAfter}
+            strokeWidth={width}
             legendType="square"
-            dot={<Marker shape="square" color={AFTER} />}
+            dot={<Marker shape="square" color={cAfter} />}
             isAnimationActive={false}
           >
-            <ErrorBar dataKey="sdBar" width={4} stroke={AFTER} direction="y" />
+            <ErrorBar dataKey="sdBar" width={4} stroke={cAfter} direction="y" />
           </Line>
         </LineChart>
       </ResponsiveContainer>
@@ -281,11 +311,16 @@ function TransformationChart({ data }: { data: ArticleData }) {
   const rows = data.residue
     .filter((r) => r.s2_depletion != null || r.transformation_rate != null)
     .map((r) => ({ temperature_c: r.temperature_c, s2: r.s2_depletion, tr: r.transformation_rate }))
-  const S2C = '#9b3a6a'
-  const TRC = '#6a4c9c'
+  const { prefs, style, width } = useLook()
+  const S2C = prefs.color('artigo:consumo_s2', '#9b3a6a')
+  const TRC = prefs.color('artigo:taxa_transformacao', '#6a4c9c')
   return (
     <ChartCard
       title="Figura 5 — Consumo de S2 e taxa de transformação"
+      actions={lookActions([
+        { key: 'artigo:consumo_s2', label: 'Consumo de S2', color: '#9b3a6a' },
+        { key: 'artigo:taxa_transformacao', label: 'Taxa de transformação', color: '#6a4c9c' },
+      ])}
       subtitle="Consumo de S2 = (S2₀ − S2)/S2₀ × 100 · taxa de transformação = (HI₀ − HI)/HI₀ × 100 · índice 0 = rocha original"
       sources={['rockeval']}
       empty={rows.length ? null : 'Precisa do Rock-Eval da rocha original e da rocha hidropirolisada.'}
@@ -303,12 +338,12 @@ function TransformationChart({ data }: { data: ArticleData }) {
           <YAxis {...axisProps} width={44} unit="%" domain={[0, 100]} />
           <Tooltip {...tooltipStyle} labelFormatter={(t) => `${t} °C`} formatter={(v, n) => [`${fmt(Number(v))} %`, String(n)]} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          <Line dataKey="s2" name="Consumo de S2" stroke={S2C} strokeWidth={2} dot={dot(S2C)} connectNulls isAnimationActive={false} />
+          <Line dataKey="s2" name="Consumo de S2" {...lineLook(style, S2C)} connectNulls isAnimationActive={false} />
           <Line
             dataKey="tr"
             name="Taxa de transformação"
             stroke={TRC}
-            strokeWidth={2}
+            strokeWidth={width}
             strokeDasharray="6 4"
             legendType="square"
             dot={<Marker shape="square" color={TRC} />}
@@ -494,6 +529,7 @@ export function ArticleView({ projectId, mode, hiddenTemps = [] }: { projectId: 
           rows={gasRows((g) => g.h2_share)}
           yLabel="H₂ nos produtos (%)"
           color={H2_COLOR}
+          colorKey="gas:H2"
           sources={['gas_balanco']}
           unit="%"
           table={{ head: ['Temp. (°C)', 'H₂ nos produtos (%)'], rows: data.gas.map((g) => [g.temperature_c, cell(g.h2_share)]) }}
@@ -513,6 +549,7 @@ export function ArticleView({ projectId, mode, hiddenTemps = [] }: { projectId: 
           rows={gasRows((g) => g.gas_mass_g)}
           yLabel="Massa de gás (g)"
           color="#5b6670"
+          colorKey="artigo:massa_gas"
           sources={['gas_balanco']}
           unit="g"
           table={{

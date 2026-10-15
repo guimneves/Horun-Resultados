@@ -51,7 +51,10 @@ LECO sinal bruto) por projeto, com tabelas e séries por temperatura. Backend Fa
   (`GET /internal/modules/resultados/users`, mesma chave dos avisos, cache de
   60 s); sem o Core, quem já abriu o módulo (`KnownUser`, `services/directory.py`).
 - Gráficos: cores por significado (`frontend/src/lib/colors.ts`, paleta validada),
-  sempre com legenda e "Ver tabela"; nada de eixo duplo.
+  sempre com legenda e "Ver tabela"; nada de eixo duplo. Hidropirolisada em tons
+  frios e extraída em tons quentes (`FRACTION_FAMILIES`), sempre. Gráfico novo
+  com linhas → `ChartLook` (tipo + cores) e `lineLook`/`useChartPrefs`
+  (`lib/chartPrefs.ts`), com chaves de cor `fracao:`/`serie:`/`gas:`/`massa:`.
 
 ## Comandos
 

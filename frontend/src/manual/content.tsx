@@ -492,9 +492,8 @@ export const MANUAL_SECTIONS: ManualSection[] = [
             ), <strong>Elementar</strong> (H/C, O/C, N, S, Van Krevelen), <strong>Gás — composição</strong> (CO₂, H₂, C1, C2, C3, C4 e C5+ em barras lado a lado
             por temperatura; na caixa <strong>Gases no gráfico</strong>, marque quais gases aparecem — ex.: tire o CO₂ para ver melhor os hidrocarbonetos;{' '}
             <strong>todos</strong> volta a mostrar tudo), <strong>Gás — FID</strong> (barras lado a lado de C1 a C5+, e wetness), <strong>Gás — TCD</strong>{' '}
-            (barras de H₂ e CO₂; o traço é o desvio entre os experimentos da mesma temperatura; no alto de cada um, troque entre <strong>Barras</strong> e{' '}
-            <strong>Pontos e linha</strong> — a escolha fica guardada neste navegador), <strong>Py-GC-MS</strong> e <strong>Pirogramas</strong>. Só aparecem os
-            que têm dados no projeto. Use os botões do alto para ver um grupo só.
+            (barras de H₂ e CO₂; o traço é o desvio entre os experimentos da mesma temperatura), <strong>Py-GC-MS</strong> e <strong>Pirogramas</strong>. Só
+            aparecem os que têm dados no projeto. Use os botões do alto para ver um grupo só.
           </li>
           <li>
             No alto da aba, troque <strong>Parâmetros</strong> por <strong>Balanço de massas</strong> (a escolha fica guardada neste navegador). Lá ficam três
@@ -547,7 +546,17 @@ export const MANUAL_SECTIONS: ManualSection[] = [
           <li>Cada linha é uma fração (hidropirolisada, extraída...). Cada ponto é a média ± desvio (barra) na temperatura.</li>
           <li>
             Réplicas do experimento (A, B, C) na mesma temperatura entram juntas no ponto. Para ver cada uma separada, em <strong>Opções</strong> marque{' '}
-            <strong>Separar réplicas A, B, C</strong> — cada réplica ganha um tipo de traço.
+            <strong>Separar réplicas A, B, C</strong> — cada réplica ganha um tom próprio e um tipo de traço.
+          </li>
+          <li>
+            <strong>Tipo de gráfico</strong>, no alto de cada gráfico: <strong>Pontos e linha</strong> ou <strong>Só pontos</strong> (sem as linhas); nos de
+            gás, também <strong>Barras</strong>. A escolha vale para todos os gráficos do mesmo tipo (gás de um lado; os demais × temperatura do outro) e fica
+            guardada neste navegador.
+          </li>
+          <li>
+            <strong>Cores</strong>, ao lado: escolha a cor de cada fração, réplica, gás ou massa; <strong>padrão</strong> volta à cor original. A cor vale em
+            todos os gráficos com a mesma série. Por padrão, a <strong>hidropirolisada</strong> fica sempre em tons frios (azuis e violetas) e a{' '}
+            <strong>extraída</strong> em tons quentes (laranjas e vermelhos) — cada réplica num tom diferente da sua família.
           </li>
           <li>
             <strong>Ver tabela</strong> mostra os números do gráfico; <strong>Baixar PNG</strong> salva a imagem — sempre com o título, o subtítulo, a origem

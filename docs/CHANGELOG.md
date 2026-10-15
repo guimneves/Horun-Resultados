@@ -1,5 +1,21 @@
 # Changelog — Horun · Resultados
 
+## Não lançado — 15/10/2026
+### Tipo de gráfico e cores (pedido do mantenedor)
+- **Tipo de gráfico** em todos os gráficos × temperatura (séries, balanço de
+  massas, Artigo, Artigo Spigolon, "Na série" da amostra): **Pontos e linha**
+  ou **Só pontos**; nos de gás (composição, FID, TCD) também **Barras**
+  (padrão). Um escopo para o gás e outro para os demais; trocar num gráfico
+  troca nos outros do mesmo escopo. A escolha antiga do gás é aproveitada.
+- **Cores**: botão em cada gráfico para escolher a cor de cada fração, réplica,
+  gás ou massa (por significado — vale em todos os gráficos com a mesma série),
+  com "padrão" para voltar. `lib/chartPrefs.ts` + `components/ChartLook.tsx`;
+  fica no navegador (`resultados.graficos.preferencias`).
+- **Mais cores por padrão**: famílias por fração (`FRACTION_FAMILIES` em
+  `lib/colors.ts`) — hidropirolisada sempre em tons frios, extraída sempre em
+  tons quentes; réplicas e atmosferas da mesma fração ganham tons diferentes
+  da família (antes só o traço mudava).
+
 ## Não lançado — 14/10/2026
 ### Projetos de tabaco (pedido do mantenedor)
 - Tipo de amostra **Tabaco** pronto (`services/profiles.py`): análises CHNS,

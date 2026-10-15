@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { CartesianGrid, LabelList, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { Fraction, SampleRow } from '../api/types'
 import { inputClass, inputStyle, muted } from '../components/ui'
+import { ChartLook } from '../components/ChartLook'
+import { fractionKey, lineLook, useChartPrefs } from '../lib/chartPrefs'
 import { fractionColor } from '../lib/colors'
 import { fmt } from '../lib/format'
 import { axisProps, ChartCard, gridProps, SimpleTable, tooltipStyle } from './ChartCard'
@@ -56,12 +58,22 @@ function ParamChart({
     }))
     .filter((g) => g.points.length)
   const y0 = v(original, param.key)
+  const prefs = useChartPrefs()
+  const style = prefs.styleOf('linhas', 'linhas')
   const unit = param.unit ? ` (${param.unit})` : ''
   return (
     <ChartCard
       title={`${param.label} × taxa de transformação`}
       subtitle={`TR = (S2₀ − S2ₕ)/S2₀ × 100 · S2₀ = ${original.code}${y0 != null ? ` · linha tracejada = ${param.label} da rocha original` : ''} · número ao lado do ponto = temperatura (°C)`}
       sources={['rockeval']}
+      actions={
+        <ChartLook
+          scope="linhas"
+          styles={['linhas', 'pontos']}
+          fallback="linhas"
+          colors={groups.map((g) => ({ key: fractionKey(g.key), label: g.label, color: fractionColor(g.key) }))}
+        />
+      }
       empty={lines.length ? null : `Sem ${param.label} nas amostras da série.`}
       table={
         <SimpleTable
@@ -111,9 +123,7 @@ function ParamChart({
               data={g.points}
               dataKey="y"
               name={g.label}
-              stroke={g.color}
-              strokeWidth={2}
-              dot={{ r: 4, strokeWidth: 1.5, stroke: 'var(--color-bg-elevated)', fill: g.color }}
+              {...lineLook(style, prefs.color(fractionKey(g.key), g.color))}
               isAnimationActive={false}
             >
               <LabelList dataKey="temp" position="top" style={{ fontSize: 10, fill: 'var(--color-text-muted)' }} />

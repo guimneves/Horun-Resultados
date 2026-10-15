@@ -18,7 +18,9 @@ import {
 } from 'recharts'
 import { api } from '../api/client'
 import type { AnalysisData, PyPeaks, PyroData, SampleDetail, SampleRow, TgData } from '../api/types'
+import { ChartLook } from '../components/ChartLook'
 import { inputClass, inputStyle, Segmented } from '../components/ui'
+import { fractionKey, lineLook, useChartPrefs } from '../lib/chartPrefs'
 import { useApp } from '../context/AppContext'
 import { fractionColor } from '../lib/colors'
 import { fmt, fmtTemp } from '../lib/format'
@@ -32,7 +34,11 @@ import { TgChart, TgSignalSwitch, type TgSignal } from './TgCharts'
 // (cor da fração, ponto maior com contorno); as demais em cinza neutro.
 
 const OTHERS = '#9aa0ad'
-const highlight = (fraction: string) => fractionColor(fraction)
+// cor da fração (escolhível em "Cores", lib/chartPrefs.ts)
+function useHighlight() {
+  const prefs = useChartPrefs()
+  return (fraction: string) => prefs.color(fractionKey(fraction), fractionColor(fraction))
+}
 
 function ParamSelect({
   value,
@@ -61,6 +67,7 @@ function ParamSelect({
 const ELEMENTS = ['C', 'H', 'N', 'S', 'O']
 
 function ElementsChart({ detail }: { detail: SampleDetail }) {
+  const highlight = useHighlight()
   const rows = ELEMENTS.filter((e) => detail.values[`chnso.${e}`]?.mean != null).map((e) => {
     const s = detail.values[`chnso.${e}`]
     return { el: e, mean: s.mean as number, sd: s.sd ?? 0, n: s.n }
@@ -112,6 +119,7 @@ function ProjectScatter({
   yLabel: string
   refLinesX?: number[]
 }) {
+  const highlight = useHighlight()
   const point = (s: SampleRow) => ({ ...pointId(s), x: s.values[x]?.mean as number, y: s.values[y]?.mean as number })
   const has = (s: SampleRow) => s.values[x]?.mean != null && s.values[y]?.mean != null
   if (detail.values[x]?.mean == null || detail.values[y]?.mean == null) return null
@@ -163,6 +171,7 @@ function ProjectScatter({
 // ---------------------------------------------------------------- na série (mesma fração × temperatura)
 
 function SeriesPosition({ detail, samples, options }: { detail: SampleDetail; samples: SampleRow[]; options: { col: string; label: string }[] }) {
+  const highlight = useHighlight()
   const { fractionLabel } = useApp()
   // começa por um parâmetro que costuma variar na série (COT, HI, C total, H/C)
   const preferred = ['rockeval.TOC', 'rockeval.HI', 'leco.C', 'chnso.HC_at'].find((c) => options.some((o) => o.col === c)) ?? options[0]?.col ?? ''
@@ -173,6 +182,7 @@ function SeriesPosition({ detail, samples, options }: { detail: SampleDetail; sa
     .filter((s) => s.fraction === detail.fraction && s.temperature_c != null && s.values[active]?.mean != null)
     .map((s) => ({ t: s.temperature_c as number, v: s.values[active].mean as number, code: s.code }))
     .sort((a, b) => a.t - b.t)
+  const style = useChartPrefs().styleOf('linhas', 'linhas')
   if (detail.temperature_c == null || !options.length) return null
   const me = detail.values[active]?.mean != null ? [{ t: detail.temperature_c, v: detail.values[active].mean as number, code: detail.code }] : []
   return (
@@ -181,6 +191,14 @@ function SeriesPosition({ detail, samples, options }: { detail: SampleDetail; sa
       sources={active ? [active.split('.')[0]] : []}
       subtitle="Mesmo parâmetro nas amostras desta fração, por temperatura; esta amostra em destaque"
       filename={`${detail.code}-serie`}
+      actions={
+        <ChartLook
+          scope="linhas"
+          styles={['linhas', 'pontos']}
+          fallback="linhas"
+          colors={[{ key: fractionKey(detail.fraction), label: fractionLabel(detail.fraction), color: fractionColor(detail.fraction) }]}
+        />
+      }
       empty={line.length ? null : 'Sem outras amostras desta fração com este parâmetro.'}
       table={
         <SimpleTable
@@ -207,7 +225,7 @@ function SeriesPosition({ detail, samples, options }: { detail: SampleDetail; sa
               <YAxis type="number" {...axisProps} width={52} tickFormatter={(v: number) => fmt(v)} />
               <Tooltip {...tooltipStyle} labelFormatter={(v) => `${fmt(Number(v))} °C`} formatter={(v) => fmt(Number(v))} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Line data={line} dataKey="v" name={label} stroke={OTHERS} strokeWidth={2} dot={{ r: 3, fill: OTHERS }} isAnimationActive={false} />
+              <Line data={line} dataKey="v" name={label} {...lineLook(style, OTHERS)} isAnimationActive={false} />
               <Scatter
                 data={me}
                 dataKey="v"
@@ -229,6 +247,7 @@ function SeriesPosition({ detail, samples, options }: { detail: SampleDetail; sa
 // ---------------------------------------------------------------- réplicas
 
 function ReplicatesChart({ detail, options }: { detail: SampleDetail; options: { col: string; label: string }[] }) {
+  const highlight = useHighlight()
   // Cada valor medido (réplica/alíquota) de um parâmetro, com a média.
   const withReps = options.filter((o) => (detail.values[o.col]?.n ?? 0) > 1)
   const [col, setCol] = useState(withReps[0]?.col ?? '')

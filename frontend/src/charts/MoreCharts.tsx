@@ -19,7 +19,8 @@ import {
 import type { AnalysisData, PyPeaks, PyroData, SampleRow } from '../api/types'
 import { dashFor, fractionColor, GAS_COLORS, seriesColor } from '../lib/colors'
 import { useState } from 'react'
-import { Segmented } from '../components/ui'
+import { ChartLook } from '../components/ChartLook'
+import { fractionKey, lineLook, useChartPrefs } from '../lib/chartPrefs'
 import { fmt, fmtMeanSd } from '../lib/format'
 import { axisProps, ChartCard, gridProps, SimpleTable, tooltipStyle } from './ChartCard'
 import { pointId, pointLabels, pointText, PointTooltip } from './PointLabels'
@@ -41,9 +42,13 @@ export function HiTmaxChart({ samples, fractionLabel }: { samples: SampleRow[]; 
     .filter((s) => s.values['rockeval.HI']?.mean != null && s.values['rockeval.Tmax']?.mean != null)
     .map((s) => ({ ...pointId(s), fraction: s.fraction, hi: s.values['rockeval.HI'].mean as number, tmax: s.values['rockeval.Tmax'].mean as number }))
   const fractions = Array.from(new Set(points.map((p) => p.fraction)))
+  const prefs = useChartPrefs()
+  const fracColor = (f: string) => prefs.color(fractionKey(f), fractionColor(f))
+  const fracColors = fractions.map((f) => ({ key: fractionKey(f), label: fractionLabel(f), color: fractionColor(f) }))
   return (
     <ChartCard
       title="HI × Tmax"
+      actions={<ChartLook colors={fracColors} />}
       sources={['rockeval']}
       subtitle="Campos de querogênio aproximados; linhas em Tmax 435 e 470 °C (janela de óleo)"
       empty={points.length ? null : 'Sem amostras com HI e Tmax (Rock-Eval).'}
@@ -82,7 +87,7 @@ export function HiTmaxChart({ samples, fractionLabel }: { samples: SampleRow[]; 
                 key={f}
                 name={fractionLabel(f)}
                 data={data}
-                fill={fractionColor(f)}
+                fill={fracColor(f)}
                 stroke="var(--color-bg-elevated)"
                 strokeWidth={2}
                 isAnimationActive={false}
@@ -128,9 +133,12 @@ export function GasCompositionChart({ samples }: { samples: SampleRow[] }) {
     .filter((r) => GAS_PARTS.some((p) => r[p.key] !== undefined))
     .sort((a, b) => Number(a.temp) - Number(b.temp))
   const onlyFid = rows.length > 0 && rows.every((r) => r.source === 'GC-FID')
+  const prefs = useChartPrefs()
+  const gasColor = (k: string) => prefs.color(`gas:${k}`, GAS_COLORS[k])
   return (
     <ChartCard
       title="Composição do gás por experimento"
+      actions={<ChartLook colors={GAS_PARTS.map((p) => ({ key: `gas:${p.key}`, label: p.label, color: GAS_COLORS[p.key] }))} />}
       sources={rows.some((r) => r.source === 'balanço') ? ['gas_balanco', 'gc_fid'] : ['gc_fid']}
       subtitle={
         onlyFid ? 'Só hidrocarbonetos (GC-FID, % de área)' : 'Planilha de cálculo de gás, normalizada sem o gás de enchimento (%); GC-FID quando faltar'
@@ -156,7 +164,7 @@ export function GasCompositionChart({ samples }: { samples: SampleRow[] }) {
               dataKey={p.key}
               name={p.label}
               stackId="gas"
-              fill={GAS_COLORS[p.key]}
+              fill={gasColor(p.key)}
               stroke="var(--color-bg-elevated)"
               strokeWidth={1}
               radius={i === GAS_PARTS.length - 1 ? [4, 4, 0, 0] : 0}
@@ -189,19 +197,6 @@ export function hasGcData(s: SampleRow, tech: 'gc_fid' | 'gc_tcd'): boolean {
 }
 
 type GasKey = 'H2' | 'CO2' | 'C1' | 'C2' | 'C3' | 'C4' | 'C5p'
-
-// Barras ou pontos e linha — a mesma escolha vale para os gráficos de gás
-// (composição, FID, TCD) e fica guardada neste navegador.
-type GasStyle = 'barras' | 'linhas'
-const GAS_STYLE_KEY = 'resultados.gas.estilo'
-
-function readGasStyle(): GasStyle {
-  try {
-    return localStorage.getItem(GAS_STYLE_KEY) === 'linhas' ? 'linhas' : 'barras'
-  } catch {
-    return 'barras'
-  }
-}
 
 /** Gás × temperatura em BARRAS (pedido do mantenedor, 09/10/2026) — base dos
  * gráficos "Composição do gás × temperatura" (empilhado, soma 100%),
@@ -247,16 +242,12 @@ export function GasBarsChart({
   }
   const togglePick = (k: GasKey) => savePick(picked.includes(k) ? picked.filter((x) => x !== k) : keys.filter((x) => x === k || picked.includes(x)))
   const shown = parts.filter((p) => picked.includes(p.key as GasKey))
-  const [style, setStyleState] = useState<GasStyle>(readGasStyle)
-  const setStyle = (v: GasStyle) => {
-    setStyleState(v)
-    try {
-      localStorage.setItem(GAS_STYLE_KEY, v)
-    } catch {
-      /* sem armazenamento: vale só nesta visita */
-    }
-  }
-  const lines = style === 'linhas' && !stacked
+  // tipo (barras / pontos e linha / só pontos) e cores: lib/chartPrefs.ts,
+  // escopo 'gas' (a mesma escolha vale para composição, FID e TCD)
+  const prefs = useChartPrefs()
+  const style = prefs.styleOf('gas', 'barras')
+  const gasColor = (k: string) => prefs.color(`gas:${k}`, GAS_COLORS[k])
+  const lines = style !== 'barras' && !stacked
   const byTemp = new Map<number, { codes: string[]; sources: Set<string>; values: Record<string, number[]> }>()
   for (const s of samples) {
     const temp = gasTemperature(s)
@@ -302,17 +293,12 @@ export function GasBarsChart({
       sources={sources}
       empty={rows.length ? null : 'Sem dados de gás (importe a planilha de cálculo de gás, a tabela consolidada ou o GC).'}
       actions={
-        stacked ? undefined : (
-          <Segmented
-            label="Tipo de gráfico"
-            value={style}
-            onChange={setStyle}
-            options={[
-              { value: 'barras', label: 'Barras' },
-              { value: 'linhas', label: 'Pontos e linha' },
-            ]}
-          />
-        )
+        <ChartLook
+          scope={stacked ? undefined : 'gas'}
+          styles={['barras', 'linhas', 'pontos']}
+          fallback="barras"
+          colors={parts.map((p) => ({ key: `gas:${p.key}`, label: p.label, color: GAS_COLORS[p.key] }))}
+        />
       }
       controls={
         pickKey ? (
@@ -326,7 +312,7 @@ export function GasBarsChart({
             {parts.map((p) => (
               <label key={p.key} className="flex min-h-8 cursor-pointer items-center gap-1">
                 <input type="checkbox" checked={picked.includes(p.key as GasKey)} onChange={() => togglePick(p.key as GasKey)} />
-                <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: GAS_COLORS[p.key] }} aria-hidden="true" />
+                <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: gasColor(p.key) }} aria-hidden="true" />
                 {p.label}
               </label>
             ))}
@@ -368,17 +354,8 @@ export function GasBarsChart({
             <Tooltip {...tooltipStyle} labelFormatter={(t) => `${t} °C`} formatter={(v, name) => [`${fmt(Number(v))} %`, String(name)]} />
             <Legend wrapperStyle={{ fontSize: 12 }} />
             {shown.map((p) => (
-              <Line
-                key={p.key}
-                dataKey={p.key}
-                name={p.label}
-                stroke={GAS_COLORS[p.key]}
-                strokeWidth={2}
-                dot={{ r: 4, strokeWidth: 1.5, stroke: 'var(--color-bg-elevated)', fill: GAS_COLORS[p.key] }}
-                connectNulls
-                isAnimationActive={false}
-              >
-                <ErrorBar dataKey={`${p.key}_sd`} width={4} stroke={GAS_COLORS[p.key]} direction="y" />
+              <Line key={p.key} dataKey={p.key} name={p.label} {...lineLook(style, gasColor(p.key))} connectNulls isAnimationActive={false}>
+                <ErrorBar dataKey={`${p.key}_sd`} width={4} stroke={gasColor(p.key)} direction="y" />
               </Line>
             ))}
           </LineChart>
@@ -399,7 +376,7 @@ export function GasBarsChart({
                 key={p.key}
                 dataKey={p.key}
                 name={p.label}
-                fill={GAS_COLORS[p.key]}
+                fill={gasColor(p.key)}
                 stackId={stacked ? 'gas' : undefined}
                 stroke={stacked ? 'var(--color-bg-elevated)' : undefined}
                 strokeWidth={stacked ? 1 : 0}
@@ -552,9 +529,13 @@ export function VanKrevelenChart({ samples, fractionLabel }: { samples: SampleRo
     .filter((s) => s.values['chnso.HC_at']?.mean != null && s.values['chnso.OC_at']?.mean != null)
     .map((s) => ({ ...pointId(s), fraction: s.fraction, hc: s.values['chnso.HC_at'].mean as number, oc: s.values['chnso.OC_at'].mean as number }))
   const fractions = Array.from(new Set(points.map((p) => p.fraction)))
+  const prefs = useChartPrefs()
+  const fracColor = (f: string) => prefs.color(fractionKey(f), fractionColor(f))
+  const fracColors = fractions.map((f) => ({ key: fractionKey(f), label: fractionLabel(f), color: fractionColor(f) }))
   return (
     <ChartCard
       title="Van Krevelen (H/C × O/C)"
+      actions={<ChartLook colors={fracColors} />}
       sources={['chnso']}
       subtitle="Razões atômicas, por fração"
       empty={points.length ? null : 'Sem amostras com H/C e O/C (CHNSO com oxigênio).'}
@@ -577,7 +558,7 @@ export function VanKrevelenChart({ samples, fractionLabel }: { samples: SampleRo
                 key={f}
                 name={fractionLabel(f)}
                 data={data}
-                fill={fractionColor(f)}
+                fill={fracColor(f)}
                 stroke="var(--color-bg-elevated)"
                 strokeWidth={2}
                 isAnimationActive={false}
@@ -661,6 +642,9 @@ export function CorrelationChart({
     .map((s) => ({ ...pointId(s), fraction: s.fraction, x: s.values[x].mean as number, y: s.values[y].mean as number }))
   const fit = linearFit(points)
   const fractions = Array.from(new Set(points.map((p) => p.fraction)))
+  const prefs = useChartPrefs()
+  const fracColor = (f: string) => prefs.color(fractionKey(f), fractionColor(f))
+  const fracColors = fractions.map((f) => ({ key: fractionKey(f), label: fractionLabel(f), color: fractionColor(f) }))
   const lo = Math.min(0, ...points.map((p) => Math.min(p.x, p.y)))
   const hi = Math.max(...points.map((p) => Math.max(p.x, p.y)), 1)
   const xs = points.map((p) => p.x)
@@ -671,6 +655,7 @@ export function CorrelationChart({
   return (
     <ChartCard
       title={title}
+      actions={<ChartLook colors={fracColors} />}
       sources={[x.split('.')[0], y.split('.')[0]]}
       subtitle={
         fit
@@ -745,7 +730,7 @@ export function CorrelationChart({
                     key={f}
                     name={fractionLabel(f)}
                     data={data}
-                    fill={fractionColor(f)}
+                    fill={fracColor(f)}
                     stroke="var(--color-bg-elevated)"
                     strokeWidth={2}
                     isAnimationActive={false}
