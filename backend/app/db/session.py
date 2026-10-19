@@ -10,6 +10,8 @@ subida do backend, em qualquer banco (SQLite e Postgres).
 
 from __future__ import annotations
 
+import logging
+
 from collections.abc import Generator
 
 from sqlalchemy import inspect
@@ -110,7 +112,7 @@ def _fix_tobacco_sample_types() -> None:
     """Amostras de tabaco importadas antes de 19/10/2026 ficaram como "Outra"
     (e por isso escondidas na aba Amostras): o tipo sai do código e dos nomes
     já vistos nos arquivos (apelidos). Brancos e padrões ficam como estão."""
-    from app.db.models import Project, Sample, SampleAlias
+    from app.db.models import Analysis, Project, Sample, SampleAlias
     from app.services import profiles
     from app.services.codes import FRACTION_OTHER, normalize_code, tobacco_type
 
@@ -123,8 +125,10 @@ def _fix_tobacco_sample_types() -> None:
             ).all():
                 if normalize_code(s.code) in ("BLANK", "BRANCO", "BRANCOS"):
                     continue
-                aliases = [a.raw_name for a in session.exec(select(SampleAlias).where(SampleAlias.sample_id == s.id)).all()]
-                s.fraction = tobacco_type(s.code, *aliases)
+                names = [a.alias for a in session.exec(select(SampleAlias).where(SampleAlias.sample_id == s.id)).all()]
+                # e os nomes como vieram nos arquivos (ex. "Ch_Produto_Alfa_1")
+                names += [a.source_name for a in session.exec(select(Analysis).where(Analysis.sample_id == s.id)).all() if a.source_name]
+                s.fraction = tobacco_type(s.code, *names)
                 session.add(s)
         session.commit()
 
@@ -135,7 +139,10 @@ def create_db_and_tables() -> None:
     SQLModel.metadata.create_all(engine)
     _run_migrations()
     _seed_fractions()
-    _fix_tobacco_sample_types()
+    try:
+        _fix_tobacco_sample_types()
+    except Exception:  # noqa: BLE001 — uma correção de dados nunca pode impedir o módulo de subir
+        logging.getLogger(__name__).exception("correção dos tipos de tabaco falhou; o módulo sobe sem ela")
 
 
 def get_session() -> Generator[Session, None, None]:

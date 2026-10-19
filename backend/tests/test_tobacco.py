@@ -291,3 +291,30 @@ def test_tobacco_project_offers_only_tobacco_types_and_upgrades_undefined(client
     assert client.patch(f"projects/{tab['id']}/samples/{s['id']}", json={"fraction": "H"}, headers=PESQ).status_code == 400
     assert client.patch(f"projects/{tab['id']}/samples/{s['id']}", json={"fraction": "CIG"}, headers=PESQ).json()["fraction"] == "CIG"
     assert client.post(f"projects/{rock['id']}/samples", json={"code": "HP300H", "fraction": "CHA"}, headers=PESQ).status_code == 400
+
+
+
+def test_startup_fix_gives_old_tobacco_samples_a_type(client):
+    """Amostras de tabaco gravadas como "Outra" antes de 19/10/2026 ganham o
+    tipo pelo código, pelos apelidos e pelos nomes dos arquivos (bug visto no
+    servidor: o apelido derrubava a subida)."""
+    from sqlmodel import Session
+
+    from app.db.models import Analysis, Sample, SampleAlias
+    from app.db.session import _fix_tobacco_sample_types, engine
+
+    pid = _tobacco_project(client)["id"]
+    with Session(engine) as s:
+        a = Sample(project_id=pid, code="Alfa", code_norm="ALFA", fraction="X")
+        b = Sample(project_id=pid, code="Beta", code_norm="BETA", fraction="X")
+        c = Sample(project_id=pid, code="Gama", code_norm="GAMA", fraction="X")
+        blank = Sample(project_id=pid, code="Branco", code_norm="BRANCO", fraction="X")
+        s.add_all([a, b, c, blank])
+        s.flush()
+        s.add(SampleAlias(project_id=pid, sample_id=a.id, alias="Cigarro Alfa", alias_norm="CIGARROALFA"))
+        s.add(Analysis(project_id=pid, sample_id=b.id, technique="tg", source_key="tg:beta:1", source_name="Essência Beta 1", data_json="{}"))
+        s.commit()
+        ids = (a.id, b.id, c.id, blank.id)
+    _fix_tobacco_sample_types()
+    with Session(engine) as s:
+        assert [s.get(Sample, i).fraction for i in ids] == ["CIG", "NAR", "TAB", "X"]
