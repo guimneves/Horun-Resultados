@@ -37,6 +37,21 @@ FRACTION_GAS = "G"
 FRACTION_STANDARD = "STD"
 FRACTION_OTHER = "X"
 
+# Tipos de produto dos projetos de tabaco (pedido do usuário, 19/10/2026): a
+# "fração" de uma amostra de tabaco é o tipo do produto. Só estes aparecem
+# nos projetos de tabaco (e nenhum deles nos de rocha) — FractionType.sample_type.
+FRACTION_CIGAR = "CHA"  # charuto
+FRACTION_CIGARETTE = "CIG"  # cigarro
+FRACTION_HOOKAH = "NAR"  # essência de narguilé
+FRACTION_TOBACCO = "TAB"  # tabaco cujo tipo não veio no nome — a pessoa define
+TOBACCO_TYPES = (FRACTION_CIGAR, FRACTION_CIGARETTE, FRACTION_HOOKAH)
+TOBACCO_FRACTIONS: list[tuple[str, str, str]] = [
+    (FRACTION_CIGAR, "Charuto", "Charutos (nomes com Charuto, Ch_, Cha_, Char_)."),
+    (FRACTION_CIGARETTE, "Cigarro", "Cigarros (nomes com Cigarro, Cig_)."),
+    (FRACTION_HOOKAH, "Essência de Narguilé", "Essências de narguilé (nomes com Narguilé, Essência, Nar_, Ess_)."),
+    (FRACTION_TOBACCO, "Tabaco — tipo a definir", "O nome não diz se é charuto, cigarro ou essência — escolha o tipo na amostra."),
+]
+
 # Fração → linha da série em que entra por padrão (SE = sem extração = H).
 DEFAULT_SERIES_GROUP = {FRACTION_SE: FRACTION_H}
 
@@ -241,6 +256,24 @@ _TOBACCO_BLANKS = ("blank", "branco", "brancos")
 _SPECTRUM_RE = re.compile(r"^spectrum\s*\d+$", re.IGNORECASE)
 
 
+_TOBACCO_KIND_RES = (
+    (FRACTION_CIGAR, re.compile(r"charut|^(?:\d{1,2}-)?(?:ch|cha|char)_|^(?:\d{1,2}-)?ch\s")),
+    (FRACTION_CIGARETTE, re.compile(r"cigarr|^(?:\d{1,2}-)?cig[_\s-]")),
+    (FRACTION_HOOKAH, re.compile(r"narguil|essenc|hookah|^(?:\d{1,2}-)?(?:nar|ess)[_\s-]")),
+)
+
+
+def tobacco_type(*names: str) -> str:
+    """Tipo do produto pelo nome (o primeiro nome que disser): charuto,
+    cigarro, essência de narguilé — ou "TAB" (a definir)."""
+    for name in names:
+        plain = strip_accents(name or "").lower().strip()
+        for code, rx in _TOBACCO_KIND_RES:
+            if rx.search(plain):
+                return code
+    return FRACTION_TOBACCO
+
+
 def parse_tobacco_code(raw: str) -> CodeInfo:
     """Nome no arquivo → produto (base) + réplica. Ver o bloco acima."""
     raw = (raw or "").strip()
@@ -267,4 +300,4 @@ def parse_tobacco_code(raw: str) -> CodeInfo:
     if stripped and re.search(r"[A-Za-z]", stripped):
         text = stripped
     base = re.sub(r"\s+", " ", text.replace("_", " ")).strip(" -")
-    return CodeInfo(raw=raw, base_code=base or raw, fraction=FRACTION_OTHER, replicate=rep, recognized=bool(base))
+    return CodeInfo(raw=raw, base_code=base or raw, fraction=tobacco_type(raw), replicate=rep, recognized=bool(base))

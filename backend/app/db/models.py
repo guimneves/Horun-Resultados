@@ -42,6 +42,10 @@ class FractionType(SQLModel, table=True):
     label: str
     description: str = ""
     in_series: bool = True  # entra nos gráficos de série (padrões/outras não)
+    # Tipo de amostra (profiles.SAMPLE_TYPES) em que esta fração existe;
+    # "" = todos (Padrão, Outra). Rocha: H, E, SE...; tabaco: Charuto,
+    # Cigarro, Essência de Narguilé (19/10/2026).
+    sample_type: str = ""
     # Linha da série em que entra (SE = sem extração → mesma linha de H).
     # Vazio = a própria fração.
     series_group: str = ""

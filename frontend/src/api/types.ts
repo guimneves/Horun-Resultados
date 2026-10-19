@@ -41,6 +41,8 @@ export interface Fraction {
   in_series: boolean
   series_group: string
   sort: number
+  /** tipo de amostra em que existe ("" = todos): rocha_hidropirolise, tabaco... */
+  sample_type: string
 }
 
 export interface Project {

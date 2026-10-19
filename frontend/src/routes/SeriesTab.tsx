@@ -26,6 +26,7 @@ import { fractionAllowed, FRACTION_CHOICES, type FractionChoice } from '../lib/f
 import { useSamples } from '../lib/useSamples'
 import { useProject } from './ProjectLayout'
 import { MODE_OPTIONS } from './SamplesTab'
+import { TobaccoSeriesTab } from './TobaccoSeriesTab'
 
 // Painel de séries: grupos de gráficos (só aparecem os que têm dados no projeto).
 type Extra = 'toc_leco' | 'hi_tmax' | 'vk' | 'gas' | 'gas_series' | 'gas_fid' | 'gas_tcd' | 'alkanes' | 'pyro'
@@ -249,7 +250,13 @@ export function AlkaneSection({ projectId, samples, mode, initial }: { projectId
   )
 }
 
+/** Séries: rocha = parâmetros × temperatura; tabaco = por tipo de produto. */
 export function SeriesTab() {
+  const { isTobacco } = useProject()
+  return isTobacco ? <TobaccoSeriesTab /> : <RockSeriesTab />
+}
+
+function RockSeriesTab() {
   const { project } = useProject()
   const { catalog, fractions, fractionLabel, paramLabel, techniqueLabel } = useApp()
   const [mode, setMode] = useState<Mode>('padrao')

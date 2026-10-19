@@ -117,8 +117,8 @@ export function SampleDetailModal({
   onClose: () => void
   onChanged: () => void
 }) {
-  const { me, catalog, fractions, techniqueLabel, paramLabel, fractionLabel } = useApp()
-  const { project } = useProject()
+  const { me, catalog, techniqueLabel, paramLabel, fractionLabel } = useApp()
+  const { project, fractions, isTobacco } = useProject()
   const [detail, setDetail] = useState<SampleDetail | null>(null)
   const [experiments, setExperiments] = useState<Experiment[]>([])
   const [editing, setEditing] = useState(false)
@@ -242,7 +242,7 @@ export function SampleDetailModal({
               <Field label="Código">
                 <input className={inputClass} style={inputStyle} value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} />
               </Field>
-              <Field label="Fração">
+              <Field label={isTobacco ? 'Tipo' : 'Fração'}>
                 <select className={inputClass} style={inputStyle} value={form.fraction} onChange={(e) => setForm({ ...form, fraction: e.target.value })}>
                   {fractions.map((f) => (
                     <option key={f.code} value={f.code}>

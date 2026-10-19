@@ -99,7 +99,10 @@ experimento da prévia; o passo 1 da importação mostra as receitas do perfil
 - Receitas: `chnso`, `leco`, `leco_bruto` (sinal bruto do Cornerstone),
   `rockeval` (inclusive o relatório "multiheating"), `tg` (TGA-50), `mev_eds`
   (Oxford AZtec). Formatos: ESPECIFICACAO.md 3.3, 3.7–3.9.
-- Amostra = produto; fração "X"; sem temperatura nem experimento.
+- Amostra = produto; "fração" = tipo do produto (19/10/2026): CHA charuto,
+  CIG cigarro, NAR essência de narguilé, TAB a definir (`codes.tobacco_type`,
+  `FractionType.sample_type = "tabaco"`). Sem temperatura nem experimento;
+  Séries por tipo de produto (tabela + barras por parâmetro + TG).
 - Nomes (`codes.parse_tobacco_code`): tira réplica no fim ("_1", " 2",
   " - rep 2", "-rep 2", " -1", dígito colado "SABOR1"), "(Triplicata)",
   "(triturado)", "-Corrected", data "AAAA-MM-DD Ch1", data no começo, nº da

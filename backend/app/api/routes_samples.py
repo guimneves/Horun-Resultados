@@ -192,9 +192,13 @@ class Validation(BaseModel):
     note: str = Field(default="", max_length=500)
 
 
-def _check_fraction(session: Session, code: str) -> None:
-    if session.exec(select(FractionType).where(FractionType.code == code)).first() is None:
+def _check_fraction(session: Session, code: str, project: Project | None = None) -> None:
+    frac = session.exec(select(FractionType).where(FractionType.code == code)).first()
+    if frac is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Fração \"{code}\" não existe.")
+    # só as frações do tipo de amostra do projeto (tabaco: Charuto, Cigarro, Essência de Narguilé)
+    if project is not None and frac.sample_type and frac.sample_type != profiles.load(project.profile_json).sample_type:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"\"{frac.label}\" não é um tipo de amostra deste projeto.")
 
 
 def _get_sample(session: Session, project: Project, sample_id: int) -> Sample:
@@ -223,7 +227,7 @@ def create_sample(
         raise HTTPException(status.HTTP_409_CONFLICT, "Já existe uma amostra com esse código neste projeto.")
     info = profiles.code_reader(project.profile_json)(body.code)
     fraction = body.fraction or info.fraction
-    _check_fraction(session, fraction)
+    _check_fraction(session, fraction, project)
     if body.experiment_id is not None:
         _get_experiment(session, project, body.experiment_id)
     sample = Sample(
@@ -266,7 +270,7 @@ def patch_sample(
             raise HTTPException(status.HTTP_409_CONFLICT, "Já existe uma amostra com esse código neste projeto.")
         sample.code_norm = norm
     if changes.get("fraction"):
-        _check_fraction(session, changes["fraction"])
+        _check_fraction(session, changes["fraction"], project)
     if changes.get("experiment_id") is not None:
         _get_experiment(session, project, changes["experiment_id"])
     for k, v in changes.items():

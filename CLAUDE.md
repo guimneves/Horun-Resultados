@@ -59,7 +59,7 @@ LECO sinal bruto) por projeto, com tabelas e séries por temperatura. Backend Fa
 ## Comandos
 
 ```bash
-cd backend && .venv/Scripts/python -m pytest -q        # 192 passam
+cd backend && .venv/Scripts/python -m pytest -q        # 202 passam
 cd frontend && npx tsc -b && npx oxlint && npm run build
 ```
 

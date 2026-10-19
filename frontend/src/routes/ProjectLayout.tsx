@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { api, errorText } from '../api/client'
-import type { Project } from '../api/types'
+import type { Fraction, Project } from '../api/types'
 import { PROJECT_TABS } from '../components/Shell'
 import { ChartSelectionProvider } from '../components/ChartSelection'
 import { ExportReportModal } from '../components/ExportReport'
@@ -16,6 +16,9 @@ export interface ProjectCtx {
   readOnly: boolean
   /** Pode importar e alterar: projeto aberto e cargo de pesquisador(a) para cima. */
   canEdit: boolean
+  /** Frações deste tipo de amostra (tabaco: Charuto, Cigarro, Essência de Narguilé) + as comuns. */
+  fractions: Fraction[]
+  isTobacco: boolean
 }
 
 export function useProject(): ProjectCtx {
@@ -63,7 +66,7 @@ function DeleteProject({ project, onClose }: { project: Project; onClose: () => 
 
 export function ProjectLayout() {
   const { projectId } = useParams()
-  const { projects, me, reloadProjects } = useApp()
+  const { projects, me, reloadProjects, fractions } = useApp()
   const location = useLocation()
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
@@ -82,6 +85,13 @@ export function ProjectLayout() {
   if (!project) return <p className="p-6">Projeto não encontrado.</p>
   const readOnly = project.archived_at !== null
   const canEdit = !readOnly && !!me?.can_edit
+  const sampleType = project.profile?.sample_type ?? 'rocha_hidropirolise'
+  const isTobacco = sampleType === 'tabaco'
+  // só as frações deste tipo de amostra (+ Padrão/Outra, comuns a todos)
+  const projectFractions: Fraction[] = [
+    ...fractions.filter((f) => f.sample_type === sampleType),
+    ...fractions.filter((f) => !f.sample_type), // Padrão e Outra por último
+  ]
 
   async function toggleArchive() {
     if (!project) return
@@ -152,7 +162,9 @@ export function ProjectLayout() {
       <ErrorBox message={error} />
 
       <nav className="mb-4 flex gap-1 overflow-x-auto overflow-y-hidden border-b" style={{ borderColor: 'var(--color-border)' }} aria-label="Abas do projeto">
-        {PROJECT_TABS.filter((tab) => !tab.temperature || (project.profile?.temperature_axis ?? true)).map((tab) => {
+        {PROJECT_TABS.filter(
+          (tab) => !tab.temperature || (project.profile?.temperature_axis ?? true) || ('tobacco' in tab && tab.tobacco && isTobacco),
+        ).map((tab) => {
           const to = `/projects/${project.id}/${tab.to}`
           const active = location.pathname.startsWith(to)
           return (
@@ -182,7 +194,7 @@ export function ProjectLayout() {
 
       {/* "Baixar vários PNG": seleção de gráficos vale em todas as abas do projeto */}
       <ChartSelectionProvider zipName={`graficos_${project.name}`}>
-        <Outlet context={{ project, readOnly, canEdit } satisfies ProjectCtx} />
+        <Outlet context={{ project, readOnly, canEdit, fractions: projectFractions, isTobacco } satisfies ProjectCtx} />
       </ChartSelectionProvider>
 
       {editing && (

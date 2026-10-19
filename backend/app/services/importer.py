@@ -48,7 +48,16 @@ from app.parsers.common import Record
 from app.parsers.leco import is_diagnostic_zip
 from app.services import audit, profiles, storage
 from app.services.catalog import TECHNIQUES
-from app.services.codes import FRACTION_GAS, FRACTION_STANDARD, CodeInfo, normalize_code, parse_experiment_code, parse_sample_code
+from app.services.codes import (
+    FRACTION_GAS,
+    FRACTION_STANDARD,
+    FRACTION_TOBACCO,
+    TOBACCO_TYPES,
+    CodeInfo,
+    normalize_code,
+    parse_experiment_code,
+    parse_sample_code,
+)
 
 # Leitor de códigos do tipo de amostra do projeto (profiles.code_reader):
 # rocha → parse_sample_code (HP300H...), tabaco → parse_tobacco_code.
@@ -552,6 +561,10 @@ def confirm(session: Session, project: Project, batch: ImportBatch, decisions: l
                 counts["samples_linked"] += 1
         else:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Ação inválida para \"{row['name']}\".")
+        # tabaco: o tipo (charuto, cigarro...) vem num nome e não em outro — o
+        # primeiro arquivo que disser define a amostra que ainda estava "a definir"
+        if sample.fraction == FRACTION_TOBACCO and sug["fraction"] in TOBACCO_TYPES:
+            sample.fraction = sug["fraction"]
         session.add(sample)
         # lembra o nome só quando a pessoa escolheu algo que o código não daria
         # (o nome "HP320E.1" → HP320E o parser já sugere sozinho)

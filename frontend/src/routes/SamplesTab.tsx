@@ -17,19 +17,26 @@ export const MODE_OPTIONS: { value: Mode; label: string }[] = [
 ]
 
 function NewSample({ projectId, onClose, onDone }: { projectId: number; onClose: () => void; onDone: () => void }) {
-  const { fractions } = useApp()
+  const { fractions, isTobacco } = useProject()
   const [code, setCode] = useState('')
   const [fraction, setFraction] = useState('')
   const [error, setError] = useState<string | null>(null)
   return (
     <Modal title="Nova amostra" onClose={onClose}>
       <div className="space-y-3">
-        <Field label="Código" hint="Ex.: HP320H, HP355NBE, RO-1. Fração e temperatura são sugeridas pelo código se você deixar em branco.">
+        <Field
+          label="Código"
+          hint={
+            isTobacco
+              ? 'O produto (ex.: Charuto Alfa, Cigarro Marca X). O tipo é sugerido pelo nome se você deixar em branco.'
+              : 'Ex.: HP320H, HP355NBE, RO-1. Fração e temperatura são sugeridas pelo código se você deixar em branco.'
+          }
+        >
           <input className={inputClass} style={inputStyle} value={code} onChange={(e) => setCode(e.target.value)} autoFocus />
         </Field>
-        <Field label="Fração">
+        <Field label={isTobacco ? 'Tipo' : 'Fração'}>
           <select className={inputClass} style={inputStyle} value={fraction} onChange={(e) => setFraction(e.target.value)}>
-            <option value="">(sugerir pelo código)</option>
+            <option value="">(sugerir pelo {isTobacco ? 'nome' : 'código'})</option>
             {fractions.map((f) => (
               <option key={f.code} value={f.code}>
                 {f.label} ({f.code})
@@ -173,8 +180,8 @@ function BulkDeleteConfirm({
 }
 
 export function SamplesTab() {
-  const { project, canEdit } = useProject()
-  const { catalog, fractions, fractionLabel, paramLabel, techniqueLabel, me } = useApp()
+  const { project, canEdit, fractions, isTobacco } = useProject()
+  const { catalog, fractionLabel, paramLabel, techniqueLabel, me } = useApp()
   const mobile = useIsMobile()
   const [mode, setMode] = useState<Mode>('padrao')
   const { samples, error, reload } = useSamples(project.id, mode)
@@ -353,8 +360,8 @@ export function SamplesTab() {
 
       {showFilters && (
         <div className="grid grid-cols-1 gap-2 rounded-lg border p-3 sm:grid-cols-2 lg:grid-cols-4" style={card} data-testid="filters">
-          <select className={inputClass} style={inputStyle} value={fraction} onChange={(e) => setFraction(e.target.value)} aria-label="Fração">
-            <option value="">Todas as frações</option>
+          <select className={inputClass} style={inputStyle} value={fraction} onChange={(e) => setFraction(e.target.value)} aria-label={isTobacco ? 'Tipo' : 'Fração'}>
+            <option value="">{isTobacco ? 'Todos os tipos' : 'Todas as frações'}</option>
             {fractions.map((f) => (
               <option key={f.code} value={f.code}>
                 {f.label}
@@ -469,6 +476,7 @@ export function SamplesTab() {
                   techniqueLabel={techniqueLabel}
                   header={header}
                   fractionLabel={fractionLabel}
+                  withTemperature={!isTobacco}
                   onOpen={() => setOpenId(s.id)}
                 />
               </div>
@@ -486,9 +494,9 @@ export function SamplesTab() {
                   </th>
                 )}
                 <th className="px-3 py-2 font-medium">Amostra</th>
-                <th className="px-3 py-2 font-medium">Fração</th>
-                <th className="px-3 py-2 font-medium">Temp.</th>
-                {view === 'valores' ? <th className="px-3 py-2 font-medium">Experimento</th> : <th className="px-3 py-2 font-medium">Análises</th>}
+                <th className="px-3 py-2 font-medium">{isTobacco ? 'Tipo' : 'Fração'}</th>
+                {!isTobacco && <th className="px-3 py-2 font-medium">Temp.</th>}
+                {view === 'valores' && !isTobacco ? <th className="px-3 py-2 font-medium">Experimento</th> : <th className="px-3 py-2 font-medium">Análises</th>}
                 <th className="px-3 py-2 font-medium">Validade</th>
                 {shownCols.map((c) => (
                   <th key={c} className="px-3 py-2 text-right font-medium whitespace-nowrap">
@@ -512,8 +520,8 @@ export function SamplesTab() {
                   )}
                   <td className="px-3 py-2 font-medium whitespace-nowrap">{s.code}</td>
                   <td className="px-3 py-2 whitespace-nowrap">{fractionLabel(s.fraction)}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{fmtTemp(s.temperature_c)}</td>
-                  {view === 'valores' ? (
+                  {!isTobacco && <td className="px-3 py-2 whitespace-nowrap">{fmtTemp(s.temperature_c)}</td>}
+                  {view === 'valores' && !isTobacco ? (
                     <td className="px-3 py-2 whitespace-nowrap">{s.experiment_code ?? '—'}</td>
                   ) : (
                     <td className="px-3 py-2">
@@ -633,6 +641,7 @@ function SampleCard({
   techniqueLabel,
   header,
   fractionLabel,
+  withTemperature = true,
   onOpen,
 }: {
   s: SampleRow
@@ -641,6 +650,7 @@ function SampleCard({
   techniqueLabel: (t: string) => string
   header: (c: string) => string
   fractionLabel: (c: string) => string
+  withTemperature?: boolean
   onOpen: () => void
 }) {
   const shown = columns.filter((c) => s.values[c])
@@ -651,7 +661,8 @@ function SampleCard({
         <ValidityBadge valid={s.valid} />
       </div>
       <div className="text-xs" style={muted}>
-        {fractionLabel(s.fraction)} · {fmtTemp(s.temperature_c)}
+        {fractionLabel(s.fraction)}
+        {withTemperature && ` · ${fmtTemp(s.temperature_c)}`}
       </div>
       {columns.length === 0 && (
         <div className="mt-2">

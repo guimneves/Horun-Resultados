@@ -151,8 +151,20 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     body: (
       <>
         <p>
-          Num projeto do tipo <strong>Tabaco</strong>, a amostra é o <strong>produto</strong> (charuto, cigarro, folha...). Não há temperatura de hidropirólise
-          nem experimentos: as abas <strong>Séries</strong> e <strong>Condições experimentais</strong> não aparecem.
+          Num projeto do tipo <strong>Tabaco</strong>, a amostra é o <strong>produto</strong>. Não há temperatura de hidropirólise nem experimentos (a aba{' '}
+          <strong>Condições experimentais</strong> não aparece).
+        </p>
+        <p>
+          <strong>Tipos de produto</strong>: cada amostra é um <strong>Charuto</strong>, um <strong>Cigarro</strong> ou uma{' '}
+          <strong>Essência de Narguilé</strong> — só esses tipos aparecem nos projetos de tabaco (no lugar das frações da rocha). O tipo vem do nome
+          (&quot;Charuto&quot;, &quot;Ch_&quot;; &quot;Cigarro&quot;, &quot;Cig_&quot;; &quot;Narguilé&quot;, &quot;Essência&quot;, &quot;Nar_&quot;). Quando o
+          nome não diz, a amostra fica como <strong>Tabaco — tipo a definir</strong>: abra a amostra → <strong>Editar dados</strong> → Tipo. Se outro arquivo
+          do mesmo produto trouxer o tipo no nome, ele é preenchido sozinho.
+        </p>
+        <p>
+          <strong>Séries</strong>: uma aba para cada tipo — <strong>Charutos</strong>, <strong>Cigarros</strong> e <strong>Essências de Narguilé</strong> (e
+          &quot;Tipo a definir&quot;, se houver) — com a tabela de resultados (média ± desvio das réplicas de cada produto), um gráfico de barras por
+          parâmetro (produto a produto, com o desvio) e as curvas de TG dos produtos do tipo.
         </p>
         <p>
           <strong>Análises</strong> oferecidas na importação: CHNS (PDF do EuroVector), LECO (resultados em CSV), <strong>LECO — sinal bruto</strong>, Rock-Eval

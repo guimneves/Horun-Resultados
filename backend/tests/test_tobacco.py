@@ -165,7 +165,10 @@ def test_rockeval_without_analysis_column_links_curves_by_order():
 def test_tobacco_code_reader(raw, base, rep):
     info = parse_tobacco_code(raw)
     assert info.base_code == base and info.replicate == rep
-    assert info.fraction == "X" and info.temperature_c is None
+    # tipo do produto pelo nome (19/10/2026): charuto, cigarro — ou a definir
+    plain = raw.lower()
+    expected = "CHA" if ("charuto" in plain or plain.startswith("ch_")) else "CIG" if "cigarro" in plain else "TAB"
+    assert info.fraction == expected and info.temperature_c is None
 
 
 def test_tobacco_names_match_across_techniques():
@@ -210,14 +213,14 @@ def test_tobacco_import_groups_by_product(client):
     alfa = rows["Produto Alfa"]
     assert set(alfa["techniques"]) == {"chnso", "tg", "leco_bruto"}
     assert alfa["replicates"] == [1, 2] and alfa["n_measurements"] == 5
-    assert alfa["suggested"]["fraction"] == "X" and alfa["suggested"]["temperature_c"] is None and alfa["suggested"]["experiment_code"] is None
+    assert alfa["suggested"]["fraction"] == "CHA" and alfa["suggested"]["temperature_c"] is None and alfa["suggested"]["experiment_code"] is None
     assert alfa["action"] == "create"
     assert rows["Blank"]["kind"] == "blank" and rows["Blank"]["action"] == "skip"
     result = confirm(client, pid, pv)
     assert result["samples_created"] == 2 and result["analyses_created"] == 7
     table = {s["code"]: s for s in client.get(f"projects/{pid}/samples", headers=PESQ).json()["samples"]}
     assert set(table) == {"Produto Alfa", "Beta"}
-    assert table["Produto Alfa"]["fraction"] == "X"
+    assert table["Produto Alfa"]["fraction"] == "CHA"
 
     # EDS de outra importação: a pasta "produto alfa" cai na mesma amostra
     eds = syn.zip_of({"MEV/produto alfa/externo/eds/Sample 1/Spectrum 5/Spectrum 5 Quantity analysis.csv": syn.eds_quantity_csv(ELEMENTS),
@@ -252,3 +255,39 @@ def test_rock_project_keeps_rock_codes(client, project):
 def test_unreadable_utf16_text_is_an_error():
     with pytest.raises(ParseError):
         parse_file("x.txt", "qualquer coisa".encode("utf-16"))
+
+
+
+@pytest.mark.parametrize(
+    "raw, kind",
+    [
+        ("Charuto Alfa 1", "CHA"),
+        ("Ch_Alfa_2", "CHA"),
+        ("CIGARRO_MARCA_X", "CIG"),
+        ("Cig_Marca 3", "CIG"),
+        ("Essência de Narguilé Uva 1", "NAR"),
+        ("ESSENCIA_MENTA", "NAR"),
+        ("Narguile Menta - rep 2", "NAR"),
+        ("Produto Alfa - rep 2", "TAB"),
+        ("Chocolate 1", "TAB"),  # "Ch" sem "_" não é charuto
+    ],
+)
+def test_tobacco_product_type_from_name(raw, kind):
+    assert parse_tobacco_code(raw).fraction == kind
+
+
+def test_tobacco_project_offers_only_tobacco_types_and_upgrades_undefined(client):
+    """Projeto de tabaco: só Charuto, Cigarro, Essência de Narguilé (e a
+    definir); rocha não aceita esses tipos. A amostra "a definir" ganha o tipo
+    quando outro arquivo do mesmo produto disser."""
+    fr = {f["code"]: f for f in client.get("fractions", headers=PESQ).json()}
+    assert {c for c, f in fr.items() if f["sample_type"] == "tabaco"} == {"CHA", "CIG", "NAR", "TAB"}
+    assert fr["H"]["sample_type"] == "rocha_hidropirolise" and fr["STD"]["sample_type"] == ""
+    tab = _tobacco_project(client)
+    rock = client.post("projects", json={"name": "Rocha"}, headers=COORD).json()
+    add_members(client, rock["id"], PESQ)
+    s = client.post(f"projects/{tab['id']}/samples", json={"code": "Produto Alfa"}, headers=PESQ).json()
+    assert s["fraction"] == "TAB"
+    assert client.patch(f"projects/{tab['id']}/samples/{s['id']}", json={"fraction": "H"}, headers=PESQ).status_code == 400
+    assert client.patch(f"projects/{tab['id']}/samples/{s['id']}", json={"fraction": "CIG"}, headers=PESQ).json()["fraction"] == "CIG"
+    assert client.post(f"projects/{rock['id']}/samples", json={"code": "HP300H", "fraction": "CHA"}, headers=PESQ).status_code == 400

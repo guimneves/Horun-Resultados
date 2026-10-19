@@ -73,8 +73,7 @@ const SOURCE_LABEL: Record<string, string> = {
 }
 
 function RowEditor({ row, d, samples, onChange }: { row: PreviewRow; d: Decision; samples: SampleRow[]; onChange: (patch: Partial<Decision>) => void }) {
-  const { fractions } = useApp()
-  const { project } = useProject()
+  const { project, fractions, isTobacco } = useProject()
   const withTemperature = project.profile?.temperature_axis ?? true
   return (
     <div className="space-y-2">
@@ -99,7 +98,7 @@ function RowEditor({ row, d, samples, onChange }: { row: PreviewRow; d: Decision
             onChange={(e) => onChange({ code: e.target.value })}
             aria-label="Código da nova amostra"
           />
-          <select className={inputClass} style={inputStyle} value={d.fraction} onChange={(e) => onChange({ fraction: e.target.value })} aria-label="Fração">
+          <select className={inputClass} style={inputStyle} value={d.fraction} onChange={(e) => onChange({ fraction: e.target.value })} aria-label={isTobacco ? 'Tipo' : 'Fração'}>
             {fractions.map((f) => (
               <option key={f.code} value={f.code}>
                 {f.label}

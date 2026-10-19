@@ -1,5 +1,21 @@
 # Changelog — Horun · Resultados
 
+## Não lançado — 19/10/2026
+### Tabaco: tipos de produto e Séries (pedido do mantenedor)
+- **Tipos de produto**: Charuto (CHA), Cigarro (CIG), Essência de Narguilé
+  (NAR) e "Tabaco — tipo a definir" (TAB) viram as frações dos projetos de
+  tabaco. `FractionType.sample_type` (migração `_ensure_column`) diz em que
+  tipo de amostra cada fração existe; projetos de tabaco só oferecem os tipos
+  de tabaco (+ Padrão/Outra), rocha só as suas — a API recusa a fração de outro
+  tipo. O leitor (`codes.tobacco_type`) tira o tipo do nome; "a definir" ganha o
+  tipo quando outro arquivo do mesmo produto o trouxer.
+- **Amostras sumidas**: as de tabaco entravam como "Outra" (fora das séries) e a
+  aba Amostras as escondia por padrão. Na subida, as amostras de tabaco em
+  "Outra" ganham o tipo pelo código e pelos nomes lembrados (brancos ficam).
+- **Séries nos projetos de tabaco** (`routes/TobaccoSeriesTab.tsx`): abas
+  Charutos / Cigarros / Essências de Narguilé com a tabela de resultados, um
+  gráfico de barras (± desvio) por parâmetro e as curvas de TG.
+
 ## Não lançado — 15/10/2026
 ### Tipo de gráfico e cores (pedido do mantenedor)
 - **Tipo de gráfico** em todos os gráficos × temperatura (séries, balanço de

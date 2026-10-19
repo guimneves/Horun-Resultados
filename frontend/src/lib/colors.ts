@@ -26,6 +26,11 @@ export const FRACTION_COLORS: Record<string, string> = {
   O: '#6b6f7d', // rocha original: linha de referência neutra
   STD: '#8a8a8a',
   X: '#8a8a8a',
+  // tabaco (19/10/2026): um tom por tipo de produto
+  CHA: '#a8521d', // charuto
+  CIG: '#2a78d6', // cigarro
+  NAR: '#1baf7a', // essência de narguilé
+  TAB: '#6b6f7d', // tipo a definir
 }
 
 /** i-ésimo tom da família da fração (séries da mesma fração lado a lado). */

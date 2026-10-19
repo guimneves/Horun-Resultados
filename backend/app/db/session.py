@@ -61,6 +61,8 @@ def _run_migrations() -> None:
     _ensure_column("experiment", "gas_mass_g", "FLOAT")
     _ensure_column("experiment", "oil_mass_g", "FLOAT")
     _ensure_column("experiment", "bitumen_mass_g", "FLOAT")
+    # 19/10/2026 — frações por tipo de amostra (rocha × tabaco)
+    _ensure_column("fractiontype", "sample_type", "VARCHAR", default_sql="''")
     # 08/10/2026 — tabelas novas `projectmember` e `knownuser` (acesso por
     # projeto): nascem inteiras pelo create_all, sem coluna a acrescentar.
 
@@ -69,22 +71,61 @@ def _seed_fractions() -> None:
     """Frações padrão (H, E, SE...) — só cria as que faltam; o que o
     coordenador editou fica como está."""
     from app.db.models import FractionType
-    from app.services.codes import DEFAULT_FRACTIONS, DEFAULT_SERIES_GROUP, FRACTION_OTHER, FRACTION_STANDARD
+    from app.services.codes import (
+        DEFAULT_FRACTIONS,
+        DEFAULT_SERIES_GROUP,
+        FRACTION_OTHER,
+        FRACTION_STANDARD,
+        TOBACCO_FRACTIONS,
+    )
 
+    shared = (FRACTION_STANDARD, FRACTION_OTHER)
     with Session(engine) as session:
-        existing = {f.code for f in session.exec(select(FractionType))}
+        existing = {f.code: f for f in session.exec(select(FractionType))}
         for order, (code, label, description) in enumerate(DEFAULT_FRACTIONS):
+            sample_type = "" if code in shared else "rocha_hidropirolise"
             if code not in existing:
                 session.add(
                     FractionType(
                         code=code,
                         label=label,
                         description=description,
-                        in_series=code not in (FRACTION_STANDARD, FRACTION_OTHER),
+                        in_series=code not in shared,
                         series_group=DEFAULT_SERIES_GROUP.get(code, ""),
                         sort=order,
+                        sample_type=sample_type,
                     )
                 )
+            elif not existing[code].sample_type and sample_type:
+                existing[code].sample_type = sample_type  # base de antes de 19/10/2026
+                session.add(existing[code])
+        for order, (code, label, description) in enumerate(TOBACCO_FRACTIONS, start=100):
+            if code not in existing:
+                session.add(FractionType(code=code, label=label, description=description, in_series=True, sort=order,
+                                         sample_type="tabaco"))
+        session.commit()
+
+
+def _fix_tobacco_sample_types() -> None:
+    """Amostras de tabaco importadas antes de 19/10/2026 ficaram como "Outra"
+    (e por isso escondidas na aba Amostras): o tipo sai do código e dos nomes
+    já vistos nos arquivos (apelidos). Brancos e padrões ficam como estão."""
+    from app.db.models import Project, Sample, SampleAlias
+    from app.services import profiles
+    from app.services.codes import FRACTION_OTHER, normalize_code, tobacco_type
+
+    with Session(engine) as session:
+        for project in session.exec(select(Project)).all():
+            if profiles.load(project.profile_json).sample_type != "tabaco":
+                continue
+            for s in session.exec(
+                select(Sample).where(Sample.project_id == project.id, Sample.fraction == FRACTION_OTHER, Sample.kind == "sample")
+            ).all():
+                if normalize_code(s.code) in ("BLANK", "BRANCO", "BRANCOS"):
+                    continue
+                aliases = [a.raw_name for a in session.exec(select(SampleAlias).where(SampleAlias.sample_id == s.id)).all()]
+                s.fraction = tobacco_type(s.code, *aliases)
+                session.add(s)
         session.commit()
 
 
@@ -94,6 +135,7 @@ def create_db_and_tables() -> None:
     SQLModel.metadata.create_all(engine)
     _run_migrations()
     _seed_fractions()
+    _fix_tobacco_sample_types()
 
 
 def get_session() -> Generator[Session, None, None]:
