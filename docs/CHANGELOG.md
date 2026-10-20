@@ -1,5 +1,14 @@
 # Changelog — Horun · Resultados
 
+## Não lançado — 20/10/2026
+### Pessoas do projeto (pedido do mantenedor)
+- **Pesquisadores adicionam pesquisadores**: nos projetos em que estão,
+  pesquisadores agora adicionam e removem outros pesquisadores, além de
+  técnicos e ICs (`permissions.member_levels_manageable`). Coordenadores
+  continuam fora da lista (já veem todos os projetos).
+- Ninguém se tira do próprio projeto (perderia o acesso) — pede a outro
+  pesquisador ou a um coordenador.
+
 ## Não lançado — 19/10/2026
 ### Tabaco: tipos de produto e Séries (pedido do mantenedor)
 - **Tipos de produto**: Charuto (CHA), Cigarro (CIG), Essência de Narguilé

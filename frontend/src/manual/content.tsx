@@ -65,7 +65,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
           <li>
             <strong>Colaborador(a)</strong> (pesquisador): vê tudo, importa arquivos, cria amostras e experimentos, corrige os dados deles, liga nomes
             lembrados, marca amostras e medições como <strong>válidas</strong> ou <strong>inválidas</strong> e exclui medições, amostras e experimentos (uma a
-            uma ou várias de uma vez). Nos projetos em que está, adiciona e remove técnicos e ICs.
+            uma ou várias de uma vez). Nos projetos em que está, adiciona e remove outros pesquisadores, técnicos e ICs.
           </li>
           <li>
             <strong>Coordenador(a)</strong> (administrador máximo e coordenadores do Horun): tudo isso e mais — cria, edita e arquiva projetos, escolhe quem
@@ -645,7 +645,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
             <strong>Coordenadores</strong> adicionam e removem pesquisadores, técnicos e ICs.
           </li>
           <li>
-            <strong>Pesquisadores</strong>, nos projetos em que estão, adicionam e removem <strong>técnicos e ICs</strong> (não outros pesquisadores).
+            <strong>Pesquisadores</strong>, nos projetos em que estão, adicionam e removem <strong>outros pesquisadores, técnicos e ICs</strong>.
           </li>
           <li>
             <strong>Técnicos e ICs</strong> só consultam a lista.

@@ -3,7 +3,8 @@
 * Níveis 1–2 veem todos os projetos e adicionam/removem pesquisadores,
   técnicos e ICs.
 * Pesquisador(a) (nível 3), dentro de um projeto em que é membro, adiciona e
-  remove técnicos e ICs (não outros pesquisadores nem coordenadores).
+  remove pesquisadores, técnicos e ICs (20/10/2026; coordenadores não entram
+  como membros — já veem tudo).
 * Técnicos e ICs veem a lista (só leitura).
 A lista de pessoas para escolher vem do Horun Core (quem tem acesso ao módulo);
 sem o Core, quem já abriu o módulo (app/services/directory.py).
@@ -37,7 +38,8 @@ def _member_out(m: ProjectMember, identity: HorunIdentity, current_level: int | 
         **m.model_dump(),
         "level": level,
         "level_name": LEVEL_NAMES.get(level or 0, ""),
-        "can_remove": (level or 0) in member_levels_manageable(identity),
+        # ninguém se tira do projeto (perderia o acesso a ele)
+        "can_remove": (level or 0) in member_levels_manageable(identity) and str(m.user_id) != str(identity.user_id),
     }
 
 
@@ -112,7 +114,9 @@ def remove_member(
     current = directory.find(session, member.user_id)
     level = current.level if current is not None else member.level_at_add
     if level not in levels:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Pesquisadores só removem técnicos e ICs.")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Você não pode remover esta pessoa do projeto.")
+    if str(member.user_id) == str(identity.user_id):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Você não pode se tirar do projeto — peça a outro pesquisador ou a um coordenador.")
     label = member.display_name or member.username
     session.delete(member)
     audit.record(

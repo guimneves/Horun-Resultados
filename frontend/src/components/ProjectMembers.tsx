@@ -165,7 +165,7 @@ export function ProjectMembersModal({ project, onClose }: { project: Project; on
         )}
         {canManage && (
           <p className="text-xs" style={muted}>
-            Coordenadores adicionam pesquisadores, técnicos e ICs; pesquisadores adicionam e removem técnicos e ICs.
+            Coordenadores e pesquisadores adicionam e removem pesquisadores, técnicos e ICs.
           </p>
         )}
       </div>

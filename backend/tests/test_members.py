@@ -97,7 +97,7 @@ def test_coordinators_see_all_projects_and_manage_members(client):
     assert client.post(f"projects/{a}/members", json={"user_id": "6"}, headers=COORD).status_code == 409
 
 
-def test_pesquisador_adds_and_removes_only_tecnicos_and_ics(client, project):
+def test_pesquisador_adds_and_removes_pesquisadores_tecnicos_and_ics(client, project):
     pid = project["id"]
     for who in (PESQ2, TEC2, IC2):
         client.get("me", headers=who)
@@ -105,23 +105,23 @@ def test_pesquisador_adds_and_removes_only_tecnicos_and_ics(client, project):
     assert me["sees_all_projects"] is False and me["can_manage_members"] is True
     assert client.get(f"projects/{pid}", headers=PESQ).json()["can_manage_members"] is True
     choices = {p["user_id"] for p in client.get(f"projects/{pid}/members/candidates", headers=PESQ).json()}
-    assert choices == {"7", "8"}  # técnico e IC ainda fora do projeto; nunca outro pesquisador
+    # 20/10/2026: pesquisadores também põem outros pesquisadores
+    assert choices == {"6", "7", "8"}
 
-    r = client.post(f"projects/{pid}/members", json={"user_id": "6"}, headers=PESQ)
-    assert r.status_code == 403 and "técnico" in r.json()["detail"]
-    for uid in ("7", "8"):
+    for uid in ("6", "7", "8"):
         r = client.post(f"projects/{pid}/members", json={"user_id": uid}, headers=PESQ)
         assert r.status_code == 201 and r.json()["added_by"] == "pessoa3"
     assert client.get(f"projects/{pid}/samples", headers=TEC2).status_code == 200
 
     members = {m["user_id"]: m for m in client.get(f"projects/{pid}/members", headers=PESQ).json()}
-    assert members["3"]["can_remove"] is False and members["7"]["can_remove"] is True
-    assert client.delete(f"projects/{pid}/members/{members['3']['id']}", headers=PESQ).status_code == 403  # pesquisador
+    assert members["3"]["can_remove"] is False and members["7"]["can_remove"] is True and members["6"]["can_remove"] is True
+    r = client.delete(f"projects/{pid}/members/{members['3']['id']}", headers=PESQ)  # ele mesmo
+    assert r.status_code == 403 and "se tirar" in r.json()["detail"]
     assert client.delete(f"projects/{pid}/members/{members['8']['id']}", headers=PESQ).status_code == 204
     assert client.get(f"projects/{pid}/samples", headers=IC2).status_code == 404
 
     actions = [e["action"] for e in client.get(f"projects/{pid}/history", headers=COORD).json()]
-    assert actions.count("membro_adicionado") == 5 and actions.count("membro_removido") == 1
+    assert actions.count("membro_adicionado") == 6 and actions.count("membro_removido") == 1
 
 
 @pytest.mark.parametrize("who", [TEC, IC], ids=["tecnico", "ic"])

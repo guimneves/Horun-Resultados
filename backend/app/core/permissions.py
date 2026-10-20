@@ -17,9 +17,8 @@ Financeiro (`module_mode()/core_role()`), sem cadastro de membros nem senha:
 * excluir projeto: só o administrador máximo (nível 1), digitando o nome;
 * acesso por projeto (pedido do mantenedor, 08/10/2026): níveis 1–2 veem e
   abrem TODOS os projetos; níveis 3–5 só os projetos em que são membros
-  (`ProjectMember`). Coordenadores adicionam pesquisadores, técnicos e ICs;
-  pesquisadores (dentro dos projetos em que estão) adicionam e removem
-  técnicos e ICs. A regra usa sempre o cargo ATUAL (X-Horun-Level).
+  (`ProjectMember`). Coordenadores e pesquisadores (estes dentro dos projetos
+  em que estão) adicionam e removem pesquisadores, técnicos e ICs. A regra usa sempre o cargo ATUAL (X-Horun-Level).
 
 No desenvolvimento (HORUN_DEV_MODE=true) vale a mesma regra; o seletor
 "Ver como" do frontend troca o nível mandando os cabeçalhos.
@@ -91,12 +90,11 @@ def sees_all_projects(identity: HorunIdentity) -> bool:
 
 def member_levels_manageable(identity: HorunIdentity) -> tuple[int, ...]:
     """Cargos que esta pessoa pode adicionar/remover como membro de um projeto:
-    coordenadores → pesquisadores, técnicos e ICs; pesquisadores → técnicos e
-    ICs; técnicos e ICs → ninguém."""
-    if identity.level <= LEVEL_COORDENADOR:
+    coordenadores e pesquisadores → pesquisadores, técnicos e ICs (pedido do
+    usuário, 20/10/2026: pesquisadores também põem outros pesquisadores);
+    técnicos e ICs → ninguém. Coordenadores nunca entram como membro (já veem tudo)."""
+    if identity.level <= LEVEL_PESQUISADOR:
         return (3, 4, 5)
-    if identity.level == LEVEL_PESQUISADOR:
-        return (4, 5)
     return ()
 
 

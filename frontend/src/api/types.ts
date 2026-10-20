@@ -13,7 +13,7 @@ export interface Me {
   can_see_history: boolean
   /** Níveis 1–2 veem todos os projetos; os demais, só aqueles em que são membros. */
   sees_all_projects: boolean
-  /** Pode cuidar de "Pessoas do projeto" (níveis 1–3; pesquisador só técnicos e ICs). */
+  /** Pode cuidar de "Pessoas do projeto" (níveis 1–3: pesquisadores, técnicos e ICs). */
   can_manage_members: boolean
   dev_mode: boolean
 }

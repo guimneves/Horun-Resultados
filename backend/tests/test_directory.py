@@ -76,12 +76,12 @@ def test_people_come_from_the_core_without_opening_the_module(client, core):
     assert call["timeout"] == directory.CORE_TIMEOUT_SECONDS
 
 
-def test_pesquisador_picks_only_tecnicos_and_ics(client, core):
+def test_pesquisador_picks_pesquisadores_tecnicos_and_ics(client, core):
     pid = _project(client)
     assert client.post(f"projects/{pid}/members", json={"user_id": "3"}, headers=COORD).status_code == 201
-    assert set(_candidates(client, pid, PESQ)) == {"22", "23"}
-    # e só consegue adicionar esses níveis
-    assert client.post(f"projects/{pid}/members", json={"user_id": "21"}, headers=PESQ).status_code == 403
+    # 20/10/2026: pesquisadores também põem outros pesquisadores (coordenadores não entram)
+    assert set(_candidates(client, pid, PESQ)) == {"21", "22", "23"}
+    assert client.post(f"projects/{pid}/members", json={"user_id": "21"}, headers=PESQ).status_code == 201
     r = client.post(f"projects/{pid}/members", json={"user_id": "22"}, headers=PESQ)
     assert r.status_code == 201, r.text
     assert r.json()["display_name"] == "Técnico C"
