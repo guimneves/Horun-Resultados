@@ -3,6 +3,7 @@ import { SelectChartsButton } from '../components/ChartSelection'
 import type { Mode } from '../api/types'
 import { CompareBarChart } from '../charts/MoreCharts'
 import { hasTg, TgSection } from '../charts/TgCharts'
+import { GcSection, hasGc } from '../charts/GcCharts'
 import { card, Empty, inputClass, inputStyle, muted } from '../components/ui'
 import { useApp } from '../context/AppContext'
 import { fmtMeanSd, fmtTemp } from '../lib/format'
@@ -31,6 +32,7 @@ export function CompareTab() {
   const reIds = useMemo(() => chosen.filter((s) => s.techniques?.includes('rockeval')).map((s) => s.id), [chosen])
   const pyIds = useMemo(() => chosen.filter((s) => s.techniques?.includes('pygcms')).map((s) => s.id), [chosen])
   const tgIds = useMemo(() => chosen.filter(hasTg).map((s) => s.id), [chosen])
+  const gcIds = useMemo(() => chosen.filter((s) => hasGc(s)).map((s) => s.id), [chosen])
   const withTemperature = project.profile?.temperature_axis ?? true
 
   if (samples === null) return <p style={muted}>Carregando…</p>
@@ -109,6 +111,7 @@ export function CompareTab() {
           )}
           {hasRe && <PyroSection projectId={project.id} samples={samples} mode={mode} initial={reIds} />}
           {tgIds.length > 0 && <TgSection projectId={project.id} mode={mode} ids={tgIds} />}
+          {gcIds.length > 0 && <GcSection projectId={project.id} mode={mode} ids={gcIds} showTables={false} />}
           {hasPy && <AlkaneSection projectId={project.id} samples={samples} mode={mode} initial={pyIds} />}
         </>
       )}

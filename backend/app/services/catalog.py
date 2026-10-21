@@ -197,6 +197,31 @@ TECHNIQUES["mev_eds"] = {
     + [Param(f"at_{sym}", f"{sym} (atômica)", "% atômica") for sym, _name in EDS_ELEMENTS],
 }
 
+# GC-FID e GC-MS da Shimadzu nos projetos de tabaco (21/10/2026, parsers/shimadzu.py)
+TECHNIQUES["gcfid_tab"] = {
+    "label": "GC-FID",
+    "instrument": "GC-FID Shimadzu (GCsolution)",
+    "params": [
+        Param("n_peaks", "Picos integrados", "", True),
+        Param("total_area", "Área total dos picos", "sinal·s", True),
+        Param("rt_main_peak", "Tempo do maior pico", "min", True),
+    ],
+}
+TECHNIQUES["gcms_tab"] = {
+    "label": "GC-MS",
+    "instrument": "GCMS-QP2010 Shimadzu (GCMSsolution)",
+    "params": [
+        Param("pct_nicotine", "Nicotina", "% área", True),
+        Param("pct_propylene_glycol", "Propilenoglicol", "% área", True),
+        Param("pct_glycerol", "Glicerol", "% área", True),
+        Param("pct_furfural", "Furfural", "% área", True),
+        Param("pct_hmf", "5-HMF", "% área", True),
+        Param("n_identified", "Compostos identificados (similaridade ≥ 80)", ""),
+        Param("pct_identified", "Área identificada", "% área"),
+        Param("n_peaks", "Picos", ""),
+    ],
+}
+
 TECHNIQUE_ORDER = list(TECHNIQUES)
 
 

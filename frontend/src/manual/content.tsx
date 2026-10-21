@@ -168,7 +168,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
         </p>
         <p>
           <strong>Análises</strong> oferecidas na importação: CHNS (PDF do EuroVector), LECO (resultados em CSV), <strong>LECO — sinal bruto</strong>, Rock-Eval
-          (inclusive o relatório &quot;multiheating&quot;), <strong>TG</strong> e <strong>MEV-EDS</strong>.
+          (inclusive o relatório &quot;multiheating&quot;), <strong>TG</strong>, <strong>MEV-EDS</strong>, <strong>GC-FID</strong> e <strong>GC-MS</strong> (Shimadzu).
         </p>
         <Bullets>
           <li>
@@ -187,6 +187,21 @@ export const MANUAL_SECTIONS: ManualSection[] = [
             <strong>MEV-EDS</strong>: envie o .zip com as pastas do MEV (<em>amostra / região / eds / Sample 1 / Spectrum NN</em>). A amostra vem do nome da
             pasta, a região (externo, interno, folha externa...) aparece na prévia e cada espectro é uma réplica. Só os &quot;Quantity analysis.csv&quot; são
             lidos; espectros, .msa, imagens e PDFs ficam como ignorados. Entram % em massa e % atômica por elemento.
+          </li>
+          <li>
+            <strong>GC-FID</strong>: envie o <strong>.gcd</strong> do GCsolution. Esse arquivo não traz a tabela de picos, então o Horun integra: linha de base
+            pelo mínimo móvel (janela de 60 s), pico = máximo com proeminência de pelo menos 10× o ruído e 5 % da altura, limites no vale até o pico vizinho
+            ou na volta à linha de base. Saem o número de picos, a área total e o tempo do maior pico; a tabela de picos (tempo, área, % de área) e o
+            cromatograma ficam no detalhe da amostra. Se a amostra também tiver o GC-MS, cada pico do FID mostra o composto do pico do MS com o mesmo
+            tempo de retenção (até 0,05 min) — os dois detectores rodam juntos.
+          </li>
+          <li>
+            <strong>GC-MS</strong>: envie o <strong>.qgd</strong> do GCMSsolution <strong>já processado</strong> (integração e busca na biblioteca
+            salvas). Entram a tabela de picos (tempo, composto mais provável, similaridade, área, % de área) e o TIC. <strong>Identificado</strong> =
+            similaridade ≥ 80; a área dos outros picos conta no total. Viram parâmetros (% da área total): <strong>nicotina, propilenoglicol, glicerol,
+            furfural e 5-HMF</strong>, pelos nomes da biblioteca (ex.: &quot;Propylene Glycol&quot; ou &quot;1,2-Propanediol&quot;; derivados como
+            &quot;nicotinic acid&quot; não contam). O sufixo do detector no nome (&quot;_FID&quot;, &quot;_MS&quot;) sai, para as duas medições caírem na
+            mesma amostra.
           </li>
           <li>
             <strong>LECO — sinal bruto</strong>: o CSV com uma linha por segundo (Set, Rep, Time, Carbon, Sulfur...). O módulo soma o sinal de cada corrida e

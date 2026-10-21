@@ -1,8 +1,8 @@
 # Horun · Resultados — guia para o Claude Code
 
 Módulo do Horun que reúne os resultados das análises (CHNSO, LECO, LECO - Resíduo Insolúvel, Rock-Eval,
-GC-FID/TCD, balanço de gás, Py-GC-MS; e, nos projetos de tabaco, TG, MEV-EDS e
-LECO sinal bruto) por projeto, com tabelas e séries por temperatura. Backend FastAPI+SQLModel (`backend/`), frontend React+Vite (`frontend/`).
+GC-FID/TCD, balanço de gás, Py-GC-MS; e, nos projetos de tabaco, TG, MEV-EDS,
+LECO sinal bruto e GC-FID/GC-MS da Shimadzu — .gcd/.qgd) por projeto, com tabelas e séries por temperatura. Backend FastAPI+SQLModel (`backend/`), frontend React+Vite (`frontend/`).
 
 **Leia primeiro:** `docs/ESPECIFICACAO.md` (requisitos e formatos verificados),
 `docs/ESTADO_E_PLANOS.md` (estado, decisões, perguntas em aberto) e
@@ -59,7 +59,7 @@ LECO sinal bruto) por projeto, com tabelas e séries por temperatura. Backend Fa
 ## Comandos
 
 ```bash
-cd backend && .venv/Scripts/python -m pytest -q        # 204 passam
+cd backend && .venv/Scripts/python -m pytest -q        # 217 passam
 cd frontend && npx tsc -b && npx oxlint && npm run build
 ```
 

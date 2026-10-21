@@ -1,6 +1,20 @@
 # Changelog — Horun · Resultados
 
 ## Não lançado — 21/10/2026
+### GC-FID e GC-MS da Shimadzu nos projetos de tabaco (pedido do mantenedor)
+- Leitor `parsers/shimadzu.py` (dependência nova `olefile==0.47`): `.gcd`
+  (GCsolution) e `.qgd` (GCMSsolution), arquivos compostos do Windows.
+- GC-FID: o .gcd não traz picos — o Horun integra (linha de base por mínimo
+  móvel, proeminência ≥ 10× ruído e ≥ 5 % da altura, perpendicular no vale).
+- GC-MS: tabela de picos do processamento; identificado = similaridade ≥ 80;
+  % de área de nicotina, propilenoglicol, glicerol, furfural e 5-HMF viram
+  parâmetros (tabela de resultados e Séries de tabaco).
+- Tela (`charts/GcCharts.tsx`): cromatogramas sobrepostos (FID ou TIC) e a
+  tabela de picos/compostos no detalhe da amostra; no FID, o composto vem do
+  pico do MS com o mesmo tempo (±0,05 min). Também em Comparar e nas Séries.
+- O sufixo do detector (`_FID`/`_MS`) sai do nome: as duas medições caem na
+  mesma amostra.
+
 ### Unir amostras e validar medições (pedido do mantenedor)
 - **Unir amostras iguais**: `POST /projects/{id}/samples/merge` leva medições
   e nomes lembrados das amostras escolhidas para a que fica; as outras saem e

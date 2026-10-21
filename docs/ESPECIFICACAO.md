@@ -192,6 +192,30 @@ sinais, ≤ 600 pontos) em `data`; brancos → `kind = blank` (ignorados por
 padrão); aviso fixo "áreas RELATIVAS, não %". Detecção: 1ª linha com Set,
 Rep, Time, Carbon e **sem** Name (o CSV de resultados da 3.2 tem Name).
 
+### 3.10 GC-FID (.gcd, GCsolution) e GC-MS (.qgd, GCMSsolution) — Shimadzu (projeto de tabaco, 21/10/2026)
+
+Arquivos compostos do Windows (OLE/CFB, assinatura `D0 CF 11 E0`), lidos com
+`olefile` (`parsers/shimadzu.py`). Conferido nos exemplos do laboratório
+(mesma corrida com FID e MS em paralelo, método `..._Análise_PY_Tabaco.qgm`).
+
+- `File Property` (os dois): nome da amostra no byte 204 (64 bytes, cp1252),
+  ID no 268, data da corrida (FILETIME) no 52, caminhos do arquivo e do método
+  como texto.
+- `.gcd`: `GC Raw Data-1/Status` = int32 intervalo (ms), int32, int32 pontos;
+  `GC Raw Data-1/Intensity Data` = um double por ponto. **Sem tabela de picos**
+  — o Horun integra (mínimo móvel 60 s; proeminência ≥ 10 × ruído MAD e ≥ 5 %
+  da altura; perpendicular no vale). Parâmetros: `n_peaks`, `total_area`,
+  `rt_main_peak`.
+- `.qgd`: `GCMS Raw Data/Retention Time` (int32 ms por varredura) e `TIC Data`
+  (int64); `GCMS Data Processing/MC Peak Info` (uint16 = nº de picos) e
+  `MC Peak Table` (registros de 208 bytes: int32 TR ms @4, double área @8,
+  double altura @16, int32 início/fim ms @40/@44, int16 similaridade @60, nome
+  do composto @80). Identificado = similaridade ≥ 80. Parâmetros (% da área
+  total, só identificados, nomes exatos da biblioteca): `pct_nicotine`,
+  `pct_propylene_glycol`, `pct_glycerol`, `pct_furfural`, `pct_hmf`; mais
+  `n_peaks`, `n_identified`, `pct_identified`.
+- Nome: o sufixo do detector (`_FID`, `_MS`) sai do nome da amostra.
+
 ### 3.6 Tabela de literatura (opcional)
 Planilha de um artigo de referência = dados publicados (parâmetros por
 temperatura). Suportar, de forma genérica, **importar uma tabela de referência**

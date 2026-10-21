@@ -98,7 +98,9 @@ experimento da prévia; o passo 1 da importação mostra as receitas do perfil
 
 - Receitas: `chnso`, `leco`, `leco_bruto` (sinal bruto do Cornerstone),
   `rockeval` (inclusive o relatório "multiheating"), `tg` (TGA-50), `mev_eds`
-  (Oxford AZtec). Formatos: ESPECIFICACAO.md 3.3, 3.7–3.9.
+  (Oxford AZtec), `gcfid_tab` (.gcd do GCsolution, picos integrados pelo
+  Horun) e `gcms_tab` (.qgd do GCMSsolution, compostos com similaridade ≥ 80).
+  Formatos: ESPECIFICACAO.md 3.3, 3.7–3.10.
 - Amostra = produto; "fração" = tipo do produto (19/10/2026): CHA charuto,
   CIG cigarro, NAR essência de narguilé, TAB a definir (`codes.tobacco_type`,
   `FractionType.sample_type = "tabaco"`). Sem temperatura nem experimento;

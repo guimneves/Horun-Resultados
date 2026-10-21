@@ -28,6 +28,7 @@ import { axisProps, ChartCard, gridProps, SimpleTable, tooltipStyle } from './Ch
 import { AlkaneChart, GasCompositionChart, PyrogramChart } from './MoreCharts'
 import { pointId, pointLabels, pointText, PointTooltip } from './PointLabels'
 import { TgChart, TgSignalSwitch, type TgSignal } from './TgCharts'
+import { GcSection } from './GcCharts'
 
 // Gráficos do detalhe de UMA amostra: as curvas dela e onde ela fica em
 // relação às outras amostras do projeto. A amostra aberta sempre em destaque
@@ -384,6 +385,7 @@ export function SampleCharts({
         <TgChart curves={tg} signal={tgSignal} />
       </div>
     ),
+    (techs.has('gcfid_tab') || techs.has('gcms_tab')) && <GcSection key="gc" projectId={projectId} mode="todas" ids={[detail.id]} />,
     detail.fraction === 'G' && <GasCompositionChart key="gas" samples={[detail]} />,
     <ElementsChart key="el" detail={detail} />,
     <ProjectScatter

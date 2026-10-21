@@ -258,6 +258,30 @@ export interface TgData {
   points: number
 }
 
+/** Pico do GC-FID/GC-MS da Shimadzu (parsers/shimadzu.py) */
+export interface GcPeak {
+  rt_min: number
+  start_min: number
+  end_min: number
+  area: number
+  height: number
+  area_pct: number | null
+  /** só GC-MS */
+  similarity?: number
+  name?: string
+  identified?: boolean
+  target?: string | null
+}
+
+/** Cromatograma (curva reduzida) + picos — .gcd (FID) ou .qgd (MS) */
+export interface GcData {
+  kind: 'chromatogram'
+  detector: string
+  curve: { t: number[]; y: number[] }
+  peaks: GcPeak[]
+  min_similarity?: number
+}
+
 export interface PyPeaks {
   peaks: { rt_min: number | null; area: number | null; id: string; n_carbon: number | null }[]
 }

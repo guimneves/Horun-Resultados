@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import io
 
-from app.parsers import chnso, gas_consolidated, gc, leco, leco_raw, leco_ri, mev_eds, pygcms, rockeval, tg
+from app.parsers import chnso, gas_consolidated, gc, leco, leco_raw, leco_ri, mev_eds, pygcms, rockeval, shimadzu, tg
 from app.parsers.common import NotResultsFile, ParseError, ParseResult
 from app.services.derived import add_derived
 
@@ -100,6 +100,8 @@ def parse_file(filename: str, content: bytes, path_hint: str = "") -> ParseResul
         result = _parse_pdf(content, base, path_hint)
     elif content[:2] == b"PK":
         result = _parse_xlsx(content, base, path_hint)
+    elif shimadzu.is_shimadzu(content):  # .gcd (GC-FID) / .qgd (GC-MS) — arquivo composto do Windows
+        result = shimadzu.parse(content, base)
     elif content.startswith(_IMAGE_MAGIC):
         raise NotResultsFile("Imagem (micrografia/figura) — não é arquivo de resultados.")
     elif tg.is_binary_tad(content):
@@ -130,7 +132,7 @@ def parse_file(filename: str, content: bytes, path_hint: str = "") -> ParseResul
             raise ParseError(
                 "Formato não reconhecido. Aceitos: PDF do CHNSO (EuroVector), CSV do LECO (resultados ou sinal "
                 "bruto), relatório .htm do Rock-Eval, planilhas de GC-FID/TCD, de cálculo de gás e de Py-GC-MS, "
-                "TG (ASCII do TGA-50) e MEV-EDS (\"Quantity analysis.csv\") — ou um .zip com eles."
+                "TG (ASCII do TGA-50), MEV-EDS (\"Quantity analysis.csv\") e GC-FID/GC-MS da Shimadzu (.gcd/.qgd) — ou um .zip com eles."
             )
     for record in result.records:
         add_derived(record)

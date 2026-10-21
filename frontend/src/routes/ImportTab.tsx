@@ -26,11 +26,13 @@ const ANALYSIS_TYPES: { key: string; label: string; files: string }[] = [
   },
   { key: 'tg', label: 'TG (termogravimetria)', files: 'exportação ASCII (.txt) do TGA-50/TA-60, uma por réplica' },
   { key: 'mev_eds', label: 'MEV-EDS', files: '.zip com as pastas do MEV (amostra/região/eds/...) com os "Quantity analysis.csv"' },
+  { key: 'gcfid_tab', label: 'GC-FID', files: 'arquivo .gcd do GCsolution (o Horun integra os picos)' },
+  { key: 'gcms_tab', label: 'GC-MS', files: 'arquivo .qgd do GCMSsolution, já processado (picos e busca na biblioteca)' },
   { key: '', label: 'Vários / não sei (detectar)', files: 'qualquer um dos acima, ou um .zip com pastas' },
 ]
 
 // Análises que só aparecem em projetos de outros tipos (rocha continua com a lista de sempre)
-const NOT_FOR_ROCK = new Set(['leco_bruto', 'tg', 'mev_eds'])
+const NOT_FOR_ROCK = new Set(['leco_bruto', 'tg', 'mev_eds', 'gcfid_tab', 'gcms_tab'])
 
 /** Botões do passo 1: rocha → a lista de sempre; outros tipos → as análises do perfil. */
 function analysisTypesFor(profile: { temperature_axis: boolean; recipes: string[] } | undefined) {
@@ -339,7 +341,7 @@ export function ImportTab() {
             <input
               type="file"
               multiple
-              accept=".pdf,.csv,.htm,.html,.xlsx,.zip"
+              accept=".pdf,.csv,.htm,.html,.xlsx,.zip,.txt,.gcd,.qgd"
               onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
               className="block w-full text-sm"
               aria-label="Arquivos para importar"

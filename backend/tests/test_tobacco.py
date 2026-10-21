@@ -192,7 +192,7 @@ def test_tobacco_profile_is_ready(client):
     p = _tobacco_project(client)
     prof = p["profile"]
     assert prof["sample_type"] == "tabaco" and prof["temperature_axis"] is False
-    assert prof["recipes"] == ["chnso", "leco", "leco_bruto", "rockeval", "tg", "mev_eds"]
+    assert prof["recipes"] == ["chnso", "leco", "leco_bruto", "rockeval", "tg", "mev_eds", "gcfid_tab", "gcms_tab"]
     assert prof["parameters"]["tg"] == ["loss_150", "loss_150_400", "loss_400_600", "residue_pct", "dtg_peak_c"]
 
 

@@ -3,6 +3,7 @@ import { Bar, BarChart, CartesianGrid, ErrorBar, ResponsiveContainer, Tooltip, X
 import type { Mode, SampleRow } from '../api/types'
 import { axisProps, ChartCard, gridProps, SimpleTable, tooltipStyle } from '../charts/ChartCard'
 import { hasTg, TgSection } from '../charts/TgCharts'
+import { GcSection, hasGc } from '../charts/GcCharts'
 import { SelectChartsButton } from '../components/ChartSelection'
 import { card, ErrorBox, inputClass, inputStyle, muted, Segmented } from '../components/ui'
 import { useApp } from '../context/AppContext'
@@ -106,6 +107,7 @@ export function TobaccoSeriesTab() {
     return Array.from(m.entries())
   }, [columns])
   const tgIds = useMemo(() => shown.filter(hasTg).map((s) => s.id), [shown])
+  const gcIds = useMemo(() => shown.filter((s) => hasGc(s)).map((s) => s.id), [shown])
   const color = fractionColor(type)
   const typeOptions = [
     ...TYPES.map((t) => ({ value: t.code, label: `${t.label} (${count(t.code)})` })),
@@ -201,6 +203,13 @@ export function TobaccoSeriesTab() {
               </div>
             </section>
           ))}
+
+          {gcIds.length > 0 && (
+            <section className="space-y-2">
+              <h3 className="font-semibold">Cromatografia — cromatogramas</h3>
+              <GcSection projectId={project.id} mode={mode} ids={gcIds} showTables={false} />
+            </section>
+          )}
 
           {tgIds.length > 0 && (
             <section className="space-y-2">

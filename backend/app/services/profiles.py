@@ -63,6 +63,8 @@ _PARSER_OF = {
     "leco_bruto": "leco_raw",
     "tg": "tg",
     "mev_eds": "mev_eds",
+    "gcfid_tab": "shimadzu",
+    "gcms_tab": "shimadzu",
 }
 
 RECIPES: dict[str, ImportRecipe] = {
@@ -108,10 +110,10 @@ SAMPLE_TYPES: dict[str, SampleType] = {
     "tabaco": SampleType(
         key="tabaco",
         label="Tabaco",
-        description="Produtos de tabaco (charutos, cigarros, folhas): CHNS, LECO, Rock-Eval, TG e MEV-EDS. "
+        description="Produtos de tabaco (charutos, cigarros, essências): CHNS, LECO, Rock-Eval, TG, MEV-EDS, GC-FID e GC-MS. "
         "A amostra é o produto; réplicas (\"_1\", \" - rep 2\") e prefixos (\"Ch_\", \"Charuto\") saem do nome.",
         code_reader="codes.parse_tobacco_code",
-        recipes=("chnso", "leco", "leco_bruto", "rockeval", "tg", "mev_eds"),
+        recipes=("chnso", "leco", "leco_bruto", "rockeval", "tg", "mev_eds", "gcfid_tab", "gcms_tab"),
     ),
     # Planejado: só registra a intenção. Receitas, leitura de códigos e
     # parâmetros serão definidos com o laboratório (docs/PERFIS_DE_PROJETO.md).
