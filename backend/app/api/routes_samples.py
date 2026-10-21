@@ -20,7 +20,7 @@ from app.core.permissions import require_editor
 from app.db.models import Analysis, AnalysisValue, Experiment, FractionType, Project, Sample, SampleAlias, utcnow
 from app.db.session import get_session
 from app.services import audit, deletion, importer, masses, profiles, results
-from app.services.codes import normalize_code, parse_experiment_code
+from app.services.codes import normalize_code, parse_experiment_code, strip_accents
 
 router = APIRouter(tags=["amostras"])
 
@@ -246,6 +246,109 @@ def create_sample(
     session.commit()
     session.refresh(sample)
     return results.sample_detail(session, sample)
+
+
+# ---------------------------------------------------------------- unir amostras iguais
+# Pedido do usuário (21/10/2026): a mesma amostra entrou com nomes diferentes
+# ("Produto Alfa" e "PRODUTO-ALFA (folha)", "HP320E" e "HP 320 E.1") e as
+# medições ficaram divididas. Unir leva todas as medições e nomes lembrados
+# para uma amostra só; as outras saem, e o nome delas fica lembrado (a próxima
+# importação já cai na amostra que ficou).
+
+# "E" não entra: é a fração extraída da rocha (HP320-E)
+_CONNECTORS_RE = re.compile(r"\b(DE|DA|DO|DAS|DOS)\b")
+
+
+def _merge_key(code: str, reader) -> str:
+    info = reader(code)
+    base = info.base_code if info.recognized and info.base_code else code
+    text = strip_accents(base).upper()
+    text = _CONNECTORS_RE.sub(" ", text)
+    return re.sub(r"[^A-Z0-9]", "", text)
+
+
+@router.get("/projects/{project_id}/samples/duplicates")
+def possible_duplicates(project: Project = Depends(get_project), session: Session = Depends(get_session), _i: HorunIdentity = Depends(get_identity)):
+    """Grupos de amostras que parecem a mesma (mesmo código sem acento,
+    espaço, pontuação, "de/da", réplica ou alíquota). Só sugestão — quem
+    decide é a pessoa."""
+    reader = profiles.code_reader(project.profile_json)
+    groups: dict[tuple[str, str], list[Sample]] = {}
+    for smp in session.exec(select(Sample).where(Sample.project_id == project.id)).all():
+        key = _merge_key(smp.code, reader)
+        if key:
+            groups.setdefault((smp.kind, key), []).append(smp)
+    counts: dict[int, int] = {}
+    for a in session.exec(select(Analysis).where(Analysis.project_id == project.id)).all():
+        counts[a.sample_id] = counts.get(a.sample_id, 0) + 1
+    out = []
+    for (_kind, key), items in sorted(groups.items(), key=lambda kv: kv[0][1]):
+        if len(items) < 2:
+            continue
+        out.append({
+            "key": key,
+            "samples": [
+                {"id": x.id, "code": x.code, "fraction": x.fraction, "temperature_c": x.temperature_c, "n_analyses": counts.get(x.id, 0)}
+                for x in sorted(items, key=lambda x: (-counts.get(x.id, 0), x.code))
+            ],
+        })
+    return {"groups": out}
+
+
+class MergeIn(BaseModel):
+    target_id: int  # a amostra que fica
+    source_ids: list[int] = Field(min_length=1, max_length=200)  # as que se juntam a ela e saem
+    dry_run: bool = False
+
+
+@router.post("/projects/{project_id}/samples/merge")
+def merge_samples(
+    body: MergeIn, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_editor)
+):
+    ensure_open(project)
+    target = _get_sample(session, project, body.target_id)
+    sources = [x for x in _get_samples(session, project, body.source_ids) if x.id != target.id]
+    if not sources:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Escolha ao menos uma outra amostra para unir.")
+    analyses = session.exec(select(Analysis).where(Analysis.sample_id.in_([x.id for x in sources]))).all()  # type: ignore[union-attr]
+    aliases = session.exec(select(SampleAlias).where(SampleAlias.sample_id.in_([x.id for x in sources]))).all()  # type: ignore[union-attr]
+    summary = {
+        "target": {"id": target.id, "code": target.code},
+        "sources": [{"id": x.id, "code": x.code} for x in sources],
+        "analyses": len(analyses),
+        "aliases": len(aliases) + len(sources),
+    }
+    if body.dry_run:
+        return summary
+    for a in analyses:
+        a.sample_id = target.id
+        session.add(a)
+    for al in aliases:
+        if al.alias_norm == target.code_norm:
+            session.delete(al)  # vira o próprio código: não precisa lembrar
+        else:
+            al.sample_id = target.id
+            session.add(al)
+    session.flush()
+    notes = [target.notes] if target.notes else []
+    for x in sources:
+        if x.notes:
+            notes.append(f"[{x.code}] {x.notes}")
+        code = x.code
+        session.delete(x)
+        session.flush()
+        # o nome da que saiu fica lembrado: a próxima importação cai aqui
+        importer.remember_alias(session, project.id, code, target, identity.username)
+    target.notes = "\n".join(notes)[:4000]
+    session.add(target)
+    audit.record(
+        session, identity, "amostras_unidas",
+        f"Uniu {', '.join(x['code'] for x in summary['sources'])} em {target.code} ({len(analyses)} medição(ões)).",
+        project.id, "sample", target.id, summary,
+    )
+    session.commit()
+    session.refresh(target)
+    return {**summary, "sample": results.sample_detail(session, target)}
 
 
 @router.get("/projects/{project_id}/samples/{sample_id}")

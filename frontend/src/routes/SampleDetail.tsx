@@ -6,6 +6,7 @@ import { Button, Dropdown, ErrorBox, Field, inputClass, inputStyle, MenuItem, Mo
 import { useApp } from '../context/AppContext'
 import { fmt, fmtMeanSd, fmtTemp } from '../lib/format'
 import { useProject } from './ProjectLayout'
+import { MeasurementsLegend, MeasurementsTable } from '../components/MeasurementsTable'
 
 function ValidationButtons({ valid, onSet }: { valid: boolean | null; onSet: (v: boolean | null) => void }) {
   return (
@@ -330,6 +331,33 @@ export function SampleDetailModal({
             </div>
           )}
 
+          {/* medições lado a lado, para validar/invalidar (21/10/2026) */}
+          {techniques.length > 0 && (
+            <section className="space-y-2">
+              <h3 className="font-semibold">Medições</h3>
+              <MeasurementsLegend />
+              {catalog
+                .filter((t) => techniques.includes(t.key))
+                .map((t) => t.key)
+                .concat(techniques.filter((t) => !catalog.some((c) => c.key === t)))
+                .map((t) => (
+                  <MeasurementsTable
+                    key={t}
+                    technique={t}
+                    analyses={detail.analyses.filter((a) => a.technique === t)}
+                    projectId={projectId}
+                    canValidate={canValidate}
+                    canDelete={!readOnly}
+                    onChanged={async () => {
+                      await load()
+                      onChanged()
+                    }}
+                    onError={setError}
+                  />
+                ))}
+            </section>
+          )}
+
           <SampleCharts projectId={projectId} detail={detail} samples={samples} temperatureAxis={project.profile?.temperature_axis ?? true} />
 
           {summaryCards.length > 0 && (
@@ -358,7 +386,7 @@ export function SampleDetailModal({
 
           {detail.analyses.length > 0 && (
             <details className="rounded-md border px-3 py-2" style={{ borderColor: 'var(--color-border)' }}>
-              <summary className="cursor-pointer font-semibold">Todos os valores e medições</summary>
+              <summary className="cursor-pointer font-semibold">Todas as médias e os valores brutos</summary>
               <div className="mt-3 space-y-4">
                 {Object.keys(detail.values).length > 0 && (
                   <section>
@@ -414,8 +442,8 @@ export function SampleDetailModal({
                             key={a.id}
                             a={a}
                             projectId={projectId}
-                            canValidate={canValidate}
-                            canDelete={!readOnly}
+                            canValidate={false}
+                            canDelete={false}
                             onValidate={(v) => act(() => api.post(`/projects/${projectId}/analyses/${a.id}/validation`, { valid: v }))}
                             onDelete={() => {
                               if (window.confirm(`Excluir a medição ${a.source_name}?`)) act(() => api.delete(`/projects/${projectId}/analyses/${a.id}`))

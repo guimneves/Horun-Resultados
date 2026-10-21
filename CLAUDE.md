@@ -46,8 +46,8 @@ LECO sinal bruto) por projeto, com tabelas e séries por temperatura. Backend Fa
   3–5 só aqueles em que são membros. Toda rota `/projects/{id}/...` usa
   `Depends(get_project)` (`app/api/deps.py`), que dá 404 a quem não é membro —
   **rota nova por projeto tem de passar por `get_project`**. Pessoas do
-  projeto: coordenadores põem/tiram pesquisadores, técnicos e ICs;
-  pesquisadores só técnicos e ICs. Lista para escolher = a do Core
+  projeto: coordenadores e pesquisadores põem/tiram pesquisadores, técnicos e ICs
+  (ninguém se tira). Lista para escolher = a do Core
   (`GET /internal/modules/resultados/users`, mesma chave dos avisos, cache de
   60 s); sem o Core, quem já abriu o módulo (`KnownUser`, `services/directory.py`).
 - Gráficos: cores por significado (`frontend/src/lib/colors.ts`, paleta validada),
@@ -59,7 +59,7 @@ LECO sinal bruto) por projeto, com tabelas e séries por temperatura. Backend Fa
 ## Comandos
 
 ```bash
-cd backend && .venv/Scripts/python -m pytest -q        # 203 passam
+cd backend && .venv/Scripts/python -m pytest -q        # 204 passam
 cd frontend && npx tsc -b && npx oxlint && npm run build
 ```
 

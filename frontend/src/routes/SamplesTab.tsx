@@ -8,6 +8,7 @@ import { fmtMeanSd, fmtTemp } from '../lib/format'
 import { useIsMobile } from '../lib/useIsMobile'
 import { useSamples } from '../lib/useSamples'
 import { useProject } from './ProjectLayout'
+import { DuplicatesModal, MergeSamplesModal, type MergeCandidate } from '../components/MergeSamples'
 import { SampleDetailModal } from './SampleDetail'
 
 export const MODE_OPTIONS: { value: Mode; label: string }[] = [
@@ -203,6 +204,9 @@ export function SamplesTab() {
   const [bulkBusy, setBulkBusy] = useState(false)
   const [bulkMsg, setBulkMsg] = useState<string | null>(null)
   const [bulkError, setBulkError] = useState<string | null>(null)
+  // unir amostras iguais (21/10/2026)
+  const [merging, setMerging] = useState<MergeCandidate[] | null>(null)
+  const [showDups, setShowDups] = useState(false)
   // Tela enxuta por padrão: filtros recolhidos, "Lista" sem números, caixinhas só no modo seleção.
   const [showFilters, setShowFilters] = useState(false)
   const [view, setView] = useState<View>(readView)
@@ -349,6 +353,7 @@ export function SamplesTab() {
             <MenuItem onClick={() => (selecting ? stopSelecting() : setSelecting(true))}>{selecting ? 'Parar de selecionar' : 'Selecionar várias'}</MenuItem>
           )}
           {canEdit && <MenuItem onClick={() => setBulk(true)}>Criar várias</MenuItem>}
+          <MenuItem onClick={() => setShowDups(true)}>Possíveis repetidas…</MenuItem>
           <MenuItem disabled={!filtered.length} onClick={() => exportAs('csv')}>
             Exportar CSV
           </MenuItem>
@@ -562,6 +567,26 @@ export function SamplesTab() {
               </Button>
             </>
           )}
+          {selectedIds.length >= 2 && (
+            <Button
+              disabled={bulkBusy}
+              onClick={() =>
+                setMerging(
+                  filtered
+                    .filter((x) => selected.has(x.id))
+                    .map((x) => ({
+                      id: x.id,
+                      code: x.code,
+                      fraction: x.fraction,
+                      temperature_c: x.temperature_c,
+                      n_analyses: Math.max(0, ...Object.values(x.values).map((v) => v.n)),
+                    })),
+                )
+              }
+            >
+              Unir selecionadas…
+            </Button>
+          )}
           <Button variant="danger" disabled={bulkBusy} onClick={() => setConfirmDelete(selectedIds)}>
             Excluir selecionadas
           </Button>
@@ -570,6 +595,21 @@ export function SamplesTab() {
           </Button>
         </div>
       )}
+      {merging && (
+        <MergeSamplesModal
+          projectId={project.id}
+          candidates={merging}
+          onClose={() => setMerging(null)}
+          onDone={async (m) => {
+            setMerging(null)
+            clearSelection()
+            setBulkError(null)
+            setBulkMsg(m)
+            await reload()
+          }}
+        />
+      )}
+      {showDups && <DuplicatesModal projectId={project.id} canEdit={canEdit} onClose={() => setShowDups(false)} onChanged={reload} />}
       {confirmDelete && (
         <BulkDeleteConfirm
           projectId={project.id}

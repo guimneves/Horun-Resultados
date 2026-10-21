@@ -1,5 +1,18 @@
 # Changelog — Horun · Resultados
 
+## Não lançado — 21/10/2026
+### Unir amostras e validar medições (pedido do mantenedor)
+- **Unir amostras iguais**: `POST /projects/{id}/samples/merge` leva medições
+  e nomes lembrados das amostras escolhidas para a que fica; as outras saem e
+  o código delas vira nome lembrado. `GET .../samples/duplicates` sugere grupos
+  (mesmo código sem acento, espaço, pontuação, "de/da", réplica/alíquota).
+  Tela: Amostras → Mais → Possíveis repetidas…, e "Unir selecionadas…".
+- **Medições no detalhe da amostra** (`components/MeasurementsTable.tsx`): por
+  técnica, uma linha por medição e uma coluna por parâmetro principal, com ✓/✗
+  por linha, "Validar pendentes", média ± desvio e DPR sem as inválidas (na
+  hora) e ⚠ no valor que destoa das outras (> 10 % da mediana delas e acima do
+  espalhamento). Os cartões antigos ficam em "Todas as médias e os valores brutos".
+
 ## Não lançado — 20/10/2026
 ### Pessoas do projeto (pedido do mantenedor)
 - **Pesquisadores adicionam pesquisadores**: nos projetos em que estão,

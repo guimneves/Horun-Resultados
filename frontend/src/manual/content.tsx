@@ -414,13 +414,42 @@ export const MANUAL_SECTIONS: ManualSection[] = [
             amostra ficam em <strong>Mais</strong>, no detalhe da amostra.
           </li>
           <li>
-            Uma medição ruim (ex.: uma réplica fora) pode ser tirada sozinha: no cartão da medição, <strong>Invalidar</strong> (e <strong>Reativar</strong> para
-            voltar).
+            Uma medição ruim (ex.: uma réplica fora) pode ser tirada sozinha: em <strong>Medições</strong>, cada técnica tem uma tabela com uma linha por
+            medição e uma coluna por parâmetro principal. <strong>✓</strong> marca a medição como válida e <strong>✗</strong> como inválida (clique de novo
+            para voltar a pendente); <strong>Validar pendentes</strong> marca todas as pendentes da técnica de uma vez. A última linha é a média ± desvio
+            (e o DPR) <strong>sem as inválidas</strong> — muda na hora. Valor que destoa das outras medições (mais de 10 % da mediana delas) aparece em
+            amarelo com ⚠: é só um aviso para conferir. "Todos os parâmetros" mostra as colunas que não são principais.
           </li>
         </Steps>
         <p>
           Amostra nova entra como <strong>pendente</strong>. Nos gráficos, o padrão é "válidas e pendentes" (as inválidas ficam de fora); "Só as validadas"
           mostra o banco de experimentos válidos; "Todas" inclui as inválidas.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'unir-amostras',
+    title: 'Unir amostras iguais (a mesma amostra com nomes diferentes)',
+    body: (
+      <>
+        <p>
+          Quando a mesma amostra entrou com dois nomes (&quot;Produto Alfa&quot; e &quot;PRODUTO-ALFA&quot;, &quot;HP320E&quot; e &quot;HP 320-E&quot;), as
+          medições ficam divididas. Para juntar:
+        </p>
+        <Steps>
+          <li>
+            Na aba <strong>Amostras</strong>, <strong>Mais → Possíveis repetidas…</strong> lista os grupos de amostras cujo código é o mesmo sem acentos,
+            espaços, pontuação, &quot;de/da&quot;, réplica ou alíquota. Toque em <strong>Unir…</strong> no grupo. Para unir outras, use{' '}
+            <strong>Selecionar várias</strong>, marque as amostras e toque em <strong>Unir selecionadas…</strong>.
+          </li>
+          <li>
+            Escolha a amostra que <strong>fica</strong> (a sugestão é a que tem mais medições) e toque em <strong>Unir</strong>.
+          </li>
+        </Steps>
+        <p>
+          Todas as medições e nomes lembrados vão para a que fica; as outras saem, e o nome delas passa a ser lembrado — a próxima importação com esse
+          nome já cai na amostra certa. Fração, temperatura e validade da que fica não mudam. Só pesquisadores e coordenadores unem amostras.
         </p>
       </>
     ),
