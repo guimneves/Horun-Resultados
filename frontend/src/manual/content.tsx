@@ -425,11 +425,15 @@ export const MANUAL_SECTIONS: ManualSection[] = [
             Na aba <strong>Amostras</strong>, toque na amostra.
           </li>
           <li>
-            Toque em <strong>Válida</strong> ou <strong>Inválida</strong>. Para desfazer, <strong>Voltar a pendente</strong>. Editar os dados e excluir a
-            amostra ficam em <strong>Mais</strong>, no detalhe da amostra.
+            O detalhe da amostra tem três abas: <strong>Resultados</strong> (valores principais, todas as médias e os nomes lembrados),{' '}
+            <strong>Gráficos</strong> e <strong>Validação</strong> (que mostra quantas medições estão pendentes). A escolha fica lembrada neste navegador.
           </li>
           <li>
-            Uma medição ruim (ex.: uma réplica fora) pode ser tirada sozinha: em <strong>Medições</strong>, cada técnica tem uma tabela com uma linha por
+            Na aba <strong>Validação</strong>, toque em <strong>Válida</strong> ou <strong>Inválida</strong> para a amostra inteira. Para desfazer,{' '}
+            <strong>Voltar a pendente</strong>. Editar os dados e excluir a amostra ficam em <strong>Mais</strong>, no alto do detalhe.
+          </li>
+          <li>
+            Uma medição ruim (ex.: uma réplica fora) pode ser tirada sozinha: na aba <strong>Validação</strong>, em <strong>Medições</strong>, cada técnica tem uma tabela com uma linha por
             medição e uma coluna por parâmetro principal. <strong>✓</strong> marca a medição como válida e <strong>✗</strong> como inválida (clique de novo
             para voltar a pendente); <strong>Validar pendentes</strong> marca todas as pendentes da técnica de uma vez. A última linha é a média ± desvio
             (e o DPR) <strong>sem as inválidas</strong> — muda na hora. Valor que destoa das outras medições (mais de 10 % da mediana delas) aparece em

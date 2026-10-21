@@ -1,6 +1,11 @@
 # Changelog — Horun · Resultados
 
 ## Não lançado — 21/10/2026
+### Detalhe da amostra em abas (pedido do mantenedor)
+- **Resultados** (valores principais, todas as médias, nomes lembrados),
+  **Gráficos** e **Validação** (validade da amostra + tabela de medições, com o
+  número de pendentes no nome da aba). A aba escolhida fica no navegador.
+
 ### Séries por projeto e cores das réplicas (pedido do mantenedor)
 - **Escolher o que aparece nas Séries**: `profile.series` (vistas `parametros`,
   `massas`, `artigo`, `spigolon` e grupos `mo`, `el`, `gas`, `fid`, `tcd`, `py`,

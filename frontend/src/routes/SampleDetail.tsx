@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, errorText } from '../api/client'
 import type { AnalysisOut, Experiment, SampleDetail, SampleRow } from '../api/types'
 import { SampleCharts } from '../charts/SampleCharts'
-import { Button, Dropdown, ErrorBox, Field, inputClass, inputStyle, MenuItem, Modal, muted, ValidityBadge } from '../components/ui'
+import { Button, Dropdown, ErrorBox, Field, inputClass, inputStyle, MenuItem, Modal, muted, Segmented, ValidityBadge } from '../components/ui'
 import { useApp } from '../context/AppContext'
 import { fmt, fmtMeanSd, fmtTemp } from '../lib/format'
 import { useProject } from './ProjectLayout'
@@ -133,6 +133,22 @@ export function SampleDetailModal({
   const [error, setError] = useState<string | null>(null)
   const [newAlias, setNewAlias] = useState('')
   const canValidate = !!me?.can_edit && !readOnly
+  const [tab, setTabState] = useState<'resultados' | 'graficos' | 'validacao'>(() => {
+    try {
+      const v = localStorage.getItem('resultados.amostra.aba')
+      return v === 'graficos' || v === 'validacao' ? v : 'resultados'
+    } catch {
+      return 'resultados'
+    }
+  })
+  const setTab = (v: 'resultados' | 'graficos' | 'validacao') => {
+    setTabState(v)
+    try {
+      localStorage.setItem('resultados.amostra.aba', v)
+    } catch {
+      /* sem armazenamento: só não lembra */
+    }
+  }
 
   const load = useCallback(async () => {
     try {
@@ -183,6 +199,7 @@ export function SampleDetailModal({
   }
 
   const techniques = detail ? Array.from(new Set(detail.analyses.map((a) => a.technique))) : []
+  const pendingCount = detail ? detail.analyses.filter((a) => a.valid === null).length : 0
   // Resumo: por técnica, só os parâmetros principais (os mesmos das colunas padrão da tabela).
   const summaryCards = detail
     ? catalog
@@ -301,12 +318,6 @@ export function SampleDetailModal({
                 </>
               ) : (
                 <>
-                  {canValidate && (
-                    <ValidationButtons
-                      valid={detail.valid}
-                      onSet={(v) => act(() => api.post(`/projects/${projectId}/samples/${sampleId}/validation`, { valid: v }))}
-                    />
-                  )}
                   <Dropdown label="Mais" ariaLabel="Mais ações da amostra">
                     <MenuItem onClick={() => setEditing(true)}>Editar dados</MenuItem>
                     <MenuItem
@@ -331,180 +342,229 @@ export function SampleDetailModal({
             </div>
           )}
 
-          {/* medições lado a lado, para validar/invalidar (21/10/2026) */}
-          {techniques.length > 0 && (
-            <section className="space-y-2">
-              <h3 className="font-semibold">Medições</h3>
-              <MeasurementsLegend />
-              {catalog
-                .filter((t) => techniques.includes(t.key))
-                .map((t) => t.key)
-                .concat(techniques.filter((t) => !catalog.some((c) => c.key === t)))
-                .map((t) => (
-                  <MeasurementsTable
-                    key={t}
-                    technique={t}
-                    analyses={detail.analyses.filter((a) => a.technique === t)}
-                    projectId={projectId}
-                    canValidate={canValidate}
-                    canDelete={!readOnly}
-                    onChanged={async () => {
-                      await load()
-                      onChanged()
-                    }}
-                    onError={setError}
-                  />
-                ))}
-            </section>
+          {/* abas (pedido do usuário, 21/10/2026: o detalhe estava poluído) */}
+          {!editing && (
+            <Segmented
+              label="Parte da amostra"
+              value={tab}
+              onChange={setTab}
+              options={[
+                { value: 'resultados', label: 'Resultados' },
+                { value: 'graficos', label: 'Gráficos' },
+                { value: 'validacao', label: `Validação${pendingCount ? ` (${pendingCount} pendente${pendingCount === 1 ? '' : 's'})` : ''}` },
+              ]}
+            />
           )}
 
-          <SampleCharts projectId={projectId} detail={detail} samples={samples} temperatureAxis={project.profile?.temperature_axis ?? true} />
-
-          {summaryCards.length > 0 && (
-            <section>
-              <h3 className="mb-2 font-semibold">Valores principais</h3>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3" data-testid="sample-summary">
-                {summaryCards.map((t) => (
-                  <div key={t.key} className="rounded-md border p-3" style={{ borderColor: 'var(--color-border)' }}>
-                    <div className="mb-1 flex items-baseline justify-between gap-2">
-                      <span className="font-semibold">{t.label}</span>
-                      <span className="text-xs" style={muted}>
-                        {t.count} medição(ões)
-                      </span>
-                    </div>
-                    {t.rows.map(([k, v]) => (
-                      <div key={k} className="flex justify-between gap-2 py-0.5">
-                        <span style={muted}>{paramLabel(k)}</span>
-                        <span className="tabular-nums">{fmtMeanSd(v)}</span>
+          {tab === 'resultados' && (
+            <div className="space-y-4">
+              {summaryCards.length > 0 && (
+                <section>
+                  <h3 className="mb-2 font-semibold">Valores principais</h3>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3" data-testid="sample-summary">
+                    {summaryCards.map((t) => (
+                      <div key={t.key} className="rounded-md border p-3" style={{ borderColor: 'var(--color-border)' }}>
+                        <div className="mb-1 flex items-baseline justify-between gap-2">
+                          <span className="font-semibold">{t.label}</span>
+                          <span className="text-xs" style={muted}>
+                            {t.count} medição(ões)
+                          </span>
+                        </div>
+                        {t.rows.map(([k, v]) => (
+                          <div key={k} className="flex justify-between gap-2 py-0.5">
+                            <span style={muted}>{paramLabel(k)}</span>
+                            <span className="tabular-nums">{fmtMeanSd(v)}</span>
+                          </div>
+                        ))}
                       </div>
                     ))}
                   </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {detail.analyses.length > 0 && (
-            <details className="rounded-md border px-3 py-2" style={{ borderColor: 'var(--color-border)' }}>
-              <summary className="cursor-pointer font-semibold">Todas as médias e os valores brutos</summary>
-              <div className="mt-3 space-y-4">
-                {Object.keys(detail.values).length > 0 && (
-                  <section>
-                    <h3 className="mb-1 font-semibold">Todas as médias (réplicas e alíquotas)</h3>
-                    <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-2 md:grid-cols-3">
-                      {Object.entries(detail.values).map(([k, v]) => (
-                        <div key={k} className="flex justify-between gap-2 border-b py-1" style={{ borderColor: 'var(--color-border)' }}>
-                          <span>
-                            <span style={muted}>{techniqueLabel(k.split('.')[0])} · </span>
-                            {paramLabel(k)}
-                          </span>
-                          <span className="tabular-nums">
-                            {fmtMeanSd(v)} <span style={muted}>(n={v.n})</span>
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                {detail.aliquots.length > 0 && (
-                  <section>
-                    <h3 className="mb-1 font-semibold">Por alíquota</h3>
-                    <div className="table-wrap">
-                      <table className="w-full text-xs">
-                        <tbody>
-                          {detail.aliquots.map((al) => (
-                            <tr key={`${al.technique}-${al.aliquot}`} className="border-t" style={{ borderColor: 'var(--color-border)' }}>
-                              <td className="py-1 pr-2 font-medium whitespace-nowrap">
-                                {techniqueLabel(al.technique)} · alíquota {al.aliquot}
-                              </td>
-                              <td className="py-1">
-                                {Object.entries(al.values)
-                                  .map(([p, s]) => `${paramLabel(`${al.technique}.${p}`, false)}: ${fmtMeanSd(s)}`)
-                                  .join(' · ')}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </section>
-                )}
-
-                {techniques.map((t) => (
-                  <section key={t}>
-                    <h3 className="mb-1 font-semibold">{techniqueLabel(t)}</h3>
-                    <div className="space-y-2">
-                      {detail.analyses
-                        .filter((a) => a.technique === t)
-                        .map((a) => (
-                          <AnalysisCard
-                            key={a.id}
-                            a={a}
-                            projectId={projectId}
-                            canValidate={false}
-                            canDelete={false}
-                            onValidate={(v) => act(() => api.post(`/projects/${projectId}/analyses/${a.id}/validation`, { valid: v }))}
-                            onDelete={() => {
-                              if (window.confirm(`Excluir a medição ${a.source_name}?`)) act(() => api.delete(`/projects/${projectId}/analyses/${a.id}`))
-                            }}
-                          />
-                        ))}
-                    </div>
-                  </section>
-                ))}
-              </div>
-            </details>
-          )}
-
-          <details className="rounded-md border px-3 py-2" style={{ borderColor: 'var(--color-border)' }}>
-            <summary className="cursor-pointer font-semibold">Nomes lembrados nos arquivos ({detail.aliases.length})</summary>
-            <div className="mt-2">
-              <p className="mb-1 text-xs" style={muted}>
-                Quando um arquivo traz um destes nomes, a importação já atribui os resultados a esta amostra.
-              </p>
-              <div className="flex flex-wrap items-center gap-1">
-                {detail.aliases.length === 0 && <span style={muted}>nenhum</span>}
-                {detail.aliases.map((a) => (
-                  <span
-                    key={a.id}
-                    className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs"
-                    style={{ borderColor: 'var(--color-border)' }}
-                  >
-                    {a.alias}
-                    {!readOnly && (
-                      <button
-                        type="button"
-                        aria-label={`Esquecer o nome ${a.alias}`}
-                        className="flex h-6 w-6 items-center justify-center"
-                        onClick={() => act(() => api.delete(`/projects/${projectId}/samples/${sampleId}/aliases/${a.id}`))}
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </span>
-                ))}
-              </div>
-              {!readOnly && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <input
-                    className={`${inputClass} max-w-xs`}
-                    style={inputStyle}
-                    placeholder="Outro nome usado nos arquivos"
-                    value={newAlias}
-                    onChange={(e) => setNewAlias(e.target.value)}
-                    aria-label="Novo nome lembrado"
-                  />
-                  <Button
-                    disabled={!newAlias.trim()}
-                    onClick={() => act(() => api.post(`/projects/${projectId}/samples/${sampleId}/aliases`, { alias: newAlias })).then(() => setNewAlias(''))}
-                  >
-                    Lembrar nome
-                  </Button>
-                </div>
+                </section>
               )}
+
+              {detail.analyses.length > 0 && (
+                <details className="rounded-md border px-3 py-2" style={{ borderColor: 'var(--color-border)' }}>
+                  <summary className="cursor-pointer font-semibold">Todas as médias e os valores brutos</summary>
+                  <div className="mt-3 space-y-4">
+                    {Object.keys(detail.values).length > 0 && (
+                      <section>
+                        <h3 className="mb-1 font-semibold">Todas as médias (réplicas e alíquotas)</h3>
+                        <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-2 md:grid-cols-3">
+                          {Object.entries(detail.values).map(([k, v]) => (
+                            <div key={k} className="flex justify-between gap-2 border-b py-1" style={{ borderColor: 'var(--color-border)' }}>
+                              <span>
+                                <span style={muted}>{techniqueLabel(k.split('.')[0])} · </span>
+                                {paramLabel(k)}
+                              </span>
+                              <span className="tabular-nums">
+                                {fmtMeanSd(v)} <span style={muted}>(n={v.n})</span>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+                    )}
+
+                    {detail.aliquots.length > 0 && (
+                      <section>
+                        <h3 className="mb-1 font-semibold">Por alíquota</h3>
+                        <div className="table-wrap">
+                          <table className="w-full text-xs">
+                            <tbody>
+                              {detail.aliquots.map((al) => (
+                                <tr key={`${al.technique}-${al.aliquot}`} className="border-t" style={{ borderColor: 'var(--color-border)' }}>
+                                  <td className="py-1 pr-2 font-medium whitespace-nowrap">
+                                    {techniqueLabel(al.technique)} · alíquota {al.aliquot}
+                                  </td>
+                                  <td className="py-1">
+                                    {Object.entries(al.values)
+                                      .map(([p, s]) => `${paramLabel(`${al.technique}.${p}`, false)}: ${fmtMeanSd(s)}`)
+                                      .join(' · ')}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </section>
+                    )}
+
+                    {techniques.map((t) => (
+                      <section key={t}>
+                        <h3 className="mb-1 font-semibold">{techniqueLabel(t)}</h3>
+                        <div className="space-y-2">
+                          {detail.analyses
+                            .filter((a) => a.technique === t)
+                            .map((a) => (
+                              <AnalysisCard
+                                key={a.id}
+                                a={a}
+                                projectId={projectId}
+                                canValidate={false}
+                                canDelete={false}
+                                onValidate={(v) => act(() => api.post(`/projects/${projectId}/analyses/${a.id}/validation`, { valid: v }))}
+                                onDelete={() => {
+                                  if (window.confirm(`Excluir a medição ${a.source_name}?`)) act(() => api.delete(`/projects/${projectId}/analyses/${a.id}`))
+                                }}
+                              />
+                            ))}
+                        </div>
+                      </section>
+                    ))}
+                  </div>
+                </details>
+              )}
+
+              <details className="rounded-md border px-3 py-2" style={{ borderColor: 'var(--color-border)' }}>
+                <summary className="cursor-pointer font-semibold">Nomes lembrados nos arquivos ({detail.aliases.length})</summary>
+                <div className="mt-2">
+                  <p className="mb-1 text-xs" style={muted}>
+                    Quando um arquivo traz um destes nomes, a importação já atribui os resultados a esta amostra.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-1">
+                    {detail.aliases.length === 0 && <span style={muted}>nenhum</span>}
+                    {detail.aliases.map((a) => (
+                      <span
+                        key={a.id}
+                        className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs"
+                        style={{ borderColor: 'var(--color-border)' }}
+                      >
+                        {a.alias}
+                        {!readOnly && (
+                          <button
+                            type="button"
+                            aria-label={`Esquecer o nome ${a.alias}`}
+                            className="flex h-6 w-6 items-center justify-center"
+                            onClick={() => act(() => api.delete(`/projects/${projectId}/samples/${sampleId}/aliases/${a.id}`))}
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                  {!readOnly && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <input
+                        className={`${inputClass} max-w-xs`}
+                        style={inputStyle}
+                        placeholder="Outro nome usado nos arquivos"
+                        value={newAlias}
+                        onChange={(e) => setNewAlias(e.target.value)}
+                        aria-label="Novo nome lembrado"
+                      />
+                      <Button
+                        disabled={!newAlias.trim()}
+                        onClick={() => act(() => api.post(`/projects/${projectId}/samples/${sampleId}/aliases`, { alias: newAlias })).then(() => setNewAlias(''))}
+                      >
+                        Lembrar nome
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </details>
             </div>
-          </details>
+          )}
+
+          {tab === 'graficos' && (
+            <div className="space-y-4">
+              <SampleCharts projectId={projectId} detail={detail} samples={samples} temperatureAxis={project.profile?.temperature_axis ?? true} />
+            </div>
+          )}
+
+          {tab === 'validacao' && (
+            <div className="space-y-4">
+              <section className="rounded-md border p-3" style={{ borderColor: 'var(--color-border)' }}>
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h3 className="font-semibold">A amostra</h3>
+                    <p className="text-xs" style={muted}>
+                      Amostra inválida sai de todos os gráficos e médias; para tirar só uma medição, use as tabelas abaixo.
+                    </p>
+                  </div>
+                  <span className="flex items-center gap-2">
+                    <ValidityBadge valid={detail.valid} />
+                    {detail.validated_by && <span className="text-xs" style={muted}>por {detail.validated_by}</span>}
+                  </span>
+                </div>
+                {canValidate ? (
+                  <ValidationButtons
+                    valid={detail.valid}
+                    onSet={(v) => act(() => api.post(`/projects/${projectId}/samples/${sampleId}/validation`, { valid: v }))}
+                  />
+                ) : (
+                  <p className="text-xs" style={muted}>Só pesquisadores e coordenadores validam.</p>
+                )}
+              </section>
+              {/* medições lado a lado, para validar/invalidar (21/10/2026) */}
+              {techniques.length > 0 && (
+                <section className="space-y-2">
+                  <h3 className="font-semibold">Medições</h3>
+                  <MeasurementsLegend />
+                  {catalog
+                    .filter((t) => techniques.includes(t.key))
+                    .map((t) => t.key)
+                    .concat(techniques.filter((t) => !catalog.some((c) => c.key === t)))
+                    .map((t) => (
+                      <MeasurementsTable
+                        key={t}
+                        technique={t}
+                        analyses={detail.analyses.filter((a) => a.technique === t)}
+                        projectId={projectId}
+                        canValidate={canValidate}
+                        canDelete={!readOnly}
+                        onChanged={async () => {
+                          await load()
+                          onChanged()
+                        }}
+                        onError={setError}
+                      />
+                    ))}
+                </section>
+              )}
+
+            </div>
+          )}
           {detail.analyses.length === 0 && <p style={muted}>Nenhuma medição ainda. Importe arquivos na aba Importar.</p>}
         </div>
       )}
