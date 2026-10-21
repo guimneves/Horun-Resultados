@@ -1,6 +1,12 @@
 # Changelog — Horun · Resultados
 
 ## Não lançado — 21/10/2026
+### Rocha original como ponto nas séries (pedido do mantenedor)
+- Nos gráficos parâmetro × temperatura, a rocha original deixou de ser só uma
+  linha tracejada: é o primeiro ponto do eixo ("Original", um passo antes da
+  menor temperatura) e cada fração sai dela. Várias amostras originais = média
+  e desvio juntos. Na tabela, a coluna de temperatura mostra "Original".
+
 ### Detalhe da amostra em abas (pedido do mantenedor)
 - **Resultados** (valores principais, todas as médias, nomes lembrados),
   **Gráficos** e **Validação** (validade da amostra + tabela de medições, com o

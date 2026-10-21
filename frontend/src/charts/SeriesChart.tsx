@@ -1,4 +1,4 @@
-import { CartesianGrid, ComposedChart, ErrorBar, Legend, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { CartesianGrid, ComposedChart, ErrorBar, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { SeriesResponse } from '../api/types'
 import { ChartLook } from '../components/ChartLook'
 import { fractionKey, lineLook, useChartPrefs } from '../lib/chartPrefs'
@@ -7,7 +7,9 @@ import { fmt, fmtMeanSd } from '../lib/format'
 import { axisProps, ChartCard, gridProps, SimpleTable, tooltipStyle } from './ChartCard'
 
 /** Parâmetro × temperatura: uma linha por fração (H, E...), média ± desvio
- * (barras de erro); rocha original como linha de referência tracejada.
+ * (barras de erro). A rocha original (sem temperatura) é um PONTO no começo
+ * do eixo, rotulado "Original", e cada linha sai dela até a 1ª temperatura —
+ * pedido do usuário, 21/10/2026 (antes era só uma linha de referência).
  * Cada série da mesma fração (réplicas, atmosferas) ganha um tom da família
  * da fração (lib/colors.ts); tipo e cores escolhíveis (lib/chartPrefs.ts). */
 export function SeriesChart({
@@ -41,6 +43,24 @@ export function SeriesChart({
     const fallback = familyColor(s.fraction, i)
     return { key, label: s.label, color: prefs.color(key, fallback), fallback }
   })
+  // posição da rocha original no eixo: um passo antes da 1ª temperatura
+  const temps = Array.from(new Set((data?.series ?? []).flatMap((x) => x.points.map((p) => p.temperature_c)))).sort((a, b) => a - b)
+  const steps = temps.slice(1).map((t, i) => t - temps[i]).filter((d) => d > 0).sort((a, b) => a - b)
+  const step = steps.length ? Math.max(10, steps[Math.floor(steps.length / 2)]) : 20
+  const origin = (data?.baseline ?? []).filter((b) => b.mean != null)
+  const originMeans = origin.map((b) => b.mean as number)
+  const xOrig = temps.length ? temps[0] - step : 0
+  const originPoint = originMeans.length
+    ? (() => {
+        const mean = originMeans.reduce((a, b) => a + b, 0) / originMeans.length
+        const sd =
+          originMeans.length > 1
+            ? Math.sqrt(originMeans.reduce((a, b) => a + (b - mean) ** 2, 0) / (originMeans.length - 1))
+            : (origin[0].sd ?? null)
+        return { temperature_c: xOrig, mean, sd, sdBar: sd ?? 0, n_samples: origin.length, original: true }
+      })()
+    : null
+  const ticks = originPoint ? [xOrig, ...temps] : temps
   const name = title ?? `${data?.label ?? ''} × temperatura`
   const unit = data?.unit ? ` (${data.unit})` : ''
   const hasData = !!data && (data.series.some((s) => s.points.length) || data.baseline.length)
@@ -50,7 +70,7 @@ export function SeriesChart({
   data?.series.forEach((s) =>
     s.points.forEach((p) => rows.push([s.label, p.temperature_c, fmtMeanSd(p), p.n_samples, p.samples.map((x) => x.code).join(', ')])),
   )
-  data?.baseline.forEach((b) => rows.push(['Rocha original', '—', fmtMeanSd(b), 1, b.code]))
+  data?.baseline.forEach((b) => rows.push(['Rocha original', 'Original', fmtMeanSd(b), 1, b.code]))
 
   return (
     <ChartCard
@@ -76,6 +96,8 @@ export function SeriesChart({
             type="number"
             dataKey="temperature_c"
             domain={['dataMin - 10', 'dataMax + 10']}
+            ticks={ticks.length ? ticks : undefined}
+            tickFormatter={(v: number) => (originPoint && v === xOrig ? 'Original' : String(v))}
             allowDuplicatedCategory={false}
             {...axisProps}
             label={{ value: 'Temperatura (°C)', position: 'insideBottom', offset: -4, fill: 'var(--color-text-muted)', fontSize: 12 }}
@@ -84,7 +106,7 @@ export function SeriesChart({
           <YAxis {...axisProps} width={56} domain={['auto', 'auto']} tickFormatter={(v: number) => fmt(v)} />
           <Tooltip
             {...tooltipStyle}
-            labelFormatter={(t) => `${t} °C`}
+            labelFormatter={(t) => (originPoint && Number(t) === xOrig ? 'Rocha original' : `${t} °C`)}
             formatter={(value, nameKey, item) => {
               const p = item?.payload as { sd?: number | null; n_samples?: number } | undefined
               const sd = p?.sd ? ` ± ${fmt(p.sd)}` : ''
@@ -92,21 +114,12 @@ export function SeriesChart({
             }}
           />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          {data?.baseline.map((b) => (
-            <ReferenceLine
-              key={b.sample_id}
-              y={b.mean ?? undefined}
-              stroke={fractionColor('O')}
-              strokeDasharray="4 4"
-              ifOverflow="extendDomain"
-              label={{ value: `${b.code} (original)`, position: 'insideTopLeft', fill: 'var(--color-text-muted)', fontSize: 11 }}
-            />
-          ))}
           {data?.series.map((s, i) => (
             <Line
               key={s.key}
               name={s.label}
-              data={s.points.map((p) => ({ ...p, sdBar: p.sd ?? 0 }))}
+              // cada fração sai da rocha original (o ponto de partida da maturação)
+              data={[...(originPoint && s.points.length ? [originPoint] : []), ...s.points.map((p) => ({ ...p, sdBar: p.sd ?? 0 }))]}
               dataKey="mean"
               {...lineLook(style, looks[i].color, REPLICATE_DASH[s.replicate_letter])}
               isAnimationActive={false}
@@ -114,6 +127,21 @@ export function SeriesChart({
               <ErrorBar dataKey="sdBar" width={6} strokeWidth={1.5} stroke={looks[i].color} direction="y" />
             </Line>
           ))}
+          {originPoint && (
+            <Line
+              name={origin.length === 1 ? `Rocha original (${origin[0].code})` : `Rocha original (${origin.length} amostras)`}
+              data={[originPoint]}
+              dataKey="mean"
+              stroke={fractionColor('O')}
+              strokeWidth={0}
+              dot={{ r: 6, fill: fractionColor('O'), stroke: 'var(--color-bg)', strokeWidth: 2 }}
+              activeDot={{ r: 7 }}
+              legendType="diamond"
+              isAnimationActive={false}
+            >
+              <ErrorBar dataKey="sdBar" width={6} strokeWidth={1.5} stroke={fractionColor('O')} direction="y" />
+            </Line>
+          )}
         </ComposedChart>
       </ResponsiveContainer>
     </ChartCard>

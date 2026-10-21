@@ -110,8 +110,8 @@ export const MANUAL_SECTIONS: ManualSection[] = [
             mostra também a média de cada alíquota.
           </li>
           <li>
-            <strong>RO-1</strong>, <strong>ROA</strong>, <strong>Rocha virgem 80 mesh</strong> — rocha original (não aquecida); aparece nos gráficos como linha
-            de referência tracejada.
+            <strong>RO-1</strong>, <strong>ROA</strong>, <strong>Rocha virgem 80 mesh</strong> — rocha original (não aquecida); nas séries por temperatura é o
+            primeiro ponto do eixo (<strong>Original</strong>), de onde sai a linha de cada fração.
           </li>
           <li>
             Padrões (<strong>Sulphanilamide</strong>, <strong>Cistina</strong>, <strong>BBOT</strong>...) ficam marcados como padrão, fora das séries. Códigos
@@ -555,6 +555,11 @@ export const MANUAL_SECTIONS: ManualSection[] = [
             <strong>todos</strong> volta a mostrar tudo), <strong>Gás — FID</strong> (barras lado a lado de C1 a C5+, e wetness), <strong>Gás — TCD</strong>{' '}
             (barras de H₂ e CO₂; o traço é o desvio entre os experimentos da mesma temperatura), <strong>Py-GC-MS</strong> e <strong>Pirogramas</strong>. Só
             aparecem os que têm dados no projeto. Use os botões do alto para ver um grupo só.
+          </li>
+          <li>
+            Nos gráficos por temperatura, a <strong>rocha original</strong> (quando o projeto tem) é o primeiro ponto, na posição <strong>Original</strong>{' '}
+            do eixo, antes da menor temperatura: cada fração (hidropirolisada, extraída...) começa nela, para ver quanto cada temperatura mudou em relação à
+            rocha de partida. Com mais de uma amostra de rocha original, o ponto é a média delas, com o desvio.
           </li>
           <li>
             <strong>Escolher o que aparece…</strong> (pesquisadores e coordenadores): marque as <strong>vistas</strong> (Parâmetros, Balanço de massas,
