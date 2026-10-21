@@ -1,6 +1,14 @@
 # Changelog — Horun · Resultados
 
 ## Não lançado — 21/10/2026
+### Séries por projeto e cores das réplicas (pedido do mantenedor)
+- **Escolher o que aparece nas Séries**: `profile.series` (vistas `parametros`,
+  `massas`, `artigo`, `spigolon` e grupos `mo`, `el`, `gas`, `fid`, `tcd`, `py`,
+  `pyro`; vazio = tudo), `PATCH /projects/{id}/series-views` (níveis 1–3).
+  Editar o projeto pelo formulário não apaga a escolha.
+- **Réplicas com a mesma cor** nos pirogramas, TG e cromatogramas
+  (`lib/colors.curveLooks`): cor por amostra, traço por réplica.
+
 ### GC-FID e GC-MS da Shimadzu nos projetos de tabaco (pedido do mantenedor)
 - Leitor `parsers/shimadzu.py` (dependência nova `olefile==0.47`): `.gcd`
   (GCsolution) e `.qgd` (GCMSsolution), arquivos compostos do Windows.

@@ -3,7 +3,7 @@ import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, X
 import { api } from '../api/client'
 import type { AnalysisData, GcData, GcPeak, Mode, SampleRow } from '../api/types'
 import { Button, inputClass, inputStyle, muted, Segmented } from '../components/ui'
-import { dashFor, seriesColor } from '../lib/colors'
+import { curveLooks } from '../lib/colors'
 import { fmt } from '../lib/format'
 import { axisProps, ChartCard, gridProps, SimpleTable, tooltipStyle } from './ChartCard'
 
@@ -35,6 +35,7 @@ export function GcChromatogramChart({ curves, tech, normalize }: { curves: Analy
         peaks: c.data.peaks?.length ?? 0,
       }
     })
+  const looks = curveLooks(curves.filter((c) => lines.some((l) => l.id === c.analysis_id)))
   return (
     <ChartCard
       title={`${LABEL[tech]} — cromatogramas`}
@@ -60,14 +61,14 @@ export function GcChromatogramChart({ curves, tech, normalize }: { curves: Analy
           <YAxis {...axisProps} width={64} tickFormatter={(v: number) => fmt(v)} />
           <Tooltip {...tooltipStyle} labelFormatter={(v) => `${fmt(Number(v))} min`} formatter={(v) => fmt(Number(v))} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          {lines.map((l, i) => (
+          {lines.map((l) => (
             <Line
               key={l.id}
               name={l.name}
               data={l.points}
               dataKey="y"
-              stroke={seriesColor(i)}
-              strokeDasharray={dashFor(i)}
+              stroke={looks.get(l.id)?.color}
+              strokeDasharray={looks.get(l.id)?.dash}
               strokeWidth={1.2}
               dot={false}
               isAnimationActive={false}

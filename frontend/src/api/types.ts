@@ -68,6 +68,8 @@ export interface ProjectProfile {
   temperature_axis: boolean
   recipes: string[]
   parameters: Record<string, string[]>
+  /** vistas/grupos da aba Séries que aparecem (vazio = todos) */
+  series?: string[]
 }
 
 /** GET /profiles — o que existe para montar um perfil. */

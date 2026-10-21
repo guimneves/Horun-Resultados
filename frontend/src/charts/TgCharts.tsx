@@ -3,7 +3,7 @@ import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, X
 import { api } from '../api/client'
 import type { AnalysisData, Mode, SampleRow, TgData } from '../api/types'
 import { Segmented } from '../components/ui'
-import { dashFor, seriesColor } from '../lib/colors'
+import { curveLooks } from '../lib/colors'
 import { fmt } from '../lib/format'
 import { axisProps, ChartCard, gridProps, SimpleTable, tooltipStyle } from './ChartCard'
 
@@ -25,6 +25,7 @@ export function TgChart({ curves, signal }: { curves: AnalysisData<TgData>[]; si
         peak: peakOf(d),
       }
     })
+  const looks = curveLooks(curves.filter((c) => lines.some((l) => l.id === c.analysis_id)))
   const title = signal === 'mass' ? 'TG sobrepostas — massa × temperatura' : 'DTG sobrepostas — taxa de perda × temperatura'
   return (
     <ChartCard
@@ -62,14 +63,14 @@ export function TgChart({ curves, signal }: { curves: AnalysisData<TgData>[]; si
           />
           <Tooltip {...tooltipStyle} labelFormatter={(v) => `${fmt(Number(v))} °C`} formatter={(v) => fmt(Number(v))} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          {lines.map((l, i) => (
+          {lines.map((l) => (
             <Line
               key={l.id}
               name={l.name}
               data={l.points}
               dataKey="y"
-              stroke={seriesColor(i)}
-              strokeDasharray={dashFor(i)}
+              stroke={looks.get(l.id)?.color}
+              strokeDasharray={looks.get(l.id)?.dash}
               strokeWidth={2}
               dot={false}
               isAnimationActive={false}

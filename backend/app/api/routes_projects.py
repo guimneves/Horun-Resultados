@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete as sa_delete
 from sqlmodel import Session, func, select
 
-from app.api.deps import get_project
+from app.api.deps import ensure_open, get_project
 from app.core import identity as identity_module
 from app.core.identity import HorunIdentity, get_identity
 from app.core.permissions import (
@@ -20,6 +20,7 @@ from app.core.permissions import (
     can_see_history,
     core_role,
     require_coordenador,
+    require_editor,
     require_history_access,
     require_super_admin,
     sees_all_projects,
@@ -211,13 +212,41 @@ def patch_project(
             raise HTTPException(status.HTTP_409_CONFLICT, "Já existe um projeto com esse nome.")
     if "profile" in changes:
         changes.pop("profile")
-        project.profile_json = profiles.dump(_checked_profile(body.profile))
+        incoming = dict(body.profile or {})
+        if "series" not in incoming:  # o formulário do projeto não mexe nas Séries
+            incoming["series"] = profiles.load(project.profile_json).series
+        project.profile_json = profiles.dump(_checked_profile(incoming))
         changes["profile"] = profiles.load(project.profile_json).resolved()
     for k, v in changes.items():
         if k != "profile":
             setattr(project, k, v)
     session.add(project)
     audit.record(session, identity, "projeto_editado", "Editou os dados do projeto.", project_id=project.id, details=changes)
+    session.commit()
+    session.refresh(project)
+    return _project_out(session, project, identity)
+
+
+class SeriesViewsIn(BaseModel):
+    series: list[str]  # vazio = todas as vistas e grupos
+
+
+@router.patch("/projects/{project_id}/series-views")
+def set_series_views(
+    body: SeriesViewsIn,
+    project: Project = Depends(get_project),
+    session: Session = Depends(get_session),
+    identity: HorunIdentity = Depends(require_editor),
+):
+    """O que aparece na aba Séries deste projeto (pesquisadores e coordenadores)."""
+    ensure_open(project)
+    current = profiles.load(project.profile_json)
+    data = json.loads(profiles.dump(current))
+    data["series"] = body.series
+    project.profile_json = profiles.dump(_checked_profile(data))
+    session.add(project)
+    audit.record(session, identity, "projeto_editado", "Escolheu o que aparece nas Séries.", project_id=project.id,
+                 details={"series": body.series})
     session.commit()
     session.refresh(project)
     return _project_out(session, project, identity)

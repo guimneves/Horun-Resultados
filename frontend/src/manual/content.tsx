@@ -553,6 +553,15 @@ export const MANUAL_SECTIONS: ManualSection[] = [
             aparecem os que têm dados no projeto. Use os botões do alto para ver um grupo só.
           </li>
           <li>
+            <strong>Escolher o que aparece…</strong> (pesquisadores e coordenadores): marque as <strong>vistas</strong> (Parâmetros, Balanço de massas,
+            Artigo, Artigo Spigolon) e os <strong>grupos de gráficos</strong> que fazem sentido para este projeto — ex.: num projeto de rochas sem
+            hidropirólise, tire Artigo e Balanço de massas. Vale para todas as pessoas do projeto; marcar tudo volta ao padrão.
+          </li>
+          <li>
+            Nos pirogramas (e nas curvas de TG e nos cromatogramas), cada <strong>amostra</strong> tem uma cor; as <strong>réplicas</strong> da mesma
+            amostra ficam com a mesma cor e mudam só o traço (contínuo, tracejado, pontilhado).
+          </li>
+          <li>
             No alto da aba, troque <strong>Parâmetros</strong> por <strong>Balanço de massas</strong> (a escolha fica guardada neste navegador). Lá ficam três
             gráficos separados, em gramas × temperatura: <strong>Massa de óleo</strong>, <strong>Massa de gás</strong> e <strong>Massa de betume</strong>, com a
             média ± desvio das réplicas de cada amostra (pontos cheios) e cada réplica (pontos vazados); valores 0 ou vazios não entram. Com mais de uma

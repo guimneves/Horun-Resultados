@@ -128,12 +128,22 @@ SAMPLE_TYPES: dict[str, SampleType] = {
 }
 
 
+# O que pode aparecer na aba Séries (pedido do usuário, 21/10/2026: "criei
+# outro projeto de rochas e algumas abas não fazem sentido") — vistas e grupos
+# de gráficos de frontend/src/routes/SeriesTab.tsx. Vazio = tudo (o de sempre).
+SERIES_VIEWS = ("parametros", "massas", "artigo", "spigolon")
+SERIES_GROUPS = ("mo", "el", "gas", "fid", "tcd", "py", "pyro")
+SERIES_KEYS = SERIES_VIEWS + SERIES_GROUPS
+
+
 @dataclass
 class ProjectProfile:
     sample_type: str = DEFAULT_SAMPLE_TYPE
     recipes: list[str] = field(default_factory=list)  # vazio = as do tipo de amostra
     # parâmetros de interesse por receita; receita ausente = os "main" do catálogo
     parameters: dict[str, list[str]] = field(default_factory=dict)
+    # vistas/grupos da aba Séries que aparecem (vazio = todos) — SERIES_KEYS
+    series: list[str] = field(default_factory=list)
     version: int = PROFILE_VERSION
 
     def resolved(self) -> dict:
@@ -151,6 +161,7 @@ class ProjectProfile:
             "temperature_axis": st.temperature_axis,
             "recipes": recipes,
             "parameters": params,
+            "series": list(self.series),
         }
 
 
@@ -182,7 +193,13 @@ def validate(data: dict | None) -> ProjectProfile:
             if param(r, k) is None:
                 raise ProfileError(f'Parâmetro desconhecido: "{r}.{k}".')
         clean[r] = list(dict.fromkeys(keys))
-    return ProjectProfile(sample_type=sample_type, recipes=recipes, parameters=clean)
+    series = list(dict.fromkeys(data.get("series") or []))
+    for key in series:
+        if key not in SERIES_KEYS:
+            raise ProfileError(f'Vista ou grupo das Séries desconhecido: "{key}".')
+    if series and not any(k in SERIES_VIEWS for k in series):
+        raise ProfileError("Deixe ao menos uma vista das Séries.")
+    return ProjectProfile(sample_type=sample_type, recipes=recipes, parameters=clean, series=series)
 
 
 def load(profile_json: str | None) -> ProjectProfile:
@@ -203,7 +220,8 @@ def code_reader(profile_json: str | None) -> Callable[[str], CodeInfo]:
 
 def dump(profile: ProjectProfile) -> str:
     return json.dumps(
-        {"version": profile.version, "sample_type": profile.sample_type, "recipes": profile.recipes, "parameters": profile.parameters},
+        {"version": profile.version, "sample_type": profile.sample_type, "recipes": profile.recipes, "parameters": profile.parameters,
+         "series": profile.series},
         ensure_ascii=False,
     )
 

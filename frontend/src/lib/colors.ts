@@ -68,6 +68,27 @@ export function dashFor(i: number): string | undefined {
   return i < PALETTE.length ? undefined : '5 3'
 }
 
+// Curvas sobrepostas (pirogramas, TG, cromatogramas): uma COR por amostra e
+// um TRAÇO por réplica — réplicas da mesma amostra ficam com a mesma cor
+// (pedido do usuário, 21/10/2026). Acima de 8 amostras, a cor repete com
+// pontilhado mais longo.
+const REPLICATE_DASHES = [undefined, '6 3', '2 2', '10 3 2 3', '1 3']
+
+export function curveLooks(curves: { analysis_id: number; sample_id: number }[]): Map<number, { color: string; dash?: string }> {
+  const sampleIndex = new Map<number, number>()
+  const seenPerSample = new Map<number, number>()
+  const out = new Map<number, { color: string; dash?: string }>()
+  for (const c of curves) {
+    if (!sampleIndex.has(c.sample_id)) sampleIndex.set(c.sample_id, sampleIndex.size)
+    const si = sampleIndex.get(c.sample_id)!
+    const ri = seenPerSample.get(c.sample_id) ?? 0
+    seenPerSample.set(c.sample_id, ri + 1)
+    const dash = REPLICATE_DASHES[ri % REPLICATE_DASHES.length] ?? (si >= PALETTE.length ? '8 4' : undefined)
+    out.set(c.analysis_id, { color: seriesColor(si), dash })
+  }
+  return out
+}
+
 // Massas do balanço (gráficos de massa × temperatura): uma cor por massa;
 // o gás usa a mesma cor da fração G.
 export const MASS_COLORS: Record<string, string> = {

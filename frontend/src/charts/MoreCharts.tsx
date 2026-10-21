@@ -17,7 +17,7 @@ import {
   ZAxis,
 } from 'recharts'
 import type { AnalysisData, PyPeaks, PyroData, SampleRow } from '../api/types'
-import { dashFor, fractionColor, GAS_COLORS, seriesColor } from '../lib/colors'
+import { curveLooks, fractionColor, GAS_COLORS, seriesColor } from '../lib/colors'
 import { useState } from 'react'
 import { ChartLook } from '../components/ChartLook'
 import { fractionKey, lineLook, useChartPrefs } from '../lib/chartPrefs'
@@ -420,6 +420,8 @@ export function PyrogramChart({ curves, xAxis, signal }: { curves: AnalysisData<
         points: s[xAxis].map((x, i) => ({ x, y: s[signal][i] })),
       }
     })
+  // réplicas da mesma amostra: mesma cor, traço diferente
+  const looks = curveLooks(curves.filter((c) => lines.some((l) => l.id === c.analysis_id)))
   return (
     <ChartCard
       title={`Pirogramas sobrepostos — ${signal}`}
@@ -448,14 +450,14 @@ export function PyrogramChart({ curves, xAxis, signal }: { curves: AnalysisData<
           <YAxis {...axisProps} width={48} tickFormatter={(v: number) => fmt(v)} />
           <Tooltip {...tooltipStyle} labelFormatter={(v) => `${fmt(Number(v))}${xAxis === 'Temp' ? ' °C' : ''}`} formatter={(v) => fmt(Number(v))} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          {lines.map((l, i) => (
+          {lines.map((l) => (
             <Line
               key={l.id}
               name={l.name}
               data={l.points}
               dataKey="y"
-              stroke={seriesColor(i)}
-              strokeDasharray={dashFor(i)}
+              stroke={looks.get(l.id)?.color}
+              strokeDasharray={looks.get(l.id)?.dash}
               strokeWidth={2}
               dot={false}
               isAnimationActive={false}

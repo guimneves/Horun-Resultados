@@ -20,7 +20,7 @@ import {
   VanKrevelenChart,
 } from '../charts/MoreCharts'
 import { SelectChartsButton } from '../components/ChartSelection'
-import { Button, card, Dropdown, ErrorBox, inputClass, inputStyle, muted, Segmented } from '../components/ui'
+import { Button, card, Dropdown, ErrorBox, inputClass, inputStyle, Modal, muted, Segmented } from '../components/ui'
 import { useApp } from '../context/AppContext'
 import { fractionAllowed, FRACTION_CHOICES, type FractionChoice } from '../lib/fractionFilter'
 import { useSamples } from '../lib/useSamples'
@@ -256,9 +256,85 @@ export function SeriesTab() {
   return isTobacco ? <TobaccoSeriesTab /> : <RockSeriesTab />
 }
 
+const VIEW_OPTIONS: { value: View; label: string }[] = [
+  { value: 'parametros', label: 'Parâmetros' },
+  { value: 'massas', label: 'Balanço de massas' },
+  { value: 'artigo', label: 'Artigo' },
+  { value: 'spigolon', label: 'Artigo Spigolon' },
+]
+
+/** O que aparece nas Séries deste projeto (pedido do usuário, 21/10/2026):
+ * vistas e grupos de gráficos. Vale para todos do projeto. */
+function SeriesViewsModal({ projectId, current, onClose }: { projectId: number; current: string[]; onClose: () => void }) {
+  const { reloadProjects } = useApp()
+  const all = [...VIEW_OPTIONS.map((v) => v.value as string), ...SECTIONS.map((s) => s.id)]
+  const [chosen, setChosen] = useState<Set<string>>(() => new Set(current.length ? current : all))
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const toggle = (k: string) =>
+    setChosen((prev) => {
+      const next = new Set(prev)
+      if (next.has(k)) next.delete(k)
+      else next.add(k)
+      return next
+    })
+  const noView = !VIEW_OPTIONS.some((v) => chosen.has(v.value))
+  async function save() {
+    setBusy(true)
+    setError(null)
+    try {
+      const everything = all.every((k) => chosen.has(k))
+      await api.patch(`/projects/${projectId}/series-views`, { series: everything ? [] : all.filter((k) => chosen.has(k)) })
+      await reloadProjects()
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+      setBusy(false)
+    }
+  }
+  const box = (k: string, label: string) => (
+    <label key={k} className="flex items-center gap-2 py-0.5">
+      <input type="checkbox" checked={chosen.has(k)} onChange={() => toggle(k)} />
+      {label}
+    </label>
+  )
+  return (
+    <Modal title="O que aparece nas Séries" onClose={onClose}>
+      <div className="space-y-3 text-sm">
+        <p style={muted}>
+          Vale para todas as pessoas deste projeto. Grupos sem dados continuam escondidos mesmo marcados; desmarcados não aparecem
+          mesmo com dados.
+        </p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <div className="mb-1 font-semibold">Vistas</div>
+            {VIEW_OPTIONS.map((v) => box(v.value, v.label))}
+          </div>
+          <div>
+            <div className="mb-1 font-semibold">Grupos de gráficos (vista Parâmetros)</div>
+            {SECTIONS.map((s) => box(s.id, s.label))}
+          </div>
+        </div>
+        {noView && <p style={{ color: '#a12020' }}>Deixe ao menos uma vista.</p>}
+        <ErrorBox message={error} />
+        <div className="flex justify-end gap-2">
+          <Button onClick={onClose}>Cancelar</Button>
+          <Button variant="primary" disabled={busy || noView} onClick={save}>
+            Salvar
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 function RockSeriesTab() {
-  const { project } = useProject()
+  const { project, canEdit } = useProject()
   const { catalog, fractions, fractionLabel, paramLabel, techniqueLabel } = useApp()
+  // vistas/grupos escolhidos para este projeto (vazio = todos)
+  const enabled = project.profile?.series ?? []
+  const isOn = (k: string) => enabled.length === 0 || enabled.includes(k)
+  const [choosing, setChoosing] = useState(false)
   const [mode, setMode] = useState<Mode>('padrao')
   const [split, setSplit] = useState(false)
   const [onlyFraction, setOnlyFraction] = useState<FractionChoice>('todas')
@@ -267,7 +343,8 @@ function RockSeriesTab() {
   const [adding, setAdding] = useState(false)
   const [technique, setTechnique] = useState('rockeval')
   const [parameter, setParameter] = useState('TOC')
-  const [view, setViewState] = useState<View>(readView)
+  const [viewState, setViewState] = useState<View>(readView)
+  const view: View = isOn(viewState) ? viewState : (VIEW_OPTIONS.find((v) => isOn(v.value))?.value ?? 'parametros')
   const setView = (v: View) => {
     setViewState(v)
     try {
@@ -329,9 +406,9 @@ function RockSeriesTab() {
                   : e === 'alkanes'
                     ? list.some((s) => s.techniques?.includes('pygcms'))
                     : list.some((s) => s.techniques?.includes('rockeval'))
-  const sections = SECTIONS.map((sec) => ({ ...sec, series: sec.series.filter(hasSeries), extras: sec.extras.filter(hasExtra) })).filter(
-    (sec) => sec.series.length || sec.extras.length,
-  )
+  const sections = SECTIONS.filter((sec) => isOn(sec.id))
+    .map((sec) => ({ ...sec, series: sec.series.filter(hasSeries), extras: sec.extras.filter(hasExtra) }))
+    .filter((sec) => sec.series.length || sec.extras.length)
   const shown = section === 'todos' ? sections : sections.filter((sec) => sec.id === section)
   const params = catalog.find((t) => t.key === technique)?.params ?? []
   const chart = (col: string) => {
@@ -432,17 +509,19 @@ function RockSeriesTab() {
 
   return (
     <div className="space-y-4">
-      <Segmented
-        label="Vista"
-        value={view}
-        onChange={setView}
-        options={[
-          { value: 'parametros', label: 'Parâmetros' },
-          { value: 'massas', label: 'Balanço de massas' },
-          { value: 'artigo', label: 'Artigo' },
-          { value: 'spigolon', label: 'Artigo Spigolon' },
-        ]}
-      />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {VIEW_OPTIONS.filter((v) => isOn(v.value)).length > 1 ? (
+          <Segmented label="Vista" value={view} onChange={setView} options={VIEW_OPTIONS.filter((v) => isOn(v.value))} />
+        ) : (
+          <span />
+        )}
+        {canEdit && (
+          <Button variant="ghost" onClick={() => setChoosing(true)}>
+            Escolher o que aparece…
+          </Button>
+        )}
+      </div>
+      {choosing && <SeriesViewsModal projectId={project.id} current={enabled} onClose={() => setChoosing(false)} />}
       <div className="flex flex-wrap items-center gap-2">
         {view === 'parametros' && <Segmented label="Grupo de gráficos" value={section} onChange={setSection} options={groups} />}
         <div className="ml-auto flex flex-wrap items-center gap-2">

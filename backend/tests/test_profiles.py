@@ -68,3 +68,21 @@ def test_profile_options_lists_types_and_recipes(client):
     assert types == {"rocha_hidropirolise": "pronto", "tabaco": "pronto", "incrustacao": "planejado"}
     leco = next(r for r in data["recipes"] if r["key"] == "leco")
     assert leco["instrument"] == "LECO SC832" and leco["status"] == "pronto"
+
+
+def test_series_views_are_chosen_per_project(client):
+    """Aba Séries: escolher vistas/grupos que aparecem (21/10/2026); vazio = todos."""
+    from tests.conftest import COORD, PESQ, TEC, add_members
+
+    pid = client.post("projects", json={"name": "Rocha 2"}, headers=COORD).json()["id"]
+    add_members(client, pid, PESQ, TEC)
+    assert client.get(f"projects/{pid}", headers=PESQ).json()["profile"]["series"] == []
+    r = client.patch(f"projects/{pid}/series-views", json={"series": ["parametros", "mo", "pyro"]}, headers=PESQ)
+    assert r.status_code == 200, r.text
+    assert r.json()["profile"]["series"] == ["parametros", "mo", "pyro"]
+    assert client.patch(f"projects/{pid}/series-views", json={"series": ["xx"]}, headers=PESQ).status_code == 422
+    assert client.patch(f"projects/{pid}/series-views", json={"series": ["mo"]}, headers=PESQ).status_code == 422  # nenhuma vista
+    assert client.patch(f"projects/{pid}/series-views", json={"series": []}, headers=TEC).status_code == 403
+    # editar o projeto (formulário, sem "series") não apaga a escolha
+    client.patch(f"projects/{pid}", json={"profile": {"sample_type": "rocha_hidropirolise"}}, headers=COORD)
+    assert client.get(f"projects/{pid}", headers=PESQ).json()["profile"]["series"] == ["parametros", "mo", "pyro"]
