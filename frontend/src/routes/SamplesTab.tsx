@@ -207,6 +207,7 @@ export function SamplesTab() {
   // unir amostras iguais (21/10/2026)
   const [merging, setMerging] = useState<MergeCandidate[] | null>(null)
   const [showDups, setShowDups] = useState(false)
+  const [mergeHint, setMergeHint] = useState(false)
   // Tela enxuta por padrão: filtros recolhidos, "Lista" sem números, caixinhas só no modo seleção.
   const [showFilters, setShowFilters] = useState(false)
   const [view, setView] = useState<View>(readView)
@@ -222,6 +223,7 @@ export function SamplesTab() {
   const stopSelecting = () => {
     setSelecting(false)
     setSelected(new Set())
+    setMergeHint(false)
   }
 
   const otherFractions = useMemo(() => new Set(fractions.filter((f) => !f.in_series).map((f) => f.code)), [fractions])
@@ -353,6 +355,16 @@ export function SamplesTab() {
             <MenuItem onClick={() => (selecting ? stopSelecting() : setSelecting(true))}>{selecting ? 'Parar de selecionar' : 'Selecionar várias'}</MenuItem>
           )}
           {canEdit && <MenuItem onClick={() => setBulk(true)}>Criar várias</MenuItem>}
+          {canEdit && (
+            <MenuItem
+              onClick={() => {
+                setSelecting(true)
+                setMergeHint(true)
+              }}
+            >
+              Unir amostras…
+            </MenuItem>
+          )}
           <MenuItem onClick={() => setShowDups(true)}>Possíveis repetidas…</MenuItem>
           <MenuItem disabled={!filtered.length} onClick={() => exportAs('csv')}>
             Exportar CSV
@@ -548,6 +560,12 @@ export function SamplesTab() {
         </div>
       )}
 
+      {selecting && mergeHint && selectedIds.length < 2 && (
+        <p className="rounded-lg border px-3 py-2 text-sm" style={{ ...card, borderColor: 'var(--color-primary)' }}>
+          Marque as caixas das amostras que são <strong>a mesma</strong> (2 ou mais) e toque em <strong>Unir selecionadas…</strong>, na barra que
+          aparece embaixo. Dica: a busca ajuda a juntar os nomes parecidos na lista.
+        </p>
+      )}
       {canSelect && selectedIds.length > 0 && (
         <div
           className="sticky bottom-2 z-10 flex flex-wrap items-center gap-2 rounded-lg border p-2 shadow-lg"
@@ -567,9 +585,10 @@ export function SamplesTab() {
               </Button>
             </>
           )}
-          {selectedIds.length >= 2 && (
+          {canEdit && (
             <Button
-              disabled={bulkBusy}
+              disabled={bulkBusy || selectedIds.length < 2}
+              title={selectedIds.length < 2 ? 'Marque 2 ou mais amostras que são a mesma' : undefined}
               onClick={() =>
                 setMerging(
                   filtered
@@ -584,7 +603,7 @@ export function SamplesTab() {
                 )
               }
             >
-              Unir selecionadas…
+              Unir selecionadas{selectedIds.length >= 2 ? ` (${selectedIds.length})` : ''}…
             </Button>
           )}
           <Button variant="danger" disabled={bulkBusy} onClick={() => setConfirmDelete(selectedIds)}>

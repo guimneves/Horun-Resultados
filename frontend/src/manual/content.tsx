@@ -440,8 +440,9 @@ export const MANUAL_SECTIONS: ManualSection[] = [
         <Steps>
           <li>
             Na aba <strong>Amostras</strong>, <strong>Mais → Possíveis repetidas…</strong> lista os grupos de amostras cujo código é o mesmo sem acentos,
-            espaços, pontuação, &quot;de/da&quot;, réplica ou alíquota. Toque em <strong>Unir…</strong> no grupo. Para unir outras, use{' '}
-            <strong>Selecionar várias</strong>, marque as amostras e toque em <strong>Unir selecionadas…</strong>.
+            espaços, pontuação, &quot;de/da&quot;, réplica ou alíquota. Toque em <strong>Unir…</strong> no grupo. Para unir outras:{' '}
+            <strong>Mais → Unir amostras…</strong> (ou <strong>Selecionar várias</strong>), marque as caixas de 2 ou mais amostras e toque em{' '}
+            <strong>Unir selecionadas…</strong>, na barra que aparece embaixo da lista.
           </li>
           <li>
             Escolha a amostra que <strong>fica</strong> (a sugestão é a que tem mais medições) e toque em <strong>Unir</strong>.
