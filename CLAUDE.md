@@ -59,7 +59,7 @@ LECO sinal bruto e GC-FID/GC-MS da Shimadzu — .gcd/.qgd) por projeto, com tabe
 ## Comandos
 
 ```bash
-cd backend && .venv/Scripts/python -m pytest -q        # 217 passam
+cd backend && .venv/Scripts/python -m pytest -q        # 216 passam
 cd frontend && npx tsc -b && npx oxlint && npm run build
 ```
 
