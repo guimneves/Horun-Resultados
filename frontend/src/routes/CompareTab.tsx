@@ -52,9 +52,9 @@ export function CompareTab() {
           <SelectChartsButton />
         </div>
       </div>
-      <SamplePicker samples={samples} selected={selected} onChange={setSelected} max={16} />
+      <SamplePicker samples={samples} selected={selected} onChange={setSelected} max={40} />
       {chosen.length === 0 ? (
-        <Empty>Toque nas amostras acima para comparar (até 16).</Empty>
+        <Empty>Toque nas amostras acima para comparar (até 40) — ou filtre e use "Marcar as filtradas"; Shift + toque marca um intervalo.</Empty>
       ) : (
         <>
           <div className="table-wrap rounded-lg border" style={card}>

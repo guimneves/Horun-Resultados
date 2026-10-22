@@ -67,6 +67,8 @@ def _run_migrations() -> None:
     _ensure_column("fractiontype", "sample_type", "VARCHAR", default_sql="''")
     # 08/10/2026 — tabelas novas `projectmember` e `knownuser` (acesso por
     # projeto): nascem inteiras pelo create_all, sem coluna a acrescentar.
+    # 22/10/2026 — tabelas novas `samplevariable` e `samplevariablevalue`
+    # (variáveis de amostra): idem.
 
 
 def _seed_fractions() -> None:

@@ -232,3 +232,36 @@ class KnownUser(SQLModel, table=True):
     username: str = ""
     level: int = 5
     last_seen_at: datetime = Field(default_factory=utcnow)
+
+
+class SampleVariable(SQLModel, table=True):
+    """Variável de amostra do projeto (pedido do usuário, 22/10/2026): o eixo
+    das Séries. Rocha já nasce com "Temperatura de hidropirólise" (guardada em
+    `Sample.temperature_c`); tabaco com "Tipo" (a fração CHA/CIG/NAR). As
+    demais são criadas por pesquisadores e coordenadores e guardam os valores
+    em `SampleVariableValue`. app/services/variables.py."""
+
+    __table_args__ = (UniqueConstraint("project_id", "key"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    project_id: int = Field(foreign_key="project.id", index=True)
+    key: str  # "temperatura", "tipo" (embutidas) ou "v<id>"
+    builtin: str = ""  # "" | "temperature" | "fraction"
+    label: str
+    kind: str = "numero"  # numero | categoria
+    unit: str = ""
+    options_json: str = Field(default="[]", sa_column=Column(Text, nullable=False, default="[]"))  # categorias, na ordem
+    description: str = ""
+    sort: int = 0
+    created_by: str = ""
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class SampleVariableValue(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("variable_id", "sample_id"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    variable_id: int = Field(foreign_key="samplevariable.id", index=True)
+    sample_id: int = Field(foreign_key="sample.id", index=True)
+    number: float | None = None
+    text: str = ""

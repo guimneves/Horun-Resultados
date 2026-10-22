@@ -1,6 +1,30 @@
 # Changelog — Horun · Resultados
 
-## Não lançado — 21/10/2026
+## Não lançado — 22/10/2026
+### Variáveis de amostra e Séries em função da variável (pedido do mantenedor)
+- Tabelas novas `samplevariable` e `samplevariablevalue` (nascem pelo
+  `create_all`). Embutidas por tipo de amostra: rocha → "Temperatura de
+  hidropirólise" (= `Sample.temperature_c`), tabaco → "Tipo" (= fração);
+  nome/unidade editáveis, não se apagam.
+- Pesquisadores e coordenadores (níveis 1–3) criam, editam e apagam variáveis
+  de **número** (com unidade) ou **categoria** (lista ordenada; renomear leva
+  os valores, categoria em uso não sai): `GET/POST /projects/{id}/variables`,
+  `PATCH/DELETE /projects/{id}/variables/{vid}`, `PUT
+  /projects/{id}/variables/values` (lote, tudo ou nada).
+- Aba **Variáveis** (definir + tabela de valores, preencher várias amostras de
+  uma vez). A tabela de amostras traz `variables`.
+- `GET /series?variable=<chave>`: eixo X = a variável (pontos com `x`);
+  categoria → barras na ordem das categorias; sem valor = fora. Aba Séries com
+  seletor **Variável** e, nas variáveis criadas, **Parâmetros** (Todos,
+  Matéria orgânica, Elementar...; por análise fora da rocha). Séries agora
+  aparece em todo projeto.
+- Unir amostras leva os valores; excluir amostra/projeto apaga os valores.
+
+### Comparar: marcar várias amostras de uma vez (pedido do mantenedor)
+- Filtro por código ou fração + "Marcar/Desmarcar as filtradas"; Shift + toque
+  marca um intervalo; limite de 16 para 40 amostras.
+
+## 21/10/2026
 ### Rocha original como ponto nas séries (pedido do mantenedor)
 - Nos gráficos parâmetro × temperatura, a rocha original deixou de ser só uma
   linha tracejada: é o primeiro ponto do eixo ("Original", um passo antes da

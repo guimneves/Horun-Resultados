@@ -74,6 +74,7 @@ export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) => request<T>(path, json('POST', body)),
   patch: <T>(path: string, body?: unknown) => request<T>(path, json('PATCH', body)),
+  put: <T>(path: string, body?: unknown) => request<T>(path, json('PUT', body)),
   delete: <T>(path: string, body?: unknown) => request<T>(path, json('DELETE', body)),
   postForm: <T>(path: string, form: FormData) => request<T>(path, { method: 'POST', body: form }),
   /** Baixa um arquivo (exportação, original) e entrega ao navegador. */

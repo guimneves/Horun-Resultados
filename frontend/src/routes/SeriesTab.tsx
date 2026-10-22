@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../api/client'
 import type { AnalysisData, MassesResponse, MassKey, Mode, PyPeaks, PyroData, SampleRow, SeriesResponse } from '../api/types'
 import { ArticleView } from '../charts/ArticleCharts'
@@ -27,6 +28,8 @@ import { useSamples } from '../lib/useSamples'
 import { useProject } from './ProjectLayout'
 import { MODE_OPTIONS } from './SamplesTab'
 import { TobaccoSeriesTab } from './TobaccoSeriesTab'
+import { VariableSeriesView } from './VariableSeriesView'
+import { useVariables, variableTitle } from './VariablesTab'
 
 // Painel de séries: grupos de gráficos (só aparecem os que têm dados no projeto).
 type Extra = 'toc_leco' | 'hi_tmax' | 'vk' | 'gas' | 'gas_series' | 'gas_fid' | 'gas_tcd' | 'alkanes' | 'pyro'
@@ -144,30 +147,57 @@ export function SamplePicker({
   max?: number
 }) {
   const [q, setQ] = useState('')
-  const shown = samples.filter((s) => s.code.toLowerCase().includes(q.trim().toLowerCase()))
+  const [last, setLast] = useState<number | null>(null)
+  const { fractionLabel } = useApp()
+  const term = q.trim().toLowerCase()
+  // o filtro casa com o código e com o nome da fração (ex.: "extraída", "300")
+  const shown = samples.filter((s) => !term || s.code.toLowerCase().includes(term) || fractionLabel(s.fraction).toLowerCase().includes(term))
+  // marcar várias de uma vez (pedido do usuário, 22/10/2026): as mostradas pelo
+  // filtro, ou Shift + toque para marcar do último tocado até este
+  const addMany = (ids: number[]) => onChange([...selected, ...ids.filter((id) => !selected.includes(id))].slice(0, Math.max(max, selected.length)))
+  const shownOn = shown.filter((s) => selected.includes(s.id)).length
   return (
     <div className="rounded-lg border p-3" style={card}>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm">
         <span>
           Amostras ({selected.length} de {samples.length}; até {max})
         </span>
-        <input
-          className={`${inputClass} max-w-xs`}
-          style={inputStyle}
-          placeholder="Filtrar"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          aria-label="Filtrar amostras"
-        />
+        <span className="flex flex-wrap items-center gap-2">
+          <input
+            className={`${inputClass} max-w-xs`}
+            style={inputStyle}
+            placeholder="Filtrar (código ou fração)"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            aria-label="Filtrar amostras"
+          />
+          <Button variant="ghost" disabled={shownOn === shown.length || selected.length >= max} onClick={() => addMany(shown.map((s) => s.id))}>
+            Marcar {term ? 'as filtradas' : 'todas'}
+          </Button>
+          {selected.length > 0 && (
+            <Button variant="ghost" onClick={() => onChange(term ? selected.filter((id) => !shown.some((s) => s.id === id)) : [])}>
+              Desmarcar {term ? 'as filtradas' : 'todas'}
+            </Button>
+          )}
+        </span>
       </div>
       <div className="flex max-h-40 flex-wrap gap-1 overflow-y-auto">
-        {shown.map((s) => {
+        {shown.map((s, i) => {
           const on = selected.includes(s.id)
           return (
             <button
               key={s.id}
               type="button"
-              onClick={() => onChange(on ? selected.filter((x) => x !== s.id) : selected.length < max ? [...selected, s.id] : selected)}
+              title="Shift + toque marca do último tocado até este"
+              onClick={(e) => {
+                const from = last != null ? shown.findIndex((x) => x.id === last) : -1
+                setLast(s.id)
+                if (e.shiftKey && from >= 0) {
+                  addMany(shown.slice(Math.min(from, i), Math.max(from, i) + 1).map((x) => x.id))
+                  return
+                }
+                onChange(on ? selected.filter((x) => x !== s.id) : selected.length < max ? [...selected, s.id] : selected)
+              }}
               className="rounded-full border px-3 py-1 text-xs"
               style={{
                 borderColor: on ? 'var(--color-primary)' : 'var(--color-border)',
@@ -250,10 +280,61 @@ export function AlkaneSection({ projectId, samples, mode, initial }: { projectId
   )
 }
 
-/** Séries: rocha = parâmetros × temperatura; tabaco = por tipo de produto. */
+const VARIABLE_KEY = (projectId: number) => `resultados.series.variavel.${projectId}`
+
+/** Séries em função de uma variável de amostra (22/10/2026): temperatura de
+ * hidropirólise (rocha — a vista completa de sempre), tipo (tabaco — uma aba
+ * por tipo de produto) ou uma criada na aba Variáveis (VariableSeriesView). */
 export function SeriesTab() {
-  const { isTobacco } = useProject()
-  return isTobacco ? <TobaccoSeriesTab /> : <RockSeriesTab />
+  const { project } = useProject()
+  const { data, error } = useVariables(project.id)
+  const [key, setKeyState] = useState<string>(() => {
+    try {
+      return localStorage.getItem(VARIABLE_KEY(project.id)) ?? ''
+    } catch {
+      return ''
+    }
+  })
+  const setKey = (k: string) => {
+    setKeyState(k)
+    try {
+      localStorage.setItem(VARIABLE_KEY(project.id), k)
+    } catch {
+      /* sem armazenamento: vale só nesta visita */
+    }
+  }
+  const vars = data?.variables ?? []
+  const chosen = vars.find((v) => v.key === key) ?? vars[0]
+  const enabled = project.profile?.series ?? []
+  const rockGroups = project.profile?.temperature_axis
+    ? SECTIONS.filter((sec) => sec.series.length && (enabled.length === 0 || enabled.includes(sec.id))).map((sec) => ({ id: sec.id, label: sec.label, series: sec.series }))
+    : null
+  if (error) return <ErrorBox message={error} />
+  if (data === null) return <p style={muted}>Carregando…</p>
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        {vars.length > 1 && (
+          <Segmented label="Variável" value={chosen?.key ?? ''} onChange={setKey} options={vars.map((v) => ({ value: v.key, label: variableTitle(v) }))} />
+        )}
+        <Link to={`/projects/${project.id}/variaveis`} className="text-sm underline" style={{ color: 'var(--color-primary)' }}>
+          {vars.length > 1 ? 'Variáveis…' : 'Criar outras variáveis…'}
+        </Link>
+      </div>
+      {!chosen ? (
+        <p style={muted}>
+          Este projeto ainda não tem variáveis de amostra. Crie uma na aba <strong>Variáveis</strong> (ex.: pressão, lote) e os resultados aparecem aqui em
+          função dela.
+        </p>
+      ) : chosen.builtin === 'temperature' ? (
+        <RockSeriesTab />
+      ) : chosen.builtin === 'fraction' ? (
+        <TobaccoSeriesTab />
+      ) : (
+        <VariableSeriesView key={chosen.key} variable={chosen} groups={rockGroups} />
+      )}
+    </div>
+  )
 }
 
 const VIEW_OPTIONS: { value: View; label: string }[] = [

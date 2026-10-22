@@ -8,6 +8,12 @@ Validade (`mode`):
   "banco de experimentos válidos";
 * "todas": inclui as inválidas.
 
+Eixo X das séries = uma variável de amostra (app/services/variables.py,
+22/10/2026): a temperatura de hidropirólise (o de sempre, com a rocha original
+como ponto de partida), o tipo do tabaco ou uma criada pelas pessoas — número
+(linhas) ou categoria (barras, na ordem das categorias). Amostra sem valor na
+variável fica fora (menos a rocha original, na temperatura).
+
 Média ± desvio: média de TODOS os valores da amostra para o parâmetro (todas
 as réplicas de análise de todas as alíquotas); desvio-padrão amostral (n-1).
 Na série, cada ponto (fração × temperatura × atmosfera) junta as amostras:
@@ -24,7 +30,8 @@ from dataclasses import dataclass
 
 from sqlmodel import Session, select
 
-from app.db.models import Analysis, AnalysisValue, Experiment, FractionType, Sample, SampleAlias, StoredFile
+from app.db.models import Analysis, AnalysisValue, Experiment, FractionType, Project, Sample, SampleAlias, SampleVariable, StoredFile
+from app.services import variables as variables_service
 from app.services.catalog import TECHNIQUES
 
 MODES = ("padrao", "validas", "todas")
@@ -154,6 +161,8 @@ def sample_row(sample: Sample, experiments: dict[int, Experiment]) -> dict:
 
 def table(session: Session, project_id: int, mode: str = "padrao") -> dict:
     data = load(session, project_id)
+    project = session.get(Project, project_id)
+    var_values = variables_service.all_values(session, project, list(data.samples.values())) if project else {}
     by_sample = _values_by_sample(data, mode)
     techniques_by_sample: dict[int, set[str]] = defaultdict(set)
     for a in data.analyses.values():
@@ -163,6 +172,7 @@ def table(session: Session, project_id: int, mode: str = "padrao") -> dict:
         row = sample_row(s, data.experiments)
         row["techniques"] = sorted(techniques_by_sample.get(s.id, set()))
         row["values"] = {k: mean_sd(v) for k, v in by_sample.get(s.id, {}).items()}
+        row["variables"] = var_values.get(s.id, {})
         rows.append(row)
     return {"samples": rows}
 
@@ -178,9 +188,23 @@ def series(
     parameter: str,
     mode: str = "padrao",
     split_replicates: bool = False,
+    variable: SampleVariable | None = None,
 ) -> dict:
+    """`variable` None = temperatura de hidropirólise (o de sempre)."""
     data = load(session, project_id, technique=technique)
     fractions = _fraction_groups(session)
+    on_temperature = variable is None or variable.builtin == "temperature"
+    project = session.get(Project, project_id)
+    categories: list[dict] = []
+    if on_temperature:
+        x_of: dict = {s.id: s.temperature_c for s in data.samples.values()}
+    else:
+        assert variable is not None and project is not None
+        x_of = variables_service.values_of(session, variable, list(data.samples.values()))
+        categories = variables_service.options_of(session, project, variable)
+    order = {c["value"]: i for i, c in enumerate(categories)}
+    # "Tipo" (a própria fração) no eixo: uma série só, com todas as amostras
+    one_group = variable is not None and variable.builtin == "fraction"
     key = f"{technique}.{parameter}"
     by_sample = _values_by_sample(data, mode)
     atmospheres = {e.atmosphere for e in data.experiments.values() if e.atmosphere}
@@ -195,37 +219,42 @@ def series(
         if frac is not None and not frac.in_series:
             continue
         stats = mean_sd(vals)
-        if s.temperature_c is None:
-            # rocha original (sem temperatura): linha de referência
-            baseline.append({"sample_id": s.id, "code": s.code, "fraction": s.fraction, **stats})
+        x = x_of.get(s.id)
+        if x is None:
+            if on_temperature:
+                # rocha original (sem temperatura): o ponto de partida das linhas
+                baseline.append({"sample_id": s.id, "code": s.code, "fraction": s.fraction, **stats})
             continue
-        group_code = (frac.series_group or frac.code) if frac else s.fraction
+        if categories and x not in order:
+            continue
+        group_code = "todas" if one_group else ((frac.series_group or frac.code) if frac else s.fraction)
         exp = data.experiments.get(s.experiment_id) if s.experiment_id else None
         # atmosfera só separa linhas quando o projeto tem mais de uma
         atm = ((exp.atmosphere if exp else "") or "atmosfera não informada") if len(atmospheres) > 1 else ""
         letter = (exp.replicate_letter if exp else "") if split_replicates else ""
         gk = (group_code, atm, letter)
         g = groups.setdefault(gk, {"points": defaultdict(list)})
-        g["points"][s.temperature_c].append({"sample_id": s.id, "code": s.code, "values": vals, **stats})
+        g["points"][x].append({"sample_id": s.id, "code": s.code, "values": vals, **stats})
 
     out_series = []
     for (group_code, atm, letter), g in sorted(groups.items(), key=lambda kv: (fractions[kv[0][0]].sort if kv[0][0] in fractions else 99, kv[0][1], kv[0][2])):
         frac = fractions.get(group_code)
         members = sorted({c for c, f in fractions.items() if (f.series_group or c) == group_code})
-        label = frac.label if frac else group_code
+        label = "Todas as amostras" if group_code == "todas" else (frac.label if frac else group_code)
         if atm:
             label += f" · {atm}"
         if letter:
             label += f" · réplica {letter}"
         points = []
-        for temp, entries in sorted(g["points"].items()):
+        for temp, entries in sorted(g["points"].items(), key=lambda kv: order.get(kv[0], 0) if categories else kv[0]):
             if len(entries) > 1:
                 stats = mean_sd([e["mean"] for e in entries])
             else:
                 stats = {k: entries[0][k] for k in ("mean", "sd")} | {"n": entries[0]["n"]}
             points.append(
                 {
-                    "temperature_c": temp,
+                    "x": temp,
+                    "temperature_c": temp if on_temperature else None,
                     **stats,
                     "n_samples": len(entries),
                     "n_values": sum(e["n"] for e in entries),
@@ -244,6 +273,14 @@ def series(
         "mode": mode,
         "series": out_series,
         "baseline": baseline,
+        "variable": {
+            "key": variable.key if variable else "temperatura",
+            "builtin": variable.builtin if variable else "temperature",
+            "label": variable.label if variable else "Temperatura de hidropirólise",
+            "kind": variable.kind if variable else "numero",
+            "unit": variable.unit if variable else "°C",
+            "categories": categories,
+        },
     }
 
 

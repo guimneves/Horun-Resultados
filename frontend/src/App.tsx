@@ -7,6 +7,7 @@ import { ProjectListPage } from './routes/ProjectListPage'
 import { ProjectLayout } from './routes/ProjectLayout'
 import { SamplesTab } from './routes/SamplesTab'
 import { ExperimentsTab } from './routes/ExperimentsTab'
+import { VariablesTab } from './routes/VariablesTab'
 import { SeriesTab } from './routes/SeriesTab'
 import { CompareTab } from './routes/CompareTab'
 import { ImportTab } from './routes/ImportTab'
@@ -63,6 +64,7 @@ function Shell() {
               <Route path="amostras" element={<SamplesTab />} />
               <Route path="experimentos" element={<ExperimentsTab />} />
               <Route path="series" element={<SeriesTab />} />
+              <Route path="variaveis" element={<VariablesTab />} />
               <Route path="comparar" element={<CompareTab />} />
               <Route path="importar" element={<ImportTab />} />
               <Route path="historico" element={<HistoryTab />} />

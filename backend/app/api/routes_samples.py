@@ -19,7 +19,7 @@ from app.core.identity import HorunIdentity, get_identity
 from app.core.permissions import require_editor
 from app.db.models import Analysis, AnalysisValue, Experiment, FractionType, Project, Sample, SampleAlias, utcnow
 from app.db.session import get_session
-from app.services import audit, deletion, importer, masses, profiles, results
+from app.services import audit, deletion, importer, masses, profiles, results, variables
 from app.services.codes import normalize_code, parse_experiment_code, strip_accents
 
 router = APIRouter(tags=["amostras"])
@@ -329,6 +329,7 @@ def merge_samples(
         else:
             al.sample_id = target.id
             session.add(al)
+    variables.move_values(session, [x.id for x in sources], target)  # type: ignore[misc]
     session.flush()
     notes = [target.notes] if target.notes else []
     for x in sources:

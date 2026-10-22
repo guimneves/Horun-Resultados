@@ -50,6 +50,10 @@ LECO sinal bruto e GC-FID/GC-MS da Shimadzu — .gcd/.qgd) por projeto, com tabe
   (ninguém se tira). Lista para escolher = a do Core
   (`GET /internal/modules/resultados/users`, mesma chave dos avisos, cache de
   60 s); sem o Core, quem já abriu o módulo (`KnownUser`, `services/directory.py`).
+- **Variáveis de amostra** (`app/services/variables.py`, aba Variáveis): eixo
+  das Séries. Embutidas: `temperatura` (= `Sample.temperature_c`, rocha) e
+  `tipo` (= fração, tabaco); as criadas têm chave `v<id>`. Excluir/unir
+  amostras e excluir projeto cuidam de `SampleVariableValue`.
 - Gráficos: cores por significado (`frontend/src/lib/colors.ts`, paleta validada),
   sempre com legenda e "Ver tabela"; nada de eixo duplo. Hidropirolisada em tons
   frios e extraída em tons quentes (`FRACTION_FAMILIES`), sempre. Gráfico novo
@@ -59,7 +63,7 @@ LECO sinal bruto e GC-FID/GC-MS da Shimadzu — .gcd/.qgd) por projeto, com tabe
 ## Comandos
 
 ```bash
-cd backend && .venv/Scripts/python -m pytest -q        # 217 passam
+cd backend && .venv/Scripts/python -m pytest -q        # 222 passam
 cd frontend && npx tsc -b && npx oxlint && npm run build
 ```
 

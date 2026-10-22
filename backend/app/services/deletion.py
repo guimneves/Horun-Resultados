@@ -2,7 +2,7 @@
 individual (página da amostra) e a em lote (aba Amostras).
 
 Excluir uma amostra apaga tudo o que é só dela: as medições (análises, com
-curvas/picos em `data_json`), os valores, os nomes lembrados (`SampleAlias`) e
+curvas/picos em `data_json`), os valores, os nomes lembrados (`SampleAlias`), os valores das variáveis de amostra e
 a validação (campos da própria amostra/medição). O histórico fica.
 
 Arquivo original (`StoredFile`): continua se outra medição ainda aponta para
@@ -20,7 +20,7 @@ from sqlalchemy import delete as sa_delete
 from sqlalchemy import func
 from sqlmodel import Session, select
 
-from app.db.models import Analysis, AnalysisValue, Sample, SampleAlias, StoredFile
+from app.db.models import Analysis, AnalysisValue, Sample, SampleAlias, SampleVariableValue, StoredFile
 from app.services import storage
 
 _CHUNK = 500  # limite de parâmetros do IN (SQLite)
@@ -78,6 +78,7 @@ def execute(session: Session, p: DeletionPlan) -> list[str]:
     sample_ids = [s.id for s in p.samples]
     for part in _chunks(sample_ids):
         session.exec(sa_delete(SampleAlias).where(SampleAlias.sample_id.in_(part)))  # type: ignore[attr-defined]
+        session.exec(sa_delete(SampleVariableValue).where(SampleVariableValue.sample_id.in_(part)))  # type: ignore[attr-defined]
     for s in p.samples:
         session.delete(s)
     digests = []

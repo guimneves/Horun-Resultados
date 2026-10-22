@@ -17,7 +17,7 @@ from app.core.identity import HorunIdentity, get_identity
 from app.core.permissions import require_editor
 from app.db.models import ImportBatch, Project
 from app.db.session import get_session
-from app.services import article, directory, importer, report, results
+from app.services import article, directory, importer, report, results, variables
 from app.services.catalog import TECHNIQUES
 
 router = APIRouter(tags=["resultados"])
@@ -106,6 +106,7 @@ def series(
     parameter: str,
     mode: str = "padrao",
     split_replicates: bool = False,
+    variable: str = "",
     project: Project = Depends(get_project),
     session: Session = Depends(get_session),
     _i: HorunIdentity = Depends(get_identity),
@@ -114,7 +115,12 @@ def series(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Técnica desconhecida.")
     if mode not in results.MODES:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Modo de validade inválido.")
-    return results.series(session, project.id, technique, parameter, mode, split_replicates)
+    var = None
+    if variable:
+        var = variables.get(session, project, variable)
+        if var is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Variável não encontrada.")
+    return results.series(session, project.id, technique, parameter, mode, split_replicates, var)
 
 
 @router.get("/projects/{project_id}/article")

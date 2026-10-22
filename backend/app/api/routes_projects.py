@@ -36,6 +36,8 @@ from app.db.models import (
     ProjectMember,
     Sample,
     SampleAlias,
+    SampleVariable,
+    SampleVariableValue,
     StoredFile,
     utcnow,
 )
@@ -285,6 +287,10 @@ def delete_project(
         session.exec(sa_delete(AnalysisValue).where(AnalysisValue.analysis_id.in_(analysis_ids[start : start + 500])))  # type: ignore[union-attr]
     session.exec(sa_delete(Analysis).where(Analysis.project_id == pid))  # type: ignore[arg-type]
     session.exec(sa_delete(SampleAlias).where(SampleAlias.project_id == pid))  # type: ignore[arg-type]
+    var_ids = list(session.exec(select(SampleVariable.id).where(SampleVariable.project_id == pid)))
+    if var_ids:
+        session.exec(sa_delete(SampleVariableValue).where(SampleVariableValue.variable_id.in_(var_ids)))  # type: ignore[union-attr]
+    session.exec(sa_delete(SampleVariable).where(SampleVariable.project_id == pid))  # type: ignore[arg-type]
     session.exec(sa_delete(Sample).where(Sample.project_id == pid))  # type: ignore[arg-type]
     session.exec(sa_delete(Experiment).where(Experiment.project_id == pid))  # type: ignore[arg-type]
     session.exec(sa_delete(ImportBatch).where(ImportBatch.project_id == pid))  # type: ignore[arg-type]

@@ -9,8 +9,10 @@ import { UNDER_CORE } from '../lib/underCore'
 // hidropirólise); projetos de tabaco não têm séries nem experimentos.
 export const PROJECT_TABS = [
   { to: 'amostras', label: 'Amostras' },
-  // tabaco também tem Séries (por tipo de produto — pedido do usuário, 19/10/2026)
-  { to: 'series', label: 'Séries', temperature: true, tobacco: true },
+  // Séries em função de uma variável de amostra (temperatura, tipo do tabaco ou
+  // as criadas na aba Variáveis — pedido do usuário, 22/10/2026): todo projeto
+  { to: 'series', label: 'Séries' },
+  { to: 'variaveis', label: 'Variáveis' },
   { to: 'comparar', label: 'Comparar' },
   { to: 'experimentos', label: 'Condições experimentais', temperature: true },
 ]

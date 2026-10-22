@@ -542,11 +542,54 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     ),
   },
   {
+    id: 'variaveis',
+    title: 'Variáveis de amostra (o eixo das Séries)',
+    body: (
+      <>
+        <p>
+          Uma <strong>variável de amostra</strong> é uma característica de cada amostra que serve de eixo nos gráficos da aba Séries. Todo projeto de rocha já
+          vem com <strong>Temperatura de hidropirólise</strong> (lida do código, ex.: HP300 → 300 °C) e todo projeto de tabaco com <strong>Tipo</strong>{' '}
+          (charuto, cigarro, essência de narguilé). Outras — pressão, tempo de reação, lote, granulometria... — você cria na aba <strong>Variáveis</strong>.
+        </p>
+        <Steps>
+          <li>
+            <strong>Criar</strong> (pesquisadores e coordenadores): aba <strong>Variáveis</strong> → <strong>+ Nova variável</strong>. Dê um nome e escolha o
+            tipo: <strong>Número</strong> (com unidade, ex.: bar — vira linhas nas Séries) ou <strong>Categoria</strong> (uma lista de opções, ex.: L1, L2 —
+            vira barras, na ordem da lista).
+          </li>
+          <li>
+            <strong>Editar</strong>: muda nome, unidade, descrição e as categorias. Mudar o nome de uma categoria muda também nas amostras que já a usam; uma
+            categoria em uso não pode sair (troque antes o valor das amostras). As variáveis do tipo de amostra (temperatura, tipo) não se apagam; as categorias do
+            Tipo do tabaco são fixas.
+          </li>
+          <li>
+            <strong>Apagar</strong>: leva junto os valores preenchidos. Não dá para desfazer.
+          </li>
+          <li>
+            <strong>Preencher os valores</strong>: na tabela <strong>Valores por amostra</strong>, digite ou escolha o valor de cada amostra e toque em{' '}
+            <strong>Salvar alterações</strong>. Para várias de uma vez (ex.: as réplicas), marque as amostras, escolha a variável e o valor e toque em{' '}
+            <strong>Aplicar</strong> — depois Salvar. O filtro <strong>Sem valor em…</strong> mostra só as que faltam. Número aceita vírgula (10,5).
+          </li>
+          <li>
+            Mudar a temperatura ou o tipo aqui muda a própria amostra (é o mesmo valor da página da amostra).
+          </li>
+        </Steps>
+      </>
+    ),
+  },
+  {
     id: 'series',
     title: 'Como ver os gráficos de série',
     body: (
       <>
         <Steps>
+          <li>
+            No alto da aba <strong>Séries</strong>, escolha a <strong>Variável</strong> do eixo (aparece quando o projeto tem mais de uma). Na temperatura de
+            hidropirólise, a aba fica como sempre (vistas Parâmetros, Balanço de massas, Artigo...); no Tipo do tabaco, uma aba por tipo de produto. Numa
+            variável criada por vocês, escolha os <strong>Parâmetros</strong> (Todos, Matéria orgânica, Elementar... na rocha; por análise nos outros tipos) e
+            cada parâmetro vira um gráfico em função da variável: <strong>número</strong> → uma linha por fração; <strong>categoria</strong> → barras lado a
+            lado. Amostras sem valor na variável ficam de fora.
+          </li>
           <li>
             Na aba <strong>Séries</strong>, os gráficos aparecem todos juntos, em grupos: <strong>Matéria orgânica</strong> (COT, C total, HI, OI, Tmax, S1, S2,
             HI × Tmax e <strong>COT (Rock-Eval) × C total (LECO)</strong>, com a reta ajustada e o <strong>R²</strong>
@@ -655,7 +698,9 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     body: (
       <Steps>
         <li>
-          Na aba <strong>Comparar</strong>, toque nas amostras que quer ver lado a lado (até 16).
+          Na aba <strong>Comparar</strong>, toque nas amostras que quer ver lado a lado (até 40). Para marcar várias de uma vez: escreva no
+          filtro (código ou fração, ex.: &quot;extraída&quot; ou &quot;HP300&quot;) e toque em <strong>Marcar as filtradas</strong>; ou toque numa amostra e, com{' '}
+          <strong>Shift</strong>, em outra — marca todas entre as duas. <strong>Desmarcar</strong> faz o contrário.
         </li>
         <li>A tabela mostra todos os parâmetros que elas têm. Escolha um parâmetro para ver o gráfico de barras.</li>
         <li>Se houver Rock-Eval ou Py-GC-MS, os pirogramas e a distribuição de n-alcanos dessas amostras aparecem embaixo.</li>

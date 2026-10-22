@@ -124,6 +124,32 @@ export interface SampleRow {
   validated_at: string | null
   techniques?: string[]
   values: Record<string, Stat>
+  /** valor de cada variável de amostra (chave → número, categoria ou null) */
+  variables?: Record<string, VariableValue>
+}
+
+export type VariableValue = number | string | null
+
+/** Variável de amostra do projeto (eixo das Séries) — backend/app/services/variables.py. */
+export interface SampleVariable {
+  id: number
+  key: string
+  /** "" = criada pelas pessoas; "temperature" / "fraction" = do tipo de amostra */
+  builtin: '' | 'temperature' | 'fraction'
+  label: string
+  kind: 'numero' | 'categoria'
+  unit: string
+  description: string
+  options: { value: string; label: string }[]
+  options_editable: boolean
+  can_delete: boolean
+  n_values: number
+}
+
+export interface VariablesResponse {
+  variables: SampleVariable[]
+  /** sample_id → chave → valor */
+  values: Record<string, Record<string, VariableValue>>
 }
 
 export interface AnalysisOut {
@@ -204,6 +230,8 @@ export interface MassesResponse {
 }
 
 export interface SeriesPoint extends Stat {
+  /** valor da variável do eixo (número ou categoria) */
+  x: number | string
   temperature_c: number
   n_samples: number
   n_values: number
@@ -228,6 +256,14 @@ export interface SeriesResponse {
   mode: Mode
   series: Series[]
   baseline: ({ sample_id: number; code: string; fraction: string } & Stat)[]
+  variable?: {
+    key: string
+    builtin: SampleVariable['builtin']
+    label: string
+    kind: SampleVariable['kind']
+    unit: string
+    categories: { value: string; label: string }[]
+  }
 }
 
 export interface AnalysisData<T = unknown> {
