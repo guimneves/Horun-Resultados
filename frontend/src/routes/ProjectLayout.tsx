@@ -162,7 +162,11 @@ export function ProjectLayout() {
       <ErrorBox message={error} />
 
       <nav className="mb-4 flex gap-1 overflow-x-auto overflow-y-hidden border-b" style={{ borderColor: 'var(--color-border)' }} aria-label="Abas do projeto">
-        {PROJECT_TABS.filter((tab) => !('temperature' in tab && tab.temperature) || (project.profile?.temperature_axis ?? true)).map((tab) => {
+        {PROJECT_TABS.filter(
+          (tab) =>
+            (!('temperature' in tab && tab.temperature) || (project.profile?.temperature_axis ?? true)) &&
+            (!('ase' in tab && tab.ase) || sampleType === 'ase_extracao'),
+        ).map((tab) => {
           const to = `/projects/${project.id}/${tab.to}`
           const active = location.pathname.startsWith(to)
           return (

@@ -135,14 +135,82 @@ export const MANUAL_SECTIONS: ManualSection[] = [
         </li>
         <li>Digite o nome, uma descrição curta e escolha uma cor.</li>
         <li>
-          Em <strong>Tipo de amostra</strong>, escolha <strong>Rocha — maturação artificial (hidropirólise)</strong> ou <strong>Tabaco</strong>. O tipo decide
-          como os nomes das amostras são lidos na importação, quais análises aparecem no passo 1 e quais abas o projeto tem (veja{' '}
-          <strong>Projetos de tabaco</strong>).
+          Em <strong>Tipo de amostra</strong>, escolha <strong>Geoquímica — Rochas</strong> (maturação artificial por hidropirólise, o de sempre),{' '}
+          <strong>Geoquímica — Extração ASE</strong> ou <strong>Tabaco</strong>. O tipo decide como os nomes das amostras são lidos na importação, quais
+          análises aparecem no passo 1 e quais abas o projeto tem (veja <strong>Projetos de tabaco</strong> e <strong>Extrações ASE e planejamento
+          fatorial</strong>).
         </li>
         <li>
           Toque em <strong>Criar projeto</strong>. Ele aparece na lista e na barra lateral.
         </li>
       </Steps>
+    ),
+  },
+  {
+    id: 'ase',
+    title: 'Extrações ASE e planejamento fatorial (DOE)',
+    body: (
+      <>
+        <p>
+          Nos projetos <strong>Geoquímica — Extração ASE</strong>, a aba <strong>Extrações ASE</strong> reúne o planejamento fatorial, os resultados finais de
+          cada extração no ASE 350 e a análise estatística. As importações (Rock-Eval, CHNSO, LECO...) são as mesmas da rocha. Os nomes das amostras são
+          lidos assim: código com a réplica de extração no fim (ex.: <strong>HP320_M2_C10_T100_DCM_3x10_R1</strong>) = <strong>rocha residual pós-ASE</strong>{' '}
+          daquela extração; "PRE", "RO..." ou "HP320" = <strong>rocha pré-extração</strong>; "EXT"/"BET" = extrato; "-1", "-2" no fim = repetição da análise
+          (mesma rocha, não é réplica de extração).
+        </p>
+        <Steps>
+          <li>
+            <strong>+ Novo planejamento</strong> (pesquisadores e coordenadores): nome; de 2 a 4 <strong>fatores</strong>, cada um com nome, unidade, tipo e
+            os níveis baixo (−1) e alto (+1). Tipos: <strong>numérico contínuo</strong> (temperatura), <strong>numérico inteiro</strong> (nº de ciclos) ou{' '}
+            <strong>categórico</strong> (solvente). <strong>Usar o exemplo do ASE (2³)</strong> preenche ciclos, solvente e temperatura da planilha de
+            referência.
+          </li>
+          <li>
+            Escolha quantas <strong>execuções independentes</strong> por condição (1, duplicata, triplicata...) e, se fizer sentido, os{' '}
+            <strong>pontos centrais</strong>. O site só deixa criar o centro quando ele existe de verdade: com fator categórico, ou com um ponto médio
+            impossível (4,5 ciclos), ele explica por que não. A ordem planejada pode ser <strong>aleatorizada</strong>; a efetiva é anotada em cada
+            execução (vem sozinha na ordem em que os resultados chegam e pode ser corrigida).
+          </li>
+          <li>
+            Informe a <strong>rocha antes da extração</strong> (amostra já cadastrada, com Rock-Eval) e as <strong>condições fixas do método</strong>
+            (célula, pressão, tempo estático, rinse, purge, massa nominal...) — são contexto, não fatores. O <strong>código das extrações</strong> (ex.:
+            HP320_{'{cond}'}_R{'{rep}'}) liga sozinho cada execução à amostra da rocha pós-ASE de mesmo nome.
+          </li>
+          <li>
+            <strong>Planejamento</strong>: matriz com valores reais ou codificados (±1), execuções com ordem planejada e efetiva, o que já tem resultado e o
+            que está pendente. <strong>Editar</strong> muda nome, método, rocha pré e acrescenta réplicas (R3, R4...); execução com resultado não sai.
+          </li>
+          <li>
+            <strong>Resultados por execução</strong>: toque em <strong>Lançar</strong>/<strong>Editar</strong>. Digite só os resultados finais, já corrigidos
+            pelo branco — M1 (betume no frasco), rendimento M1, M6, M3 e M4 corrigidos, volume de solvente (diga se foi medido ou estimado), consumo
+            específico e tempo total. Em <strong>Complementares</strong>: rendimentos M3/M4/M6, massa de solvente e massa de rocha. Pesagens de frascos,
+            tampas, papel e célula, "branco aplicado" e densidades não são cadastrados. Eficiências (mg/mL, mg/min) e diagnósticos (recuperações M1/M6,
+            M1/M3, M1/M4 e diferenças) são calculados; os avisos de possíveis inconsistências não mudam nenhum valor. O Rock-Eval da rocha pós-ASE aparece
+            sozinho (não se redigita); execução marcada como inválida sai das médias e da análise.
+          </li>
+          <li>
+            <strong>Importar planilha de resultados</strong>: lê as abas "Consolidado R1", "Consolidado R2"... e preenche as execuções de mesma condição
+            (F01...) e réplica. Mostra antes o que entra; sem "Substituir", só preenche o que está vazio. Células com erro (#REF!) ficam de fora, com aviso.
+          </li>
+          <li>
+            <strong>Médias</strong>: para cada condição e indicador, nº de resultados válidos, média, desvio-padrão e RSD % (como a aba "Médias"). Ausente
+            aparece "—", nunca zero; com uma execução só, o valor observado, sem desvio. <strong>Baixar CSV</strong> leva a tabela.
+          </li>
+          <li>
+            <strong>Análise DOE</strong>: escolha a <strong>variável-resposta</strong> (qualquer resultado do ASE, eficiência, diagnóstico ou Rock-Eval
+            pós-ASE e as reduções de S1, S2, COT e ΔTmax em relação à rocha pré) e o <strong>nível de confiança</strong> (90, 95, 99 % ou outro, ex.: 97,5 %).
+            Aparecem o <strong>Pareto</strong> (efeitos padronizados e linha crítica), a tabela de efeitos e interações (A, B, C, AB, AC, BC, ABC) com valores-p,
+            a ANOVA, R², R² ajustado e de previsão, os gráficos de efeitos principais, de interações e de resíduos. Com uma execução por condição não há
+            como estimar o erro: os efeitos aparecem, sem valor-p, com a explicação e um gráfico meio-normal (apoio visual, não teste). Só execuções
+            independentes entram; leituras repetidas da mesma rocha viram a média dela.
+          </li>
+          <li>
+            <strong>Gráficos</strong>: dispersão com eixos livres (ex.: betume × S1 residual, rendimento × S2, massa × tempo), por execução ou pela média
+            da condição com desvio; barras por condição; e o <strong>mapa de calor</strong> de vários indicadores, normalizado (escore z por variável) para
+            comparar unidades diferentes — os valores reais ficam em Ver tabela. Toque nas condições para esconder/mostrar.
+          </li>
+        </Steps>
+      </>
     ),
   },
   {

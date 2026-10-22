@@ -20,7 +20,7 @@ from sqlalchemy import delete as sa_delete
 from sqlalchemy import func
 from sqlmodel import Session, select
 
-from app.db.models import Analysis, AnalysisValue, Sample, SampleAlias, SampleVariableValue, StoredFile
+from app.db.models import Analysis, AnalysisValue, DoePlan, DoeRun, Sample, SampleAlias, SampleVariableValue, StoredFile
 from app.services import storage
 
 _CHUNK = 500  # limite de parâmetros do IN (SQLite)
@@ -79,6 +79,13 @@ def execute(session: Session, p: DeletionPlan) -> list[str]:
     for part in _chunks(sample_ids):
         session.exec(sa_delete(SampleAlias).where(SampleAlias.sample_id.in_(part)))  # type: ignore[attr-defined]
         session.exec(sa_delete(SampleVariableValue).where(SampleVariableValue.sample_id.in_(part)))  # type: ignore[attr-defined]
+        # execuções ASE e planejamentos que apontavam para a amostra perdem só a ligação
+        for run in session.exec(select(DoeRun).where(DoeRun.sample_id.in_(part))):  # type: ignore[union-attr]
+            run.sample_id = None
+            session.add(run)
+        for plan in session.exec(select(DoePlan).where(DoePlan.pre_sample_id.in_(part))):  # type: ignore[union-attr]
+            plan.pre_sample_id = None
+            session.add(plan)
     for s in p.samples:
         session.delete(s)
     digests = []

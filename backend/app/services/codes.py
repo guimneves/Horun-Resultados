@@ -53,6 +53,17 @@ TOBACCO_FRACTIONS: list[tuple[str, str, str]] = [
 ]
 
 # Fração → linha da série em que entra por padrão (SE = sem extração = H).
+# Extração ASE (22/10/2026): rocha antes da extração, rocha residual pós-ASE
+# (uma amostra por execução) e o extrato (betume).
+FRACTION_ASE_PRE = "PRE"
+FRACTION_ASE_RES = "RES"
+FRACTION_ASE_EXT = "EXT"
+ASE_FRACTIONS: list[tuple[str, str, str]] = [
+    (FRACTION_ASE_PRE, "Rocha pré-extração", "Rocha antes do ASE (a de partida do planejamento)."),
+    (FRACTION_ASE_RES, "Rocha residual pós-ASE", "Rocha que sobrou de uma extração (uma por execução: …_R1, …_R2)."),
+    (FRACTION_ASE_EXT, "Extrato (betume)", "Betume extraído no ASE."),
+]
+
 DEFAULT_SERIES_GROUP = {FRACTION_SE: FRACTION_H}
 
 # Atmosfera do reator, pela letra logo após a temperatura no código do
@@ -301,3 +312,42 @@ def parse_tobacco_code(raw: str) -> CodeInfo:
         text = stripped
     base = re.sub(r"\s+", " ", text.replace("_", " ")).strip(" -")
     return CodeInfo(raw=raw, base_code=base or raw, fraction=tobacco_type(raw), replicate=rep, recognized=bool(base))
+
+
+# ------------------------------------------------------------------ extração ASE
+#
+# Projetos "Geoquímica — Extração ASE" (22/10/2026). Cada extração tem um
+# código como HP320_M2_C10_T100_DCM_3x10_R1 (rocha, massa, célula, temperatura,
+# solvente, ciclos, réplica de extração). A rocha residual dessa extração é a
+# amostra com esse código inteiro (R1 ≠ R2: execuções independentes); "-1",
+# "-2" no fim é repetição da ANÁLISE (mesma rocha). PRE/"pré" = rocha antes da
+# extração; EXT/BET/"extrato" = betume. Brancos ("B_…", "branco") ficam como Outra.
+
+_ASE_EXTRACTION_RE = re.compile(r"(?:^|_)R\d+$", re.IGNORECASE)
+_ASE_HINT_RE = re.compile(r"(?:^|_)(?:T\d{2,3}|\d+X\d+|C\d{1,2}|M\d|F\d{2})(?:_|$)", re.IGNORECASE)
+_ASE_ANALYSIS_REP_RE = re.compile(r"^(?P<base>.*?\S)\s*-\s*(?P<rep>\d{1,2})$")
+
+
+def parse_ase_code(raw: str) -> CodeInfo:
+    raw = (raw or "").strip()
+    text = re.sub(r"\s+", " ", raw)
+    plain = strip_accents(text).lower()
+    if any(plain == s or plain.startswith(s + " ") for s in _STANDARDS):
+        return CodeInfo(raw=raw, base_code=text, fraction=FRACTION_STANDARD, kind="standard", recognized=True)
+    rep = None
+    m = _ASE_ANALYSIS_REP_RE.match(text)
+    if m:
+        text, rep = m.group("base"), int(m.group("rep"))
+    upper = strip_accents(text).upper().replace(" ", "_")
+    tokens = set(re.split(r"[_\-\s.]+", upper))
+    if plain.startswith(("branco", "blank")) or upper.startswith("B_"):
+        return CodeInfo(raw=raw, base_code=text, fraction=FRACTION_OTHER, replicate=rep, kind="blank", recognized=True)
+    if tokens & {"EXT", "BET", "EXTRATO", "BETUME"}:
+        fraction = FRACTION_ASE_EXT
+    elif _ASE_EXTRACTION_RE.search(upper) and _ASE_HINT_RE.search(upper):
+        fraction = FRACTION_ASE_RES
+    elif tokens & {"PRE", "ORIGINAL", "ORIG"} or upper.startswith(("RO", "HP")):
+        fraction = FRACTION_ASE_PRE
+    else:
+        fraction = FRACTION_OTHER
+    return CodeInfo(raw=raw, base_code=text, fraction=fraction, replicate=rep, recognized=fraction != FRACTION_OTHER)

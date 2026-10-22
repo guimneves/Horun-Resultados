@@ -33,6 +33,7 @@ from dataclasses import dataclass, field
 from collections.abc import Callable
 
 from app.services.catalog import TECHNIQUES, param
+from app.services.codes import parse_ase_code
 from app.services.codes import CodeInfo, parse_sample_code, parse_tobacco_code
 
 PROFILE_VERSION = 1
@@ -94,16 +95,28 @@ ROCK_RECIPES = ("chnso", "leco", "leco_ri", "rockeval", "gc_fid", "gc_tcd", "gas
 CODE_READERS: dict[str, Callable[[str], CodeInfo]] = {
     "codes.parse_code": parse_sample_code,
     "codes.parse_tobacco_code": parse_tobacco_code,
+    "codes.parse_ase_code": parse_ase_code,
 }
 
 SAMPLE_TYPES: dict[str, SampleType] = {
     "rocha_hidropirolise": SampleType(
         key="rocha_hidropirolise",
-        label="Rocha — maturação artificial (hidropirólise)",
-        description="Rocha geradora, frações H/E/SE/G por temperatura; códigos HP300H, HP355NBE...",
+        label="Geoquímica — Rochas",
+        description="Rocha geradora em maturação artificial (hidropirólise): frações H/E/SE/G por temperatura; códigos HP300H, HP355NBE...",
         code_reader="codes.parse_code",
         recipes=ROCK_RECIPES,
         temperature_axis=True,
+    ),
+    # Extração de betume no ASE 350 com planejamento fatorial (22/10/2026):
+    # mesmas análises da rocha + resultados finais do ASE e DOE (aba Extrações
+    # ASE). Códigos das execuções: HP320_M2_C10_T100_DCM_3x10_R1.
+    "ase_extracao": SampleType(
+        key="ase_extracao",
+        label="Geoquímica — Extração ASE",
+        description="Extração de betume no ASE 350: planejamento fatorial (2², 2³, 2⁴), resultados finais de cada extração e "
+        "Rock-Eval da rocha antes e depois. Mesmas análises da rocha.",
+        code_reader="codes.parse_ase_code",
+        recipes=ROCK_RECIPES,
     ),
     # Tabaco (14/10/2026, arquivos de exemplo do laboratório): a amostra é o
     # produto (charuto, cigarro, folha...), lido por codes.parse_tobacco_code.

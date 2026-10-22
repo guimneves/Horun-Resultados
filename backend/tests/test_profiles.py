@@ -65,7 +65,7 @@ def test_unreadable_stored_profile_falls_back_to_default():
 def test_profile_options_lists_types_and_recipes(client):
     data = client.get("profiles", headers=PESQ).json()
     types = {t["key"]: t["status"] for t in data["sample_types"]}
-    assert types == {"rocha_hidropirolise": "pronto", "tabaco": "pronto", "incrustacao": "planejado"}
+    assert types == {"rocha_hidropirolise": "pronto", "ase_extracao": "pronto", "tabaco": "pronto", "incrustacao": "planejado"}
     leco = next(r for r in data["recipes"] if r["key"] == "leco")
     assert leco["instrument"] == "LECO SC832" and leco["status"] == "pronto"
 

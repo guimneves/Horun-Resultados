@@ -265,3 +265,52 @@ class SampleVariableValue(SQLModel, table=True):
     sample_id: int = Field(foreign_key="sample.id", index=True)
     number: float | None = None
     text: str = ""
+
+
+class DoePlan(SQLModel, table=True):
+    """Planejamento fatorial completo (2², 2³, 2⁴) de um projeto de extração
+    ASE (pedido do mantenedor, 22/10/2026) — app/services/doe.py e ase.py.
+    `factors_json`: [{letter, name, unit, kind, low, high, low_label,
+    high_label}]; `method_json`: condições fixas do método (célula, pressão,
+    tempo estático, rinse, purge, massa nominal, rocha) — contexto, não fator."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    project_id: int = Field(foreign_key="project.id", index=True)
+    name: str
+    description: str = ""
+    factors_json: str = Field(default="[]", sa_column=Column(Text, nullable=False, default="[]"))
+    replicates: int = 2
+    center_points: int = 0
+    randomized: bool = False
+    seed: int = 0
+    # rocha antes da extração (Rock-Eval "pré") — opcional
+    pre_sample_id: int | None = Field(default=None, foreign_key="sample.id")
+    method_json: str = Field(default="{}", sa_column=Column(Text, nullable=False, default="{}"))
+    created_by: str = ""
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
+class DoeRun(SQLModel, table=True):
+    """Uma extração (execução independente) do planejamento: condição F01…
+    (ou "C" = ponto central) × réplica R1, R2… Guarda só os RESULTADOS FINAIS
+    do ASE (`results_json`, já corrigidos pelo branco) — nada de pesagens
+    intermediárias. `sample_id` = rocha residual pós-ASE (o Rock-Eval dela vem
+    do que já foi importado; casa sozinho pelo código quando igual)."""
+
+    __table_args__ = (UniqueConstraint("plan_id", "condition", "replicate"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    plan_id: int = Field(foreign_key="doeplan.id", index=True)
+    condition: str  # F01… ou "C"
+    replicate: int = 1
+    code: str = ""  # identificação da extração (ex. HP320_M2_C10_T100_DCM_3x10_R1)
+    planned_order: int | None = None
+    actual_order: int | None = None
+    run_date: str = ""
+    sample_id: int | None = Field(default=None, foreign_key="sample.id")
+    results_json: str = Field(default="{}", sa_column=Column(Text, nullable=False, default="{}"))
+    valid: bool = True  # inválida = fica fora das médias e da análise
+    notes: str = ""
+    updated_by: str = ""
+    updated_at: datetime = Field(default_factory=utcnow)

@@ -17,7 +17,7 @@ from sqlmodel import Session, select
 from app.api.deps import ensure_open, get_project
 from app.core.identity import HorunIdentity, get_identity
 from app.core.permissions import require_editor
-from app.db.models import Analysis, AnalysisValue, Experiment, FractionType, Project, Sample, SampleAlias, utcnow
+from app.db.models import Analysis, AnalysisValue, DoePlan, DoeRun, Experiment, FractionType, Project, Sample, SampleAlias, utcnow
 from app.db.session import get_session
 from app.services import audit, deletion, importer, masses, profiles, results, variables
 from app.services.codes import normalize_code, parse_experiment_code, strip_accents
@@ -330,6 +330,13 @@ def merge_samples(
             al.sample_id = target.id
             session.add(al)
     variables.move_values(session, [x.id for x in sources], target)  # type: ignore[misc]
+    source_ids = [x.id for x in sources]
+    for run in session.exec(select(DoeRun).where(DoeRun.sample_id.in_(source_ids))):  # type: ignore[union-attr]
+        run.sample_id = target.id
+        session.add(run)
+    for plan in session.exec(select(DoePlan).where(DoePlan.pre_sample_id.in_(source_ids))):  # type: ignore[union-attr]
+        plan.pre_sample_id = target.id
+        session.add(plan)
     session.flush()
     notes = [target.notes] if target.notes else []
     for x in sources:

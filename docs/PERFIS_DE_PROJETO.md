@@ -5,6 +5,12 @@ laboratório quer usá-lo também em outros projetos: tabaco, incrustações etc
 Cada um tem **outras análises** (equipamentos), **outros parâmetros** e
 **outro tipo de amostra**. Este documento fixa a ideia e o que já está pronto.
 
+> **22/10/2026:** "Rocha — maturação artificial" passou a se chamar
+> **Geoquímica — Rochas** (mesma chave `rocha_hidropirolise`, nada muda) e
+> entrou **Geoquímica — Extração ASE** (`ase_extracao`): mesmas receitas da
+> rocha, leitor `codes.parse_ase_code`, frações PRE/RES/EXT e a aba Extrações
+> ASE (planejamento fatorial + resultados finais do ASE — ver CHANGELOG).
+>
 > **Estado (14/10/2026):** o tipo de amostra **já muda o módulo**: tela de
 > criar/editar projeto ("Tipo de amostra"), leitor de nomes na importação e no
 > cadastro, análises do passo 1 da importação e abas (sem Séries e Condições

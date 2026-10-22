@@ -436,3 +436,157 @@ export interface BulkDeleteResult {
   files_removed: number
   files_kept: number
 }
+
+// ---------------------------------------------------------------- Extração ASE e DOE (22/10/2026)
+
+export type DoeFactorKind = 'continuo' | 'discreto' | 'categorico'
+export interface DoeFactor {
+  letter: string
+  name: string
+  unit: string
+  kind: DoeFactorKind
+  low: number | string
+  high: number | string
+  low_label: string
+  high_label: string
+}
+
+export type AseGroup = 'principal' | 'complementar' | 'eficiencia' | 'diagnostico' | 'rockeval' | 'rockeval_delta'
+export interface AseField {
+  key: string
+  label: string
+  short: string
+  unit: string
+  group: AseGroup
+  group_label: string
+  /** digitado (resultado final) ou calculado / vindo do Rock-Eval */
+  input: boolean
+  /** execuções válidas com valor */
+  n: number
+}
+
+export interface AseStat {
+  n: number
+  mean: number | null
+  sd: number | null
+  rsd: number | null
+}
+
+export interface DoeRun {
+  id: number
+  condition: string
+  replicate: number
+  label: string
+  code: string
+  coded: Record<string, number>
+  levels: Record<string, string>
+  planned_order: number | null
+  actual_order: number | null
+  run_date: string
+  sample_id: number | null
+  sample_linked_by: 'escolhida' | 'código' | null
+  valid: boolean
+  notes: string
+  values: Record<string, number | null>
+  solvent_ml_kind: 'medido' | 'estimado' | null
+  flags: string[]
+  done: boolean
+  updated_by: string
+}
+
+export interface DoeConditionSummary {
+  code: string
+  coded: Record<string, number>
+  levels: Record<string, string>
+  n_runs: number
+  n_done: number
+  stats: Record<string, AseStat>
+}
+
+export interface DoePlanListItem {
+  id: number
+  name: string
+  design: string
+  factors: string[]
+  replicates: number
+  center_points: number
+  n_runs: number
+  n_done: number
+  updated_at: string
+}
+
+export interface DoePlan {
+  id: number
+  name: string
+  description: string
+  factors: DoeFactor[]
+  design: string
+  terms: string[]
+  replicates: number
+  center_points: number
+  center_possible: boolean
+  center_reason: string
+  center_values: Record<string, number> | null
+  randomized: boolean
+  pre_sample: { id: number; code: string } | null
+  method: Record<string, string>
+  conditions_matrix: { code: string; coded: Record<string, number>; values: Record<string, number | string>; levels: Record<string, string> }[]
+  n_runs: number
+  n_done: number
+  runs: DoeRun[]
+  conditions: DoeConditionSummary[]
+  fields: AseField[]
+  created_by: string
+  updated_at: string
+}
+
+export interface DoeEffect {
+  term: string
+  label: string
+  order: number
+  coef: number
+  effect: number
+  se_effect?: number
+  t?: number | null
+  p?: number | null
+  significant?: boolean
+  ss?: number
+}
+
+export interface DoeAnalysis {
+  ok: boolean
+  message?: string
+  confidence: number
+  terms: string[]
+  n_runs: number
+  n_center: number
+  missing_conditions: string[]
+  response: { key: string; label: string; short: string; unit: string; group: AseGroup }
+  intercept?: number
+  df_resid?: number
+  mse?: number | null
+  s?: number | null
+  t_crit?: number | null
+  alpha?: number
+  effects?: DoeEffect[]
+  curvature?: { coef: number; mean_center: number | null; mean_factorial: number | null; t?: number | null; p?: number | null; significant?: boolean }
+  r2?: number | null
+  r2_adj?: number | null
+  r2_pred?: number | null
+  anova?: { source: string; label: string; df: number; ss: number | null; ms: number | null; f: number | null; p: number | null }[] | null
+  significance_note?: string | null
+  half_normal?: { term: string; abs_effect: number; quantile: number }[]
+  main_effects?: { letter: string; name: string; low: string; high: string; mean_low: number | null; mean_high: number | null }[]
+  interactions?: {
+    a: string
+    b: string
+    a_name: string
+    b_name: string
+    a_low: string
+    a_high: string
+    b_low: string
+    b_high: string
+    means: Record<string, number | null>
+  }[]
+  residuals?: { run: string; condition: string; y: number; fitted: number; residual: number; standardized: number | null; normal_score: number }[]
+}

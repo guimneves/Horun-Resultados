@@ -13,6 +13,8 @@ export const PROJECT_TABS = [
   // as criadas na aba Variáveis — pedido do usuário, 22/10/2026): todo projeto
   { to: 'series', label: 'Séries' },
   { to: 'variaveis', label: 'Variáveis' },
+  // projetos "Geoquímica — Extração ASE": planejamentos fatoriais e resultados do ASE (22/10/2026)
+  { to: 'ase', label: 'Extrações ASE', ase: true },
   { to: 'comparar', label: 'Comparar' },
   { to: 'experimentos', label: 'Condições experimentais', temperature: true },
 ]

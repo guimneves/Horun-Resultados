@@ -1,6 +1,30 @@
 # Changelog — Horun · Resultados
 
 ## Não lançado — 22/10/2026
+### Geoquímica — Extração ASE e planejamento fatorial (pedido do mantenedor)
+- Tipos de projeto: **Geoquímica — Rochas** (o de sempre, só mudou o nome) e
+  **Geoquímica — Extração ASE** (`ase_extracao`): mesmas análises da rocha,
+  leitor `codes.parse_ase_code` (…_R1 = rocha residual pós-ASE, PRE/RO/HP =
+  pré-extração, EXT/BET = extrato, "-n" = repetição da análise) e frações
+  PRE/RES/EXT.
+- Tabelas novas `doeplan` e `doerun` (nascem pelo `create_all`). Fatorial
+  completo 2², 2³, 2⁴ (`services/doe.py`): fatores contínuos, inteiros ou
+  categóricos; condições F01… na ordem padrão; réplicas; pontos centrais só
+  quando fisicamente possíveis; ordem planejada (aleatorizável, semente
+  guardada) e efetiva.
+- Resultados finais do ASE por execução (`services/ase.py`): principais,
+  complementares, eficiências e diagnósticos calculados, avisos de
+  inconsistência; Rock-Eval da rocha pós-ASE ligado pelo código (média das
+  leituras analíticas) e reduções em relação à rocha pré.
+- Análise (`services/stats.py`, Python puro): efeitos e interações por
+  mínimos quadrados, valores-p (t), ANOVA, R²/R² aj./R² previsão, curvatura com
+  pontos centrais, resíduos; sem gl do erro, efeitos sem valor-p e gráfico
+  meio-normal. Nível de confiança livre (90/95/99 % ou outro).
+- Importação da planilha de resultados (abas "Consolidado R1/R2…", por rótulo,
+  só valores corrigidos). Rotas `/projects/{id}/doe…`.
+- Aba **Extrações ASE**: Planejamento, Resultados por execução, Médias, Análise
+  DOE (Pareto interativo) e Gráficos (dispersão, barras, mapa de calor normalizado).
+
 ### Variáveis de amostra e Séries em função da variável (pedido do mantenedor)
 - Tabelas novas `samplevariable` e `samplevariablevalue` (nascem pelo
   `create_all`). Embutidas por tipo de amostra: rocha → "Temperatura de

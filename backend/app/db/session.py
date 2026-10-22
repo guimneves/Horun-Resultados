@@ -68,7 +68,8 @@ def _run_migrations() -> None:
     # 08/10/2026 — tabelas novas `projectmember` e `knownuser` (acesso por
     # projeto): nascem inteiras pelo create_all, sem coluna a acrescentar.
     # 22/10/2026 — tabelas novas `samplevariable` e `samplevariablevalue`
-    # (variáveis de amostra): idem.
+    # (variáveis de amostra): idem. E `doeplan` / `doerun` (extrações ASE e
+    # planejamentos fatoriais): idem.
 
 
 def _seed_fractions() -> None:
@@ -81,6 +82,7 @@ def _seed_fractions() -> None:
         FRACTION_OTHER,
         FRACTION_STANDARD,
         TOBACCO_FRACTIONS,
+        ASE_FRACTIONS,
     )
 
     shared = (FRACTION_STANDARD, FRACTION_OTHER)
@@ -107,6 +109,10 @@ def _seed_fractions() -> None:
             if code not in existing:
                 session.add(FractionType(code=code, label=label, description=description, in_series=True, sort=order,
                                          sample_type="tabaco"))
+        for order, (code, label, description) in enumerate(ASE_FRACTIONS, start=200):
+            if code not in existing:
+                session.add(FractionType(code=code, label=label, description=description, in_series=True, sort=order,
+                                         sample_type="ase_extracao"))
         session.commit()
 
 
