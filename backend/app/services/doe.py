@@ -90,8 +90,9 @@ def center_feasibility(factors: list[dict]) -> tuple[bool, str]:
         if f["kind"] == "categorico":
             reasons.append(f'{f["letter"]} — {f["name"]} é categórico (não há nível intermediário entre "{f["low"]}" e "{f["high"]}")')
         elif f["kind"] == "discreto" and (f["low"] + f["high"]) % 2:
-            mid = (f["low"] + f["high"]) / 2
-            reasons.append(f'{f["letter"]} — {f["name"]}: o ponto médio seria {str(f'{mid:g}').replace('.', ',')}, que não é um valor possível')
+            # sem f-string aninhada com as mesmas aspas: o servidor roda Python 3.11
+            mid = ("%g" % ((f["low"] + f["high"]) / 2)).replace(".", ",")
+            reasons.append(f'{f["letter"]} — {f["name"]}: o ponto médio seria {mid}, que não é um valor possível')
     if reasons:
         return False, "Ponto central não é possível: " + "; ".join(reasons) + "."
     return True, ""
