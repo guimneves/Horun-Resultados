@@ -34,7 +34,7 @@ from collections.abc import Callable
 
 from app.services.catalog import TECHNIQUES, param
 from app.services.codes import parse_ase_code
-from app.services.codes import CodeInfo, parse_sample_code, parse_tobacco_code
+from app.services.codes import CodeInfo, parse_polymer_code, parse_sample_code, parse_tobacco_code
 
 PROFILE_VERSION = 1
 DEFAULT_SAMPLE_TYPE = "rocha_hidropirolise"
@@ -66,6 +66,7 @@ _PARSER_OF = {
     "mev_eds": "mev_eds",
     "gcfid_tab": "shimadzu",
     "gcms_tab": "shimadzu",
+    "postrun_estudo": "postrun_estudo",
 }
 
 RECIPES: dict[str, ImportRecipe] = {
@@ -96,6 +97,7 @@ CODE_READERS: dict[str, Callable[[str], CodeInfo]] = {
     "codes.parse_code": parse_sample_code,
     "codes.parse_tobacco_code": parse_tobacco_code,
     "codes.parse_ase_code": parse_ase_code,
+    "codes.parse_polymer_code": parse_polymer_code,
 }
 
 SAMPLE_TYPES: dict[str, SampleType] = {
@@ -127,6 +129,19 @@ SAMPLE_TYPES: dict[str, SampleType] = {
         "A amostra é o produto; réplicas (\"_1\", \" - rep 2\") e prefixos (\"Ch_\", \"Charuto\") saem do nome.",
         code_reader="codes.parse_tobacco_code",
         recipes=("chnso", "leco", "leco_bruto", "rockeval", "tg", "mev_eds", "gcfid_tab", "gcms_tab"),
+    ),
+    # Polímeros (22/10/2026): Estudos de quantificação do PostRun (RE7S) —
+    # uma amostra por composição nominal (coluna "Amostra" do estudo, ex.
+    # "PP 50 % · PS 50 %"), uma
+    # medição por réplica (.B00); a composição vira variáveis de amostra
+    # ("Fração PP", "Composição") para as Séries. parsers/postrun_estudo.py.
+    "polimeros_pirolise": SampleType(
+        key="polimeros_pirolise",
+        label="Polímeros — quantificação por pirólise (Rock-Eval)",
+        description="Polímeros puros e misturas (PP, PS, PEAD...) quantificados por pirólise no Rock-Eval: importe o .xlsx do "
+        "Estudo do PostRun (RE7S). Cada amostra é uma composição; as réplicas são medições dela; as frações viram variáveis.",
+        code_reader="codes.parse_polymer_code",
+        recipes=("postrun_estudo", "rockeval"),
     ),
     # Planejado: só registra a intenção. Receitas, leitura de códigos e
     # parâmetros serão definidos com o laboratório (docs/PERFIS_DE_PROJETO.md).

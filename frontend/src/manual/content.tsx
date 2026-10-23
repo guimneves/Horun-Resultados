@@ -136,9 +136,9 @@ export const MANUAL_SECTIONS: ManualSection[] = [
         <li>Digite o nome, uma descrição curta e escolha uma cor.</li>
         <li>
           Em <strong>Tipo de amostra</strong>, escolha <strong>Geoquímica — Rochas</strong> (maturação artificial por hidropirólise, o de sempre),{' '}
-          <strong>Geoquímica — Extração ASE</strong> ou <strong>Tabaco</strong>. O tipo decide como os nomes das amostras são lidos na importação, quais
+          <strong>Geoquímica — Extração ASE</strong>, <strong>Tabaco</strong> ou <strong>Polímeros — quantificação por pirólise (Rock-Eval)</strong>. O tipo decide como os nomes das amostras são lidos na importação, quais
           análises aparecem no passo 1 e quais abas o projeto tem (veja <strong>Projetos de tabaco</strong> e <strong>Extrações ASE e planejamento
-          fatorial</strong>).
+          fatorial</strong>, <strong>Projetos de tabaco</strong> e <strong>Projetos de polímeros</strong>).
         </li>
         <li>
           Toque em <strong>Criar projeto</strong>. Ele aparece na lista e na barra lateral.
@@ -210,6 +210,42 @@ export const MANUAL_SECTIONS: ManualSection[] = [
             comparar unidades diferentes — os valores reais ficam em Ver tabela. Toque nas condições para esconder/mostrar.
           </li>
         </Steps>
+      </>
+    ),
+  },
+  {
+    id: 'polimeros',
+    title: 'Projetos de polímeros (Estudos do PostRun)',
+    body: (
+      <>
+        <p>
+          Num projeto do tipo <strong>Polímeros — quantificação por pirólise (Rock-Eval)</strong>, os resultados vêm dos <strong>Estudos</strong> do PostRun
+          (módulo RE7S). No fim do estudo, exporte o <strong>.xlsx</strong> no RE7S e importe aqui com <strong>Estudo PostRun (RE7S) — .xlsx</strong> (ou
+          &quot;Vários / não sei&quot;: o arquivo é reconhecido pelas abas <strong>Sobre</strong> e <strong>Horun_Resultados</strong>; as outras abas são só para
+          leitura e ficam de fora). Planilha que não é de um Estudo do PostRun é recusada com a explicação.
+        </p>
+        <Bullets>
+          <li>
+            <strong>Amostra</strong> = a composição nominal do estudo (ex.: <strong>PP 50 % · PS 50 %</strong>, <strong>PP 100 %</strong>); cada <strong>réplica</strong> (cada corrida .B00)
+            vira uma medição dela, e as médias e desvios saem das réplicas, como nas outras análises.
+          </li>
+          <li>
+            <strong>Resultados por componente</strong>: Recuperação, Massa encontrada, Massa esperada, ΔTmax e Δlargura de cada polímero (ex.:{' '}
+            <strong>Recuperação PP</strong>), a Fração real da réplica e, da corrida, Recuperação total, Massa encontrada total, R² e a massa da amostra.
+            Os nomes sem complemento são do <strong>método principal</strong> do estudo; cada método calculado também aparece com o nome dele (ex.:{' '}
+            <strong>Recuperação PP (moldes)</strong>, <strong>Recuperação PP (gaussianas)</strong>) e a incerteza como <strong>U95 …</strong>.
+          </li>
+          <li>
+            <strong>Composição → variáveis</strong>: a importação cria (ou atualiza) as variáveis <strong>Fração PP</strong>, <strong>Fração PS</strong>...
+            (número, %, a fração nominal; 0 % quando o componente não está na amostra — um PS puro tem Fração PP = 0) e <strong>Composição</strong>{' '}
+            (categoria). Em <strong>Séries</strong>, escolha a variável (ex.: Fração PP) para ver os resultados em função da composição; em{' '}
+            <strong>Comparar</strong>, marque as amostras lado a lado.
+          </li>
+          <li>
+            <strong>Reimportar</strong> o mesmo estudo (nova exportação) <strong>atualiza</strong> as medições e as variáveis, sem duplicar. Estudo ainda{' '}
+            <strong>aberto</strong> no PostRun entra com aviso — reimporte quando ele for finalizado.
+          </li>
+        </Bullets>
       </>
     ),
   },

@@ -18,7 +18,7 @@ from app.core.permissions import require_editor
 from app.db.models import ImportBatch, Project
 from app.db.session import get_session
 from app.services import article, directory, importer, report, results, variables
-from app.services.catalog import TECHNIQUES
+from app.services.catalog import TECHNIQUES, param
 
 router = APIRouter(tags=["resultados"])
 logger = logging.getLogger(__name__)
@@ -166,10 +166,10 @@ class ExportBody(BaseModel):
 
 def _col_label(col: str) -> str:
     tech, _, key = col.partition(".")
-    for p in TECHNIQUES.get(tech, {}).get("params", []):
-        if p.key == key:
-            unit = f" ({p.unit})" if p.unit else ""
-            return f"{TECHNIQUES[tech]['label']} {p.label}{unit}"
+    p = param(tech, key)
+    if p is not None:
+        unit = f" ({p.unit})" if p.unit else ""
+        return f"{TECHNIQUES[tech]['label']} {p.label}{unit}"
     return col
 
 
@@ -200,7 +200,7 @@ def export(body: ExportBody, project: Project = Depends(get_project), session: S
             v = r["values"].get(c) or {}
             line += [v.get("mean"), v.get("sd"), v.get("n")]
         out_rows.append(line)
-    safe_name = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in project.name)[:40] or "projeto"
+    safe_name = "".join(ch if (ch.isascii() and ch.isalnum()) or ch in "-_" else "_" for ch in project.name)[:40] or "projeto"
     if body.format == "csv":
         buf = io.StringIO()
         writer = csv.writer(buf, delimiter=";")
@@ -252,7 +252,7 @@ def export_report(
     person = directory.find(session, str(identity.user_id))
     who = (person.label if person else "") or identity.username
     content = report.build(session, project, body.techniques or list(TECHNIQUES), body.sample_ids, body.mode, who)
-    safe_name = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in project.name)[:40] or "projeto"
+    safe_name = "".join(ch if (ch.isascii() and ch.isalnum()) or ch in "-_" else "_" for ch in project.name)[:40] or "projeto"
     return Response(
         content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

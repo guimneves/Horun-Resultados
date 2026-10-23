@@ -46,7 +46,7 @@ from app.db.models import (
 from app.parsers import NotResultsFile, ParseError, ParseResult, parse_file
 from app.parsers.common import Record
 from app.parsers.leco import is_diagnostic_zip
-from app.services import audit, profiles, storage
+from app.services import audit, profiles, storage, variables
 from app.services.catalog import TECHNIQUES
 from app.services.codes import (
     FRACTION_GAS,
@@ -508,7 +508,7 @@ def confirm(session: Session, project: Project, batch: ImportBatch, decisions: l
     samples = _samples_by_norm(session, project.id)
     by_id = {s.id: s for s in samples.values()}
     aliases = _aliases(session, project.id)
-    counts = {"samples_created": 0, "samples_linked": 0, "analyses_created": 0, "analyses_updated": 0, "skipped": 0, "aliases_saved": 0}
+    counts = {"samples_created": 0, "samples_linked": 0, "analyses_created": 0, "analyses_updated": 0, "skipped": 0, "aliases_saved": 0, "variables_set": 0}
     created_codes: list[str] = []
     linked: dict[str, list[str]] = {}
 
@@ -578,6 +578,9 @@ def confirm(session: Session, project: Project, batch: ImportBatch, decisions: l
                 counts["skipped"] += 1
                 continue
             _upsert_analysis(session, project, sample, p, identity, counts)
+            # variáveis de amostra que o próprio arquivo traz (Estudo do PostRun: frações e composição)
+            if p.record.extra.get("sample_variables"):
+                counts["variables_set"] += variables.apply_imported(session, project, sample, p.record.extra["sample_variables"], identity.username)
 
     imported_files = []
     for o in outcomes:

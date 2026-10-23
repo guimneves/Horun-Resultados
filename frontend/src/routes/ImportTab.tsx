@@ -28,11 +28,17 @@ const ANALYSIS_TYPES: { key: string; label: string; files: string }[] = [
   { key: 'mev_eds', label: 'MEV-EDS', files: '.zip com as pastas do MEV (amostra/região/eds/...) com os "Quantity analysis.csv"' },
   { key: 'gcfid_tab', label: 'GC-FID', files: 'arquivo .gcd do GCsolution (o Horun integra os picos)' },
   { key: 'gcms_tab', label: 'GC-MS', files: 'arquivo .qgd do GCMSsolution, já processado (picos e busca na biblioteca)' },
+  // projetos de polímeros (22/10/2026): o .xlsx do Estudo exportado pelo PostRun do RE7S
+  {
+    key: 'postrun_estudo',
+    label: 'Estudo PostRun (RE7S) — .xlsx',
+    files: '.xlsx do Estudo exportado pelo PostRun do RE7S (abas "Sobre" e "Horun_Resultados"); as frações viram variáveis da amostra',
+  },
   { key: '', label: 'Vários / não sei (detectar)', files: 'qualquer um dos acima, ou um .zip com pastas' },
 ]
 
 // Análises que só aparecem em projetos de outros tipos (rocha continua com a lista de sempre)
-const NOT_FOR_ROCK = new Set(['leco_bruto', 'tg', 'mev_eds', 'gcfid_tab', 'gcms_tab'])
+const NOT_FOR_ROCK = new Set(['leco_bruto', 'tg', 'mev_eds', 'gcfid_tab', 'gcms_tab', 'postrun_estudo'])
 
 /** Botões do passo 1: rocha → a lista de sempre; outros tipos → as análises do perfil. */
 function analysisTypesFor(profile: { temperature_axis: boolean; recipes: string[] } | undefined) {
@@ -137,7 +143,7 @@ function RowEditor({ row, d, samples, onChange }: { row: PreviewRow; d: Decision
 
 export function ImportTab() {
   const { project, readOnly, canEdit } = useProject()
-  const { techniqueLabel, paramLabel, reloadProjects } = useApp()
+  const { techniqueLabel, paramLabel, reloadProjects, reloadCatalog } = useApp()
   const mobile = useIsMobile()
   const { samples: existing, reload } = useSamples(project.id)
   const [technique, setTechnique] = useState<string | null>(null)
@@ -197,6 +203,7 @@ export function ImportTab() {
       setFiles([])
       reload()
       reloadProjects()
+      reloadCatalog() // parâmetros novos por componente (Estudo PostRun: Recuperação PP...)
     } catch (err) {
       setError(errorText(err))
     } finally {
@@ -368,7 +375,8 @@ export function ImportTab() {
           <p className="text-sm">
             {result.files_imported} arquivo(s) · {result.analyses_created} medição(ões) nova(s) · {result.analyses_updated} atualizada(s) ·{' '}
             {result.samples_created} amostra(s) criada(s) · {result.skipped} ignorada(s)
-            {result.aliases_saved ? ` · ${result.aliases_saved} nome(s) lembrado(s) para a próxima vez` : ''}.
+            {result.aliases_saved ? ` · ${result.aliases_saved} nome(s) lembrado(s) para a próxima vez` : ''}
+            {result.variables_set ? ` · ${result.variables_set} valor(es) de variáveis da amostra (aba Variáveis)` : ''}.
           </p>
           {Object.keys(result.linked).length > 0 && (
             <ul className="mt-2 text-xs">

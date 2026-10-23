@@ -10,6 +10,8 @@ interface AppState {
   error: string | null
   reloadProjects: () => Promise<void>
   reloadFractions: () => Promise<void>
+  /** Recarrega o catálogo (parâmetros dinâmicos, ex. por componente do Estudo PostRun, entram após importar). */
+  reloadCatalog: () => Promise<void>
   techniqueLabel: (key: string) => string
   /** Análise + equipamento de origem (ex.: "CHNSO · EuroVector EA", "Rock-Eval 7S"). */
   sourceLabel: (key: string) => string
@@ -35,6 +37,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
   const reloadFractions = useCallback(async () => {
     setFractions(await api.get<Fraction[]>('/fractions'))
+  }, [])
+  const reloadCatalog = useCallback(async () => {
+    try {
+      setCatalog(await api.get<TechniqueDef[]>('/catalog'))
+    } catch {
+      /* fica o catálogo de antes */
+    }
   }, [])
 
   useEffect(() => {
@@ -66,8 +75,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // "Rock-Eval 7S" já diz a análise; "EuroVector EA" não
       return inst.toLowerCase().startsWith(t.label.split(' ')[0].toLowerCase()) ? inst : `${t.label} · ${inst}`
     }
-    return { me, catalog, fractions, projects, error, reloadProjects, reloadFractions, techniqueLabel, sourceLabel, paramLabel, fractionLabel }
-  }, [me, catalog, fractions, projects, error, reloadProjects, reloadFractions])
+    return { me, catalog, fractions, projects, error, reloadProjects, reloadFractions, reloadCatalog, techniqueLabel, sourceLabel, paramLabel, fractionLabel }
+  }, [me, catalog, fractions, projects, error, reloadProjects, reloadFractions, reloadCatalog])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

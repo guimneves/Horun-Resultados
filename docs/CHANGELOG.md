@@ -1,6 +1,27 @@
 # Changelog — Horun · Resultados
 
 ## Não lançado — 22/10/2026
+### Polímeros — Estudos do PostRun (RE7S)
+- Tipo de projeto **Polímeros — quantificação por pirólise (Rock-Eval)**
+  (`polimeros_pirolise`): receitas `postrun_estudo` e `rockeval`, leitor de
+  nomes `codes.parse_polymer_code` (nome da amostra como veio; nome de análise
+  `AAAA-MM-DD_<amostra>_<réplica>` perde a data e a réplica), fração única
+  `POL` (Polímero / mistura).
+- Receita/leitor **Estudo PostRun (RE7S) — .xlsx** (`parsers/postrun_estudo.py`,
+  contrato v1 em ESPECIFICACAO.md 3.11): aba "Sobre" (formato
+  `horun-postrun-estudo`, senão erro) + "Horun_Resultados" (formato longo, por
+  rótulo). Réplica → medição (chave `estudo|réplica`, reimportar atualiza);
+  Amostra → amostra. Parâmetros por componente **dinâmicos** no catálogo
+  (`rec_PP`, `mfound_PP`, `mexp_PP`, `dtmax_PP`, `dwidth_PP`, `frac_real_PP`;
+  sufixos `__gauss`/`__molde` por método e `__u95`), mais `rec_total`,
+  `mfound_total`, `r2`, `sample_mass`. `GET /catalog` soma os dinâmicos já
+  gravados; séries, exportação e relatório usam `catalog.param`/`technique_params`.
+- Variáveis vindas do arquivo (`variables.apply_imported`, chamado na
+  confirmação): "Fração <componente>" (número, %, nominal; 0 se ausente) e
+  "Composição" (categoria). O resultado da importação traz `variables_set`.
+- Correção: nome do arquivo exportado (CSV/XLSX/relatório) só com ASCII —
+  projeto com acento no nome quebrava o cabeçalho `Content-Disposition`.
+
 ### Geoquímica — Extração ASE e planejamento fatorial (pedido do mantenedor)
 - Tipos de projeto: **Geoquímica — Rochas** (o de sempre, só mudou o nome) e
   **Geoquímica — Extração ASE** (`ase_extracao`): mesmas análises da rocha,

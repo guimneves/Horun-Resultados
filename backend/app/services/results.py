@@ -32,7 +32,7 @@ from sqlmodel import Session, select
 
 from app.db.models import Analysis, AnalysisValue, Experiment, FractionType, Project, Sample, SampleAlias, SampleVariable, StoredFile
 from app.services import variables as variables_service
-from app.services.catalog import TECHNIQUES
+from app.services.catalog import param as catalog_param
 
 MODES = ("padrao", "validas", "todas")
 
@@ -264,7 +264,7 @@ def series(
         out_series.append(
             {"key": "|".join([group_code, atm, letter]), "fraction": group_code, "fractions": members, "atmosphere": atm, "replicate_letter": letter, "label": label, "points": points}
         )
-    param = next((p for p in TECHNIQUES.get(technique, {}).get("params", []) if p.key == parameter), None)
+    param = catalog_param(technique, parameter)  # inclui os dinâmicos (Estudo PostRun: um por componente)
     return {
         "technique": technique,
         "parameter": parameter,

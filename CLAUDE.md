@@ -2,7 +2,7 @@
 
 Módulo do Horun que reúne os resultados das análises (CHNSO, LECO, LECO - Resíduo Insolúvel, Rock-Eval,
 GC-FID/TCD, balanço de gás, Py-GC-MS; e, nos projetos de tabaco, TG, MEV-EDS,
-LECO sinal bruto e GC-FID/GC-MS da Shimadzu — .gcd/.qgd) por projeto, com tabelas e séries por temperatura. Backend FastAPI+SQLModel (`backend/`), frontend React+Vite (`frontend/`).
+LECO sinal bruto e GC-FID/GC-MS da Shimadzu — .gcd/.qgd; nos de polímeros, o .xlsx do Estudo do PostRun/RE7S) por projeto, com tabelas e séries por temperatura. Backend FastAPI+SQLModel (`backend/`), frontend React+Vite (`frontend/`).
 
 **Leia primeiro:** `docs/ESPECIFICACAO.md` (requisitos e formatos verificados),
 `docs/ESTADO_E_PLANOS.md` (estado, decisões, perguntas em aberto) e
@@ -71,7 +71,7 @@ LECO sinal bruto e GC-FID/GC-MS da Shimadzu — .gcd/.qgd) por projeto, com tabe
 ## Comandos
 
 ```bash
-cd backend && .venv/Scripts/python -m pytest -q        # 231 passam
+cd backend && .venv/Scripts/python -m pytest -q        # 242 passam
 cd frontend && npx tsc -b && npx oxlint && npm run build
 ```
 

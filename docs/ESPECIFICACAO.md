@@ -216,6 +216,37 @@ Arquivos compostos do Windows (OLE/CFB, assinatura `D0 CF 11 E0`), lidos com
   `n_peaks`, `n_identified`, `pct_identified`.
 - Nome: o sufixo do detector (`_FID`, `_MS`) sai do nome da amostra.
 
+### 3.11 Estudo do PostRun — RE7S (.xlsx, projetos de polímeros, 22/10/2026)
+
+Exportado pelo módulo RE7S (PostRun → Estudos) ao fim de um estudo de
+quantificação de polímeros por pirólise. **Contrato versão 1** (o RE7S produz
+exatamente isto; versão maior que a suportada → erro pedindo atualização):
+
+- Aba **Sobre** (A = chave, B = valor; linha 1 = `Chave | Valor`): `formato`
+  = `horun-postrun-estudo` (outro → "não é um Estudo do PostRun"), `versao`,
+  `estudo`, `descricao`, `metodo` (`gauss` | `molde`, o principal), `canal`
+  (ex. `pyro:FID`), `gerado_em` (ISO), `status` (`aberto` → aviso | `finalizado`).
+- Aba **Horun_Resultados** (cabeçalho na linha 1, lido por rótulo): `Estudo |
+  Método | Amostra | Réplica | Composição | Componente | Parâmetro | Valor |
+  Unidade | U95 | Fração nominal (%) | Fração real (%) | Massa da amostra (mg) |
+  Data`. Por componente: Massa encontrada, Massa esperada (mg), Recuperação
+  (%), ΔTmax (°C), Δlargura (%); da corrida (Componente vazio): Recuperação
+  total (%), Massa encontrada total (mg), R².
+- Demais abas (Análises, Curvas, Moldes, Médias...) são ignoradas.
+
+Mapeamento (`parsers/postrun_estudo.py`): **Amostra** (chave do grupo de
+réplicas = texto da composição nominal, ex. `PP 50 % · PS 50 %`, `PP 100 %`)
+= código da amostra do projeto; frações em 0–100, "Fração real" pode vir
+vazia, "Data" em texto ISO;
+**Réplica** = medição (chave `estudo|réplica`; réplica nº = "_N" do fim);
+parâmetros dinâmicos por componente `rec_PP`, `mfound_PP`, `mexp_PP`,
+`dtmax_PP`, `dwidth_PP`, `frac_real_PP` (fração real da réplica) e da corrida
+`rec_total`, `mfound_total`, `r2`, `sample_mass`. **Métodos**: a chave sem
+sufixo e a U95 (`__u95`) são do método principal; cada método presente entra
+também com sufixo (`__gauss`, `__molde`). **Variáveis de amostra** (criadas
+ou atualizadas na confirmação): "Fração <componente>" (%, nominal; 0 para
+componente do estudo ausente na amostra) e "Composição" (categoria).
+
 ### 3.6 Tabela de literatura (opcional)
 Planilha de um artigo de referência = dados publicados (parâmetros por
 temperatura). Suportar, de forma genérica, **importar uma tabela de referência**

@@ -64,6 +64,14 @@ ASE_FRACTIONS: list[tuple[str, str, str]] = [
     (FRACTION_ASE_EXT, "Extrato (betume)", "Betume extraído no ASE."),
 ]
 
+# Polímeros — quantificação por pirólise no Rock-Eval (Estudos do PostRun/RE7S,
+# 22/10/2026): uma fração só, para que as Séries em função da composição
+# ("Fração PP") liguem puros e misturas na mesma linha.
+FRACTION_POLYMER = "POL"
+POLYMER_FRACTIONS: list[tuple[str, str, str]] = [
+    (FRACTION_POLYMER, "Polímero / mistura", "Polímero puro ou mistura (composição nas variáveis Fração … e Composição)."),
+]
+
 DEFAULT_SERIES_GROUP = {FRACTION_SE: FRACTION_H}
 
 # Atmosfera do reator, pela letra logo após a temperatura no código do
@@ -351,3 +359,35 @@ def parse_ase_code(raw: str) -> CodeInfo:
     else:
         fraction = FRACTION_OTHER
     return CodeInfo(raw=raw, base_code=text, fraction=fraction, replicate=rep, recognized=fraction != FRACTION_OTHER)
+
+
+# ------------------------------------------------------------------ polímeros (PostRun)
+#
+# Projetos "Polímeros — quantificação por pirólise" (22/10/2026). O Estudo do
+# PostRun já manda o nome da AMOSTRA pronto (coluna "Amostra" = a composição
+# nominal, ex. `PP 50 % · PS 50 %`, `PP 100 %`) — fica como está. Nome de ANÁLISE do RE7S
+# (`2026-09-14_PP_PS_50-50_7`, o .B00 sem extensão, ex. no Rock-Eval .htm):
+# sai a data do começo e, só então, a réplica "_7" do fim (sem a data, "_040"
+# pode ser a massa nominal de um puro, não réplica).
+
+_POLYMER_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}_")
+_POLYMER_REP_RE = re.compile(r"^(?P<base>.+?)_(?P<rep>\d{1,2})(?:\.\d+)?$")
+
+
+def parse_polymer_code(raw: str) -> CodeInfo:
+    raw = (raw or "").strip()
+    text = re.sub(r"\s+", " ", raw)
+    if text.upper().endswith(".B00"):
+        text = text[:-4]
+    plain = strip_accents(text).lower()
+    if plain.startswith(("branco", "blank")):
+        return CodeInfo(raw=raw, base_code=text, fraction=FRACTION_OTHER, kind="blank", recognized=True)
+    if any(plain == s or plain.startswith(s + " ") for s in _STANDARDS):
+        return CodeInfo(raw=raw, base_code=text, fraction=FRACTION_STANDARD, kind="standard", recognized=True)
+    rep = None
+    if _POLYMER_DATE_RE.match(text):
+        text = _POLYMER_DATE_RE.sub("", text)
+        m = _POLYMER_REP_RE.match(text)
+        if m:
+            text, rep = m.group("base"), int(m.group("rep"))
+    return CodeInfo(raw=raw, base_code=text or raw, fraction=FRACTION_POLYMER, replicate=rep, recognized=bool(text))

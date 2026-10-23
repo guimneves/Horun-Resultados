@@ -45,7 +45,7 @@ from app.db.models import (
 )
 from app.db.session import get_session
 from app.services import audit, directory, profiles, storage
-from app.services.catalog import catalog_json
+from app.services.catalog import DYNAMIC_PARAMS, catalog_json
 
 router = APIRouter(tags=["projetos"])
 
@@ -80,8 +80,20 @@ def profile_options(_identity: HorunIdentity = Depends(get_identity)):
 
 
 @router.get("/catalog")
-def catalog(_identity: HorunIdentity = Depends(get_identity)):
-    return catalog_json()
+def catalog(_identity: HorunIdentity = Depends(get_identity), session: Session = Depends(get_session)):
+    # técnicas com parâmetros dinâmicos (Estudo PostRun: um por componente —
+    # PP, PS...): entram os que já existem no banco
+    present: dict[str, set[str]] = {}
+    if DYNAMIC_PARAMS:
+        rows = session.exec(
+            select(Analysis.technique, AnalysisValue.parameter)
+            .join(AnalysisValue, AnalysisValue.analysis_id == Analysis.id)
+            .where(Analysis.technique.in_(list(DYNAMIC_PARAMS)))  # type: ignore[attr-defined]
+            .distinct()
+        ).all()
+        for tech, key in rows:
+            present.setdefault(tech, set()).add(key)
+    return catalog_json(present)
 
 
 # ---------------------------------------------------------------- frações

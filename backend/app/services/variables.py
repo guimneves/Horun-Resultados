@@ -279,6 +279,56 @@ def set_value(session: Session, project: Project, var: SampleVariable, sample: S
     session.add(row)
 
 
+def apply_imported(session: Session, project: Project, sample: Sample, items: list[dict], user: str) -> int:
+    """Valores de variáveis que vêm no próprio arquivo importado (Estudo do
+    PostRun: "Fração PP" = 50 %, "Composição" = "PP 50 % · PS 50 %").
+
+    A variável é achada pelo NOME (sem diferenciar maiúsculas) e criada se
+    não existir (número com unidade, ou categoria). Categoria nova ganha a
+    opção que faltar. Reimportar regrava o valor (vale o arquivo). Variável
+    com o mesmo nome e outro tipo, ou categoria cheia: fica como está.
+    Devolve quantos valores foram gravados."""
+    existing = {v.label.lower(): v for v in list_for(session, project)}
+    n = 0
+    for item in items:
+        label = re.sub(r"\s+", " ", str(item.get("label") or "")).strip()[:80]
+        kind = item.get("kind") or "numero"
+        value = item.get("value")
+        if not label or kind not in KINDS or value is None or (isinstance(value, str) and not value.strip()):
+            continue
+        var = existing.get(label.lower())
+        if var is None:
+            var = create(
+                session,
+                project,
+                label=label,
+                kind=kind,
+                unit=str(item.get("unit") or ""),
+                options=[str(value)] if kind == "categoria" else [],
+                description=str(item.get("description") or ""),
+                user=user,
+            )
+            existing[label.lower()] = var
+        if var.kind != kind or var.builtin:
+            continue
+        if kind == "categoria":
+            opts = json.loads(var.options_json or "[]")
+            text = re.sub(r"\s+", " ", str(value)).strip()[:60]
+            if text.lower() not in (o.lower() for o in opts):
+                if len(opts) >= MAX_OPTIONS:
+                    continue
+                opts.append(text)
+                var.options_json = json.dumps(opts, ensure_ascii=False)
+                session.add(var)
+            value = text
+        try:
+            set_value(session, project, var, sample, value)
+        except VariableError:
+            continue
+        n += 1
+    return n
+
+
 def move_values(session: Session, sources: list[int], target: Sample) -> None:
     """Unir amostras: valores das que saem passam à que fica, quando ela não tem."""
     rows = session.exec(select(SampleVariableValue).where(SampleVariableValue.sample_id.in_(sources))).all()  # type: ignore[union-attr]

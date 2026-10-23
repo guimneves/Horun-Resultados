@@ -83,6 +83,7 @@ def _seed_fractions() -> None:
         FRACTION_STANDARD,
         TOBACCO_FRACTIONS,
         ASE_FRACTIONS,
+        POLYMER_FRACTIONS,
     )
 
     shared = (FRACTION_STANDARD, FRACTION_OTHER)
@@ -113,6 +114,10 @@ def _seed_fractions() -> None:
             if code not in existing:
                 session.add(FractionType(code=code, label=label, description=description, in_series=True, sort=order,
                                          sample_type="ase_extracao"))
+        for order, (code, label, description) in enumerate(POLYMER_FRACTIONS, start=300):
+            if code not in existing:
+                session.add(FractionType(code=code, label=label, description=description, in_series=True, sort=order,
+                                         sample_type="polimeros_pirolise"))
         session.commit()
 
 

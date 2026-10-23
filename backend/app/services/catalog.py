@@ -222,6 +222,99 @@ TECHNIQUES["gcms_tab"] = {
     ],
 }
 
+# ------------------------------------------------------------------ Estudo PostRun (RE7S)
+#
+# Quantificação de polímeros por pirólise no Rock-Eval (módulo RE7S, aba
+# PostRun → Estudos; 22/10/2026). O .xlsx "absoluto" do estudo traz, por
+# réplica, resultados POR COMPONENTE (PP, PS, PEAD... — nomes livres, quem
+# define é o estudo) e da corrida inteira. Como os componentes não são uma
+# lista fechada, os parâmetros por componente são DINÂMICOS: a chave diz a
+# métrica e o componente, e o rótulo é montado aqui (`postrun_param`):
+#
+#   rec_PP            Recuperação PP (%)            — método principal do estudo
+#   rec_PP__molde     Recuperação PP (moldes)       — cada método calculado
+#   rec_PP__u95       U95 Recuperação PP            — incerteza (método principal)
+#   frac_real_PP      Fração real PP (%)            — da réplica (massas pesadas)
+#   rec_total, mfound_total, r2                     — da corrida (fixos, abaixo)
+#
+# O catálogo devolvido pela API soma aos fixos os parâmetros dinâmicos já
+# gravados no banco (`catalog_json(present)`), para Séries/Comparar/Tabela.
+POSTRUN = "postrun_estudo"
+POSTRUN_METHODS: dict[str, str] = {"gauss": "gaussianas", "molde": "moldes"}
+# métrica por componente: (prefixo da chave, rótulo, unidade padrão, principal)
+POSTRUN_COMPONENT_METRICS: list[tuple[str, str, str, bool]] = [
+    ("rec", "Recuperação", "%", True),
+    ("mfound", "Massa encontrada", "mg", True),
+    ("mexp", "Massa esperada", "mg", False),
+    ("dtmax", "ΔTmax", "°C", False),
+    ("dwidth", "Δlargura", "%", False),
+    ("frac_real", "Fração real", "%", False),
+]
+# métrica da corrida (Componente vazio): (chave, rótulo, unidade padrão, principal)
+POSTRUN_RUN_METRICS: list[tuple[str, str, str, bool]] = [
+    ("rec_total", "Recuperação total", "%", True),
+    ("mfound_total", "Massa encontrada total", "mg", True),
+    ("r2", "R² do ajuste", "", False),
+]
+_POSTRUN_VARIANTS = ("", *(f"__{m}" for m in POSTRUN_METHODS), "__u95")
+
+
+def _postrun_variant(label: str, variant: str) -> str:
+    if variant == "__u95":
+        return f"U95 {label}"
+    if variant:
+        return f"{label} ({POSTRUN_METHODS.get(variant[2:], variant[2:])})"
+    return label
+
+
+TECHNIQUES[POSTRUN] = {
+    "label": "Estudo PostRun (RE7S)",
+    "instrument": "Rock-Eval 7S (PostRun)",
+    "params": [
+        Param(key + variant, _postrun_variant(label, variant), unit, main and not variant)
+        for key, label, unit, main in POSTRUN_RUN_METRICS
+        for variant in _POSTRUN_VARIANTS
+    ]
+    + [Param("sample_mass", "Massa da amostra", "mg")],
+}
+
+
+def postrun_key(metric: str, component: str = "", variant: str = "") -> str:
+    """Chave do parâmetro: métrica da corrida ("rec_total") ou métrica +
+    componente ("rec_PP"); `variant` = "gauss" | "molde" | "u95" | ""."""
+    base = f"{metric}_{component}" if component else metric
+    return f"{base}__{variant}" if variant else base
+
+
+def postrun_param(key: str) -> Param | None:
+    """Rótulo/unidade de um parâmetro dinâmico por componente (None se a
+    chave não segue o formato)."""
+    base, sep, variant = key.partition("__")
+    variant = f"__{variant}" if sep else ""
+    if variant not in _POSTRUN_VARIANTS:
+        return None
+    for prefix, label, unit, main in sorted(POSTRUN_COMPONENT_METRICS, key=lambda m: -len(m[0])):
+        if base.startswith(prefix + "_") and len(base) > len(prefix) + 1:
+            component = base[len(prefix) + 1 :]
+            if variant == "__u95" and prefix == "frac_real":
+                return None
+            return Param(key, _postrun_variant(f"{label} {component}", variant), unit, main and not variant)
+    return None
+
+
+def _postrun_sort(key: str) -> tuple:
+    base, _, variant = key.partition("__")
+    order = [m[0] for m in POSTRUN_COMPONENT_METRICS]
+    for i, prefix in sorted(enumerate(order), key=lambda x: -len(x[1])):
+        if base.startswith(prefix + "_"):
+            v = f"__{variant}" if variant else ""
+            return (base[len(prefix) + 1 :].lower(), i, _POSTRUN_VARIANTS.index(v) if v in _POSTRUN_VARIANTS else 9)
+    return (key, 99, 0)
+
+
+# técnicas com parâmetros dinâmicos: técnica → (rótulo da chave, ordem)
+DYNAMIC_PARAMS = {POSTRUN: (postrun_param, _postrun_sort)}
+
 TECHNIQUE_ORDER = list(TECHNIQUES)
 
 
@@ -229,10 +322,24 @@ def param(technique: str, key: str) -> Param | None:
     for p in TECHNIQUES.get(technique, {}).get("params", []):
         if p.key == key:
             return p
-    return None
+    dyn = DYNAMIC_PARAMS.get(technique)
+    return dyn[0](key) if dyn else None
 
 
-def catalog_json() -> list[dict]:
+def technique_params(technique: str, present=()) -> list[Param]:
+    """Parâmetros fixos da técnica + os dinâmicos presentes (`present` = chaves
+    gravadas no banco), na ordem do catálogo."""
+    base = list(TECHNIQUES.get(technique, {}).get("params", []))
+    dyn = DYNAMIC_PARAMS.get(technique)
+    if not dyn:
+        return base
+    known = {p.key for p in base}
+    extra = [p for p in (dyn[0](k) for k in sorted(set(present) - known, key=dyn[1])) if p is not None]
+    return extra + base
+
+
+def catalog_json(present: dict[str, set[str]] | None = None) -> list[dict]:
+    present = present or {}
     return [
         {
             "key": tech,
@@ -240,7 +347,7 @@ def catalog_json() -> list[dict]:
             "instrument": info.get("instrument", ""),
             "params": [
                 {"key": p.key, "label": p.label, "unit": p.unit, "main": p.main, "derived": p.derived}
-                for p in info["params"]
+                for p in technique_params(tech, present.get(tech, ()))
             ],
         }
         for tech, info in TECHNIQUES.items()

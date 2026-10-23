@@ -5,6 +5,13 @@ laboratório quer usá-lo também em outros projetos: tabaco, incrustações etc
 Cada um tem **outras análises** (equipamentos), **outros parâmetros** e
 **outro tipo de amostra**. Este documento fixa a ideia e o que já está pronto.
 
+> **22/10/2026 (polímeros):** novo tipo **Polímeros — quantificação por
+> pirólise (Rock-Eval)** (`polimeros_pirolise`): receitas `postrun_estudo`
+> (o .xlsx do Estudo do PostRun/RE7S, ESPECIFICACAO.md 3.11) e `rockeval`;
+> leitor `codes.parse_polymer_code`; fração `POL`; sem eixo de temperatura —
+> as Séries usam as variáveis "Fração <componente>" e "Composição" que a
+> importação cria.
+>
 > **22/10/2026:** "Rocha — maturação artificial" passou a se chamar
 > **Geoquímica — Rochas** (mesma chave `rocha_hidropirolise`, nada muda) e
 > entrou **Geoquímica — Extração ASE** (`ase_extracao`): mesmas receitas da

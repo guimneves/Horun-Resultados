@@ -393,6 +393,8 @@ export interface ImportResult {
   analyses_updated: number
   skipped: number
   aliases_saved: number
+  /** valores de variáveis de amostra gravados a partir do arquivo (Estudo PostRun: frações, composição) */
+  variables_set?: number
   files_imported: number
   new_sample_codes: string[]
   linked: Record<string, string[]>

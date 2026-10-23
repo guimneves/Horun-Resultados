@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import io
 
-from app.parsers import chnso, gas_consolidated, gc, leco, leco_raw, leco_ri, mev_eds, pygcms, rockeval, shimadzu, tg
+from app.parsers import chnso, gas_consolidated, gc, leco, leco_raw, leco_ri, mev_eds, postrun_estudo, pygcms, rockeval, shimadzu, tg
 from app.parsers.common import NotResultsFile, ParseError, ParseResult
 from app.services.derived import add_derived
 
@@ -61,6 +61,8 @@ def _parse_xlsx(content: bytes, filename: str, path_hint: str) -> ParseResult:
     try:
         names = wb.sheetnames
         upper = {n.strip().upper(): n for n in names}
+        if postrun_estudo.is_postrun_workbook(wb):  # Estudo do PostRun (RE7S): abas "Sobre" + "Horun_Resultados"
+            return postrun_estudo.parse_workbook(wb, filename)
         if "DADOS FID-TCD" in upper:
             return gc.parse_gas_balance(wb, upper["DADOS FID-TCD"], filename, path_hint)
         if "DADOS FID" in upper:
@@ -84,7 +86,8 @@ def _parse_xlsx(content: bytes, filename: str, path_hint: str) -> ParseResult:
         raise ParseError(
             "Planilha não reconhecida. Formatos aceitos: \"Dados FID\", \"Dados TCD\", "
             "\"Planilha cálculo gás\" (aba \"Dados FID-TCD\"), Py-GC-MS (uma aba por amostra) e "
-            "LECO - Resíduo Insolúvel (planilha de massas das amostras) e a tabela consolidada de gás (aba \"Detalhe\")."
+            "LECO - Resíduo Insolúvel (planilha de massas das amostras), a tabela consolidada de gás (aba \"Detalhe\") e o "
+            "Estudo do PostRun do RE7S (abas \"Sobre\" e \"Horun_Resultados\")."
         )
     finally:
         wb.close()

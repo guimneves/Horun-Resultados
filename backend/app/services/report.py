@@ -29,7 +29,7 @@ from sqlmodel import Session, select
 
 from app.db.models import FractionType, Project, StoredFile
 from app.services import results
-from app.services.catalog import TECHNIQUE_ORDER, TECHNIQUES
+from app.services.catalog import TECHNIQUE_ORDER, TECHNIQUES, technique_params
 
 MODE_LABELS = {
     "padrao": "Padrão — válidas e pendentes (inválidas de fora)",
@@ -249,7 +249,8 @@ def _summary_sheet(ws, project, chosen, ordered, analyses, values_by_analysis, p
     col = len(SAMPLE_COLS) + 1
     columns: list[tuple[str, str, str]] = []  # (técnica, parâmetro, formato)
     for tech in chosen:
-        params = [p for p in TECHNIQUES[tech]["params"] if p.main] or TECHNIQUES[tech]["params"][:3]
+        all_params = technique_params(tech, {k for t, _sid, k in pooled if t == tech})
+        params = [p for p in all_params if p.main] or all_params[:3]
         params = [p for p in params if any(pooled.get((tech, s.id, p.key)) for s in ordered)]
         if not params:
             continue
@@ -304,7 +305,7 @@ def _summary_sheet(ws, project, chosen, ordered, analyses, values_by_analysis, p
 
 def _technique_sheet(ws, tech, ordered, analyses, values_by_analysis, pooled, sample_cells, files, all_samples, experiments, fractions) -> None:
     info = TECHNIQUES[tech]
-    params = [p for p in info["params"] if any(pooled.get((tech, s.id, p.key)) for s in ordered)]
+    params = [p for p in technique_params(tech, {k for t, _sid, k in pooled if t == tech}) if any(pooled.get((tech, s.id, p.key)) for s in ordered)]
     ws.sheet_view.showGridLines = False
     ws["A1"] = info["label"]
     ws["A1"].font = TITLE_FONT
