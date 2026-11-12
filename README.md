@@ -71,6 +71,21 @@ cd frontend && npx tsc -b && npx oxlint && npm run build
 4. No Core (Admin → Módulos): id `resultados`, backend `http://resultados-backend:8000`,
    frontend `http://resultados-frontend:80` (ver `MODULE.md`).
 
+### Backup
+
+O `db-backup` grava em `BACKUP_DIR`, todo dia: `resultados_<data>.dump` (banco,
+`BACKUP_KEEP_DAYS` dias), `resultados_arquivos_<data>.tar.gz` (arquivos enviados,
+`BACKUP_FILES_KEEP_DAYS` dias, padrão 7) e `resultados_ULTIMO_BACKUP_OK.txt` (data da
+última rodada sem erro — se estiver velha, veja `docker compose logs db-backup`).
+
+Restaurar os arquivos (restaure banco e arquivos da mesma data):
+
+```powershell
+docker compose stop resultados-backend
+docker run --rm -v horun-resultados_resultados_uploads:/data/uploads -v C:/HorunBackups/resultados:/b alpine tar -xzf /b/resultados_arquivos_AAAA-MM-DD_HHMM.tar.gz -C /data/uploads
+docker compose start resultados-backend
+```
+
 ## Regras que já vêm prontas (não desfaça)
 
 - **Versões exatas** em `backend/pyproject.toml` e `recharts` fixo em `frontend/package.json`.
