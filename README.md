@@ -73,7 +73,7 @@ cd frontend && npx tsc -b && npx oxlint && npm run build
 
 ### Backup
 
-O `db-backup` grava em `BACKUP_DIR`, todo dia: `resultados_<data>.dump` (banco,
+O `db-backup` grava em `BACKUP_DIR` (hora do nome em UTC, 3 h à frente de Brasília), todo dia: `resultados_<data>.dump` (banco,
 `BACKUP_KEEP_DAYS` dias), `resultados_arquivos_<data>.tar.gz` (arquivos enviados,
 `BACKUP_FILES_KEEP_DAYS` dias, padrão 7) e `resultados_ULTIMO_BACKUP_OK.txt` (data da
 última rodada sem erro — se estiver velha, veja `docker compose logs db-backup`).
@@ -82,7 +82,7 @@ Restaurar os arquivos (restaure banco e arquivos da mesma data):
 
 ```powershell
 docker compose stop resultados-backend
-docker run --rm -v horun-resultados_resultados_uploads:/data/uploads -v C:/HorunBackups/resultados:/b alpine tar -xzf /b/resultados_arquivos_AAAA-MM-DD_HHMM.tar.gz -C /data/uploads
+docker run --rm -v horun-resultados_resultados_uploads:/data/uploads -v C:/HorunBackups/Horun-resultados-backup:/b alpine tar -xzf /b/resultados_arquivos_AAAA-MM-DD_HHMM.tar.gz -C /data/uploads
 docker compose start resultados-backend
 ```
 
