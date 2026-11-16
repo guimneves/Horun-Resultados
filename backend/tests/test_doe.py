@@ -118,7 +118,13 @@ def _create(client, pid, **extra):
 def test_plan_lifecycle_results_and_analysis(client, ase_project):
     pid = ase_project["id"]
     assert client.post(f"projects/{pid}/doe", json={"name": "x", "factors": FACTORS, "center_points": 1}, headers=PESQ).status_code == 400
-    assert client.post(f"projects/{pid}/doe", json={"name": "x", "factors": FACTORS}, headers=TEC).status_code == 403
+    # técnico(a) e IC criam e editam planejamentos e o método (16/11/2026), mas não excluem
+    tec = client.post(f"projects/{pid}/doe", json={"name": "do técnico", "factors": FACTORS, "method": {"cell": "10 mL"}}, headers=TEC)
+    assert tec.status_code == 201, tec.text
+    r = client.patch(f"projects/{pid}/doe/{tec.json()['id']}", json={"method": {"cell": "22 mL", "pressure": "1500 psi"}}, headers=IC)
+    assert r.status_code == 200 and r.json()["method"] == {"cell": "22 mL", "pressure": "1500 psi"}
+    assert client.delete(f"projects/{pid}/doe/{tec.json()['id']}", headers=TEC).status_code == 403
+    assert client.delete(f"projects/{pid}/doe/{tec.json()['id']}", headers=PESQ).status_code == 204
     plan = _create(client, pid)
     assert plan["design"] == "2^3" and plan["n_runs"] == 16 and plan["n_done"] == 0 and not plan["center_possible"]
     assert plan["conditions_matrix"][1]["levels"] == {"A": "6 × 10 min", "B": "DCM", "C": "100 °C"}

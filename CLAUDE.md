@@ -38,10 +38,12 @@ LECO sinal bruto e GC-FID/GC-MS da Shimadzu — .gcd/.qgd; nos de polímeros, o 
 - SQLModel 0.0.47 exige `datetime` com fuso: use `app.db.models.utcnow()`.
 - Toda rota da API sob `/api` (prefixo em `main.py`); `/health` na raiz.
 - Papéis (`app/core/permissions.py`): cargo no Horun — níveis 1–2 coordenador
-  (projetos, frações, histórico), demais colaborador; **alterar/importar/validar só níveis
-  1–3** (`require_editor`, `can_edit` no /me) — técnico (4) e IC (5) só
-  visualizam; excluir projeto só nível 1, digitando o nome; histórico níveis
-  1–2. Sem senha. Rota nova que altera dados → `require_editor` (ou mais).
+  (projetos, frações, histórico), demais colaborador; **importar/criar/editar:
+  todos os níveis 1–5** (`require_editor`, `can_edit` no /me — técnico e IC
+  inclusive desde 16/11/2026); **validar/excluir/unir/vistas das Séries: níveis
+  1–3** (`require_curator`, `can_curate` no /me); excluir projeto só nível 1,
+  digitando o nome; histórico níveis 1–2. Sem senha. Rota nova que altera dados
+  → `require_editor`; que exclui ou valida → `require_curator` (ou mais).
 - **Acesso por projeto** (`ProjectMember`): níveis 1–2 veem todos os projetos;
   3–5 só aqueles em que são membros. Toda rota `/projects/{id}/...` usa
   `Depends(get_project)` (`app/api/deps.py`), que dá 404 a quem não é membro —

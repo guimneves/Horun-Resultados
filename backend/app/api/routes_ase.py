@@ -1,6 +1,9 @@
 """Extrações ASE e planejamentos fatoriais (DOE) de um projeto "Geoquímica —
 Extração ASE" (app/services/ase.py e doe.py). Ver: todo membro do projeto;
-criar/alterar: níveis 1–3 (`require_editor`)."""
+criar/alterar
+(inclusive o método), sortear e lançar/importar resultados: todos os níveis
+(`require_editor`, técnicos e ICs desde 16/11/2026); excluir planejamento:
+níveis 1–3 (`require_curator`)."""
 
 from __future__ import annotations
 
@@ -15,7 +18,7 @@ from sqlmodel import Session, select
 
 from app.api.deps import ensure_open, get_project
 from app.core.identity import HorunIdentity, get_identity
-from app.core.permissions import require_editor
+from app.core.permissions import require_curator, require_editor
 from app.db.models import DoePlan, DoeRun, Project, Sample, utcnow
 from app.db.session import get_session
 from app.services import ase, audit, doe, profiles
@@ -271,7 +274,7 @@ def randomize(plan_id: int, project: Project = Depends(get_project), session: Se
 
 @router.delete("/projects/{project_id}/doe/{plan_id}", status_code=204)
 def delete_plan(plan_id: int, project: Project = Depends(get_project), session: Session = Depends(get_session),
-                identity: HorunIdentity = Depends(require_editor)):
+                identity: HorunIdentity = Depends(require_curator)):
     ensure_open(project)
     plan = _get_plan(session, project, plan_id)
     name = plan.name

@@ -16,12 +16,13 @@ def test_identity_is_required_outside_dev_mode(client):
 
 
 @pytest.mark.parametrize(
-    "headers, role, edit",
+    "headers, role, curate",
     [(ADMIN, "coordenador", True), (COORD, "coordenador", True), (PESQ, "colaborador", True), (TEC, "colaborador", False), (IC, "colaborador", False)],
 )
-def test_me_reports_role_from_core_level(client, headers, role, edit):
+def test_me_reports_role_from_core_level(client, headers, role, curate):
     me = client.get("me", headers=headers).json()
-    assert me["role"] == role and me["dev_mode"] is False and me["can_edit"] is edit
+    # editar: todos os níveis desde 16/11/2026; validar/excluir/unir: níveis 1–3
+    assert me["role"] == role and me["dev_mode"] is False and me["can_edit"] is True and me["can_curate"] is curate
     assert me["can_delete_projects"] is (headers is ADMIN)
 
 
@@ -55,44 +56,46 @@ def test_pesquisador_imports_edits_deletes_and_validates(client, project):
 
 
 @pytest.mark.parametrize("who", [TEC, IC], ids=["tecnico", "ic"])
-def test_tecnico_and_ic_only_view(client, project, who):
+def test_tecnico_and_ic_import_and_edit_but_do_not_validate_nor_delete(client, project, who):
+    """Pedido do mantenedor (16/11/2026): técnicos e ICs também importam e
+    editam resultados; validar, excluir e unir continuam com os níveis 1–3."""
     pid = project["id"]
-    confirm(client, pid, upload(client, pid, {"run.pdf": syn.chnso_summary_pdf(ROWS)}))
-    exp = client.post(f"projects/{pid}/experiments", json={"code": "HP300NA"}, headers=PESQ).json()
+    # importam
+    confirm(client, pid, upload(client, pid, {"run.pdf": syn.chnso_summary_pdf(ROWS)}, headers=who), headers=who)
     table = client.get(f"projects/{pid}/samples", headers=who).json()["samples"]
     sample = next(s for s in table if s["code"] == "HP300H")
-    detail = client.get(f"projects/{pid}/samples/{sample['id']}", headers=who).json()
-    analysis = detail["analyses"][0]
-    # vê tudo, inclusive exportar
-    assert client.get("projects", headers=who).status_code == 200
-    assert client.get(f"projects/{pid}/experiments", headers=who).status_code == 200
-    assert client.post(f"projects/{pid}/export", json={"format": "csv", "columns": []}, headers=who).status_code == 200
-
-    files = [("files", ("run.pdf", syn.chnso_summary_pdf(ROWS), "application/pdf"))]
-    pv = upload(client, pid, {"outro.pdf": syn.chnso_summary_pdf(ROWS[:1])})  # prévia feita por quem pode
-    forbidden = [
-        client.post(f"projects/{pid}/imports/preview", files=files, headers=who),
-        client.post(f"projects/{pid}/imports/{pv['batch_id']}/confirm", json={"decisions": []}, headers=who),
+    analysis = client.get(f"projects/{pid}/samples/{sample['id']}", headers=who).json()["analyses"][0]
+    # criam e editam amostras e corridas, ligam nomes lembrados
+    exp = client.post(f"projects/{pid}/experiments", json={"code": "HP320NA"}, headers=who)
+    assert exp.status_code == 201, exp.text
+    exp = exp.json()
+    allowed = [
         client.post(f"projects/{pid}/samples", json={"code": "HP340H"}, headers=who),
         client.post(f"projects/{pid}/samples/bulk", json={"codes": ["HP360H"]}, headers=who),
-        client.patch(f"projects/{pid}/samples/{sample['id']}", json={"notes": "x"}, headers=who),
+        client.patch(f"projects/{pid}/samples/{sample['id']}", json={"notes": "conferido"}, headers=who),
+        client.post(f"projects/{pid}/samples/{sample['id']}/aliases", json={"alias": "Rocha X"}, headers=who),
+        client.post(f"projects/{pid}/experiments/bulk", json={"codes": ["HP320NB"]}, headers=who),
+        client.patch(f"projects/{pid}/experiments/{exp['id']}", json={"notes": "x", "oil_mass_g": 1.5}, headers=who),
+    ]
+    for r in allowed:
+        assert r.status_code in (200, 201), (r.request.method, str(r.request.url), r.text)
+    assert client.get(f"projects/{pid}/samples/{sample['id']}", headers=who).json()["notes"] == "conferido"
+
+    forbidden = [
         client.delete(f"projects/{pid}/samples/{sample['id']}", headers=who),
         client.post(f"projects/{pid}/samples/{sample['id']}/validation", json={"valid": True}, headers=who),
-        client.post(f"projects/{pid}/samples/{sample['id']}/aliases", json={"alias": "Rocha X"}, headers=who),
         client.post(f"projects/{pid}/analyses/{analysis['id']}/validation", json={"valid": False}, headers=who),
         client.delete(f"projects/{pid}/analyses/{analysis['id']}", headers=who),
-        client.post(f"projects/{pid}/experiments", json={"code": "HP320NA"}, headers=who),
-        client.post(f"projects/{pid}/experiments/bulk", json={"codes": ["HP320NB"]}, headers=who),
-        client.patch(f"projects/{pid}/experiments/{exp['id']}", json={"notes": "x"}, headers=who),
         client.delete(f"projects/{pid}/experiments/{exp['id']}", headers=who),
+        client.patch(f"projects/{pid}/series-views", json={"series": []}, headers=who),
         client.post("projects", json={"name": "Outro"}, headers=who),
         client.patch("fractions/SE", json={"label": "x"}, headers=who),
     ]
     for r in forbidden:
         assert r.status_code == 403, (r.request.method, str(r.request.url), r.text)
-    assert "só visualizam" in forbidden[0].json()["detail"]
+    assert "pesquisadores e coordenadores" in forbidden[0].json()["detail"]
     after = client.get(f"projects/{pid}/samples/{sample['id']}", headers=who).json()
-    assert len(after["analyses"]) == len(detail["analyses"]) and after["notes"] == detail["notes"]
+    assert after["valid"] is None and any(a["id"] == analysis["id"] for a in after["analyses"])
 
 
 def test_coordinator_validates_and_deletes(client, project):
@@ -153,7 +156,7 @@ def test_dev_mode_view_as_level_switcher(client, monkeypatch):
     me = client.get("me").json()
     assert me["level"] == 1 and me["role"] == "coordenador" and me["dev_mode"] is True
     me = client.get("me", headers=person("dev-nivel-4", 4)).json()
-    assert me["level"] == 4 and me["role"] == "colaborador" and me["can_edit"] is False
+    assert me["level"] == 4 and me["role"] == "colaborador" and me["can_edit"] is True and me["can_curate"] is False
     assert client.post("projects", json={"name": "P"}, headers=person("dev-nivel-4", 4)).status_code == 403
     pid = client.post("projects", json={"name": "P"}).json()["id"]
     # diretório de faz de conta do desenvolvimento: as pessoas do "Ver como" já estão na lista
@@ -162,9 +165,12 @@ def test_dev_mode_view_as_level_switcher(client, monkeypatch):
     assert client.get(f"projects/{pid}/samples", headers=person("dev-nivel-4", 4)).status_code == 404
     for uid in ("dev-nivel-3", "dev-nivel-4"):
         assert client.post(f"projects/{pid}/members", json={"user_id": uid}).status_code == 201
-    assert client.post(f"projects/{pid}/samples", json={"code": "HP300H"}, headers=person("dev-nivel-4", 4)).status_code == 403
-    assert client.get("me", headers=person("dev-nivel-3", 3)).json()["can_edit"] is True
-    assert client.post(f"projects/{pid}/samples", json={"code": "HP300H"}, headers=person("dev-nivel-3", 3)).status_code == 201
+    r = client.post(f"projects/{pid}/samples", json={"code": "HP300H"}, headers=person("dev-nivel-4", 4))
+    assert r.status_code == 201
+    sid = r.json()["id"]
+    assert client.delete(f"projects/{pid}/samples/{sid}", headers=person("dev-nivel-4", 4)).status_code == 403
+    assert client.get("me", headers=person("dev-nivel-3", 3)).json()["can_curate"] is True
+    assert client.delete(f"projects/{pid}/samples/{sid}", headers=person("dev-nivel-3", 3)).status_code == 204
 
 
 def test_fraction_table_is_editable_by_coordinator(client):

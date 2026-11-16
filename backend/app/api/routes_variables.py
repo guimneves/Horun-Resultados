@@ -1,6 +1,7 @@
 """Variáveis de amostra do projeto (app/services/variables.py): listar,
-criar, editar, apagar e preencher os valores (em lote). Alterar = níveis 1–3
-(`require_editor`), como o resto do módulo."""
+criar, editar, apagar e preencher os valores (em lote). Criar, editar e
+preencher = todos os níveis (`require_editor`); apagar = níveis 1–3
+(`require_curator`), como o resto do módulo."""
 
 from __future__ import annotations
 
@@ -10,7 +11,7 @@ from sqlmodel import Session, select
 
 from app.api.deps import ensure_open, get_project
 from app.core.identity import HorunIdentity, get_identity
-from app.core.permissions import require_editor
+from app.core.permissions import require_curator, require_editor
 from app.db.models import Project, Sample, SampleVariable
 from app.db.session import get_session
 from app.services import audit, variables
@@ -115,7 +116,7 @@ def patch_variable(
 
 @router.delete("/projects/{project_id}/variables/{variable_id}", status_code=204)
 def delete_variable(
-    variable_id: int, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_editor)
+    variable_id: int, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_curator)
 ):
     ensure_open(project)
     var = _get_var(session, project, variable_id)

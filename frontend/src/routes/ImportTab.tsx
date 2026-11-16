@@ -161,7 +161,7 @@ export function ImportTab() {
   const analysisTypes = analysisTypesFor(project.profile)
 
   if (readOnly) return <Empty>Projeto arquivado — não recebe importações.</Empty>
-  if (!canEdit) return <Empty>Seu cargo permite ver os resultados, mas não importar. Peça a um(a) pesquisador(a) ou coordenador(a).</Empty>
+  if (!canEdit) return <Empty>Seu cargo no Horun não permite importar neste módulo.</Empty>
 
   async function send() {
     setBusy(true)

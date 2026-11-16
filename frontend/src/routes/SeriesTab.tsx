@@ -410,7 +410,7 @@ function SeriesViewsModal({ projectId, current, onClose }: { projectId: number; 
 }
 
 function RockSeriesTab() {
-  const { project, canEdit } = useProject()
+  const { project, canCurate } = useProject()
   const { catalog, fractions, fractionLabel, paramLabel, techniqueLabel } = useApp()
   // vistas/grupos escolhidos para este projeto (vazio = todos)
   const enabled = project.profile?.series ?? []
@@ -596,7 +596,7 @@ function RockSeriesTab() {
         ) : (
           <span />
         )}
-        {canEdit && (
+        {canCurate && (
           <Button variant="ghost" onClick={() => setChoosing(true)}>
             Escolher o que aparece…
           </Button>

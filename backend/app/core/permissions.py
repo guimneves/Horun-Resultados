@@ -4,13 +4,17 @@ Financeiro (`module_mode()/core_role()`), sem cadastro de membros nem senha:
 * o papel vem do CARGO no Horun (`X-Horun-Level`): níveis 1 (administrador
   máximo) e 2 (coordenador/a) = **coordenador**; qualquer outra pessoa que
   chegou ao módulo (o Core já conferiu o acesso) = **colaborador**;
-* quem pode MODIFICAR (`can_edit`, decisão de 08/10/2026): níveis 1–3
-  (administrador, coordenador/a, pesquisador/a) importam, criam/editam e
-  excluem amostras, experimentos e medições, ligam nomes lembrados;
-* técnico(a) (nível 4) e IC (nível 5): só visualizam (tabelas, séries,
-  gráficos, fichas, exportar CSV/XLSX) — nada de importar nem alterar;
-* validar/invalidar amostras e medições: também níveis 1–3 (decisão de
-  08/10/2026 — pesquisadores marcam válidas e inválidas);
+* quem pode IMPORTAR, CRIAR e EDITAR (`can_edit`, ampliado em 16/11/2026 a
+  pedido do mantenedor — antes eram só os níveis 1–3): todos os níveis, 1–5,
+  inclusive técnico(a) (4) e IC (5) — importam resultados, criam e editam
+  amostras, corridas, massas, variáveis e os planejamentos/métodos do ASE,
+  lançam resultados do ASE, ligam nomes lembrados (sempre só nos projetos em
+  que são membros, ver abaixo);
+* quem CUIDA dos dados (`can_curate`, níveis 1–3: administrador,
+  coordenador/a, pesquisador/a): validar/invalidar amostras e medições
+  (decisão de 08/10/2026), excluir amostras, medições, corridas, variáveis e
+  planejamentos, unir amostras e escolher as vistas da aba Séries — técnico(a)
+  e IC não fazem nada disso;
 * coordenador: além disso cria/edita/arquiva projetos e edita a tabela de
   frações;
 * histórico (quem fez o quê): administrador máximo e coordenadores (níveis 1–2);
@@ -29,7 +33,7 @@ from __future__ import annotations
 from fastapi import Depends, HTTPException, status
 
 from app.core import identity as identity_module
-from app.core.identity import LEVEL_ADMIN, LEVEL_COORDENADOR, LEVEL_PESQUISADOR, HorunIdentity, get_identity
+from app.core.identity import LEVEL_ADMIN, LEVEL_COORDENADOR, LEVEL_IC, LEVEL_PESQUISADOR, HorunIdentity, get_identity
 
 COORDENADOR = "coordenador"
 COLABORADOR = "colaborador"
@@ -47,13 +51,28 @@ def core_role(identity: HorunIdentity) -> str:
 
 
 def can_edit(identity: HorunIdentity) -> bool:
-    """Pode importar e alterar resultados? Níveis 1–3; técnico(a) e IC só veem."""
-    return identity.level <= LEVEL_PESQUISADOR
+    """Pode importar, criar e editar resultados e métodos? Todos os níveis (1–5)
+    desde 16/11/2026 — técnico(a) e IC inclusive."""
+    return identity.level <= LEVEL_IC
 
 
 def require_editor(identity: HorunIdentity = Depends(get_identity)) -> HorunIdentity:
     if not can_edit(identity):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Técnicos e ICs só visualizam os resultados.")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Seu cargo no Horun não permite alterar os resultados.")
+    return identity
+
+
+def can_curate(identity: HorunIdentity) -> bool:
+    """Valida/invalida, exclui e une? Níveis 1–3; técnico(a) e IC não."""
+    return identity.level <= LEVEL_PESQUISADOR
+
+
+def require_curator(identity: HorunIdentity = Depends(get_identity)) -> HorunIdentity:
+    if not can_curate(identity):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Validar, excluir e unir é com pesquisadores e coordenadores; técnicos e ICs importam e editam.",
+        )
     return identity
 
 

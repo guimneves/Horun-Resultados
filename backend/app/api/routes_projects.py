@@ -15,12 +15,13 @@ from app.core import identity as identity_module
 from app.core.identity import HorunIdentity, get_identity
 from app.core.permissions import (
     COORDENADOR,
+    can_curate,
     can_edit,
     can_manage_members,
     can_see_history,
     core_role,
     require_coordenador,
-    require_editor,
+    require_curator,
     require_history_access,
     require_super_admin,
     sees_all_projects,
@@ -63,6 +64,7 @@ def me(identity: HorunIdentity = Depends(get_identity), session: Session = Depen
         "role": role,
         "is_coordenador": role == COORDENADOR,
         "can_edit": can_edit(identity),
+        "can_curate": can_curate(identity),
         "can_delete_projects": identity.level == 1,
         "can_see_history": can_see_history(identity),
         # vê todos os projetos (níveis 1–2) ou só aqueles em que é membro
@@ -252,7 +254,7 @@ def set_series_views(
     body: SeriesViewsIn,
     project: Project = Depends(get_project),
     session: Session = Depends(get_session),
-    identity: HorunIdentity = Depends(require_editor),
+    identity: HorunIdentity = Depends(require_curator),
 ):
     """O que aparece na aba Séries deste projeto (pesquisadores e coordenadores)."""
     ensure_open(project)

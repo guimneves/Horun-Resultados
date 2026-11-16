@@ -11,7 +11,7 @@ import { codedText, conditionLabel, KIND_LABELS, levelText, METHOD_LABELS } from
 // efetiva e o que já tem resultado.
 
 export function PlanTab({ plan, onChange, onDeleted }: { plan: DoePlan; onChange: (p: DoePlan) => void; onDeleted: () => void }) {
-  const { project, canEdit } = useProject()
+  const { project, canEdit, canCurate } = useProject()
   const [matrix, setMatrix] = useState<'reais' | 'codificados'>('reais')
   const [order, setOrder] = useState<'condicao' | 'planejada' | 'efetiva'>('condicao')
   const [editing, setEditing] = useState(false)
@@ -65,9 +65,11 @@ export function PlanTab({ plan, onChange, onDeleted }: { plan: DoePlan; onChange
               <Button variant="ghost" onClick={randomize}>
                 Sortear ordem
               </Button>
-              <Button variant="danger" onClick={remove}>
-                Excluir
-              </Button>
+              {canCurate && (
+                <Button variant="danger" onClick={remove}>
+                  Excluir
+                </Button>
+              )}
             </div>
           )}
         </div>

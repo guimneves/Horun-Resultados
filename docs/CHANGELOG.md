@@ -1,5 +1,18 @@
 # Changelog — Horun · Resultados
 
+## Não lançado — 16/11/2026
+### Técnicos e ICs importam e editam
+- Pedido do mantenedor: `can_edit`/`require_editor` passa a valer para todos
+  os níveis (1–5). Técnico(a) e IC importam resultados, criam e editam
+  amostras, corridas e massas, ligam nomes lembrados, criam/editam/preenchem
+  variáveis e criam/editam os planejamentos e métodos do ASE (e lançam os
+  resultados).
+- Novo `can_curate`/`require_curator` (níveis 1–3, no `/me`): validar/invalidar,
+  excluir (amostras, medições, corridas, variáveis, planejamentos), unir
+  amostras e escolher as vistas das Séries continuam com pesquisadores e
+  coordenadores. Frontend: `canCurate` no contexto do projeto; selo do cargo
+  "Técnico(a)/IC" no lugar de "Somente leitura"; Manual atualizado.
+
 ## Não lançado — 22/10/2026
 ### Polímeros — Estudos do PostRun (RE7S)
 - Tipo de projeto **Polímeros — quantificação por pirólise (Rock-Eval)**

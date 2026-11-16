@@ -143,9 +143,11 @@ def test_access_uses_the_live_level_not_the_level_at_add(client, project):
     other = _new_project(client, "Outro")
     promoted = person("4", 2)  # o técnico virou coordenador(a) no Horun: vê tudo
     assert client.get(f"projects/{other}/samples", headers=promoted).status_code == 200
-    demoted = person("3", 4)  # pesquisador(a) que agora é técnico(a): segue membro, só leitura
+    demoted = person("3", 4)  # pesquisador(a) que agora é técnico(a): segue membro, edita mas não exclui
     assert client.get(f"projects/{pid}/samples", headers=demoted).status_code == 200
-    assert client.post(f"projects/{pid}/samples", json={"code": "HP300H"}, headers=demoted).status_code == 403
+    r = client.post(f"projects/{pid}/samples", json={"code": "HP300H"}, headers=demoted)
+    assert r.status_code == 201
+    assert client.delete(f"projects/{pid}/samples/{r.json()['id']}", headers=demoted).status_code == 403
     assert client.get(f"projects/{pid}/members/candidates", headers=demoted).status_code == 403
 
 

@@ -14,8 +14,10 @@ export interface ProjectCtx {
   project: Project
   /** Projeto arquivado (só leitura para todos). */
   readOnly: boolean
-  /** Pode importar e alterar: projeto aberto e cargo de pesquisador(a) para cima. */
+  /** Pode importar, criar e editar: projeto aberto (todos os cargos, técnico(a) e IC inclusive). */
   canEdit: boolean
+  /** Pode validar, excluir e unir: projeto aberto e cargo de pesquisador(a) para cima. */
+  canCurate: boolean
   /** Frações deste tipo de amostra (tabaco: Charuto, Cigarro, Essência de Narguilé) + as comuns. */
   fractions: Fraction[]
   isTobacco: boolean
@@ -85,6 +87,7 @@ export function ProjectLayout() {
   if (!project) return <p className="p-6">Projeto não encontrado.</p>
   const readOnly = project.archived_at !== null
   const canEdit = !readOnly && !!me?.can_edit
+  const canCurate = !readOnly && !!me?.can_curate
   const sampleType = project.profile?.sample_type ?? 'rocha_hidropirolise'
   const isTobacco = sampleType === 'tabaco'
   // só as frações deste tipo de amostra (+ Padrão/Outra, comuns a todos)
@@ -196,7 +199,7 @@ export function ProjectLayout() {
 
       {/* "Baixar vários PNG": seleção de gráficos vale em todas as abas do projeto */}
       <ChartSelectionProvider zipName={`graficos_${project.name}`}>
-        <Outlet context={{ project, readOnly, canEdit, fractions: projectFractions, isTobacco } satisfies ProjectCtx} />
+        <Outlet context={{ project, readOnly, canEdit, canCurate, fractions: projectFractions, isTobacco } satisfies ProjectCtx} />
       </ChartSelectionProvider>
 
       {editing && (

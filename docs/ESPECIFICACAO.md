@@ -259,7 +259,8 @@ sobrepor nos gráficos como "referência" — não é prioridade da v1.
 - **Experimento** (por projeto): código (`HP300NA`), temperatura (°C), tempo (h),
   reator, massa inicial, data, observações, condições extras (JSON) lidas da
   planilha de gás. **Massas da réplica** (08/10/2026, `gas_mass_g`,
-  `oil_mass_g`, `bitumen_mass_g`, em g, 0 a 10 000): digitadas por níveis 1–3.
+  `oil_mass_g`, `bitumen_mass_g`, em g, 0 a 10 000): digitadas por qualquer pessoa do projeto
+  (níveis 1–5 desde 16/11/2026).
   Gás: o valor digitado substitui o da planilha (medição `gas_balanco`, ou as
   condições da corrida); vazio = vale a planilha; reimportar não mexe no
   digitado. A API devolve o valor efetivo e a origem (`planilha`/`editado`).
@@ -320,11 +321,18 @@ sobrepor nos gráficos como "referência" — não é prioridade da v1.
 
 Papel pelo **cargo no Horun** (`X-Horun-Level`): níveis 1–2 (administrador
 máximo, coordenador(a)) = **coordenador**; demais com acesso = **colaborador**.
-Quem altera (`can_edit`, 08/10/2026): níveis 1–3 (administrador,
-coordenador/a, pesquisador/a) importam, criam/editam/excluem amostras,
-experimentos e medições. Técnico(a) (4) e IC (5): **só visualizam** (inclui
-exportar CSV/XLSX) — 403 "Técnicos e ICs só visualizam os resultados." em
-toda rota que altera, inclusive **validar/invalidar**. Coordenador: tudo isso
+Quem **importa, cria e edita** (`can_edit`/`require_editor`; ampliado em
+16/11/2026 — antes só níveis 1–3): **todos os níveis, 1–5**, técnico(a) e IC
+inclusive — importar arquivos; criar e editar amostras, experimentos e as
+massas; nomes lembrados (ligar e esquecer); criar, editar e preencher
+variáveis; criar e editar planejamentos do ASE (inclusive o **método**),
+sortear a ordem, lançar e importar resultados do ASE. Quem **cuida** dos dados
+(`can_curate`/`require_curator`, níveis 1–3: administrador, coordenador/a,
+pesquisador/a): **validar/invalidar** amostras e medições, **excluir**
+amostras (uma ou várias), medições, experimentos, variáveis e planejamentos,
+**unir** amostras e escolher as vistas da aba Séries — 403 "Validar, excluir e
+unir é com pesquisadores e coordenadores; técnicos e ICs importam e editam."
+para técnico(a) e IC. `/me` traz `can_edit` e `can_curate`. Coordenador: tudo isso
 + criar/editar/arquivar projetos, tabela de frações e o **histórico**. Excluir projeto: só administrador máximo, com
 confirmação digitando o nome. Sem senhas próprias do módulo (no modo de
 desenvolvimento, seletor "Ver como" para trocar o nível).
@@ -335,7 +343,8 @@ abrem **todos** os projetos; níveis 3–5 só os projetos em que são membros
 (amostras, séries, comparar, experimentos, importação, exportação, arquivos,
 histórico, pessoas) responde **404** a quem não é membro (`get_project` em
 `api/deps.py`). Dentro do projeto, cada um mantém os direitos do cargo
-(pesquisador importa, edita, exclui, valida; técnico e IC só veem).
+(pesquisador importa, edita, exclui, valida; técnico e IC importam e editam,
+mas não validam, excluem nem unem).
 "Pessoas do projeto" (`/projects/{id}/members`, `.../members/candidates`):
 coordenadores adicionam/removem pesquisadores, técnicos e ICs; pesquisadores
 adicionam/removem só técnicos e ICs; técnicos e ICs só consultam (403 ao

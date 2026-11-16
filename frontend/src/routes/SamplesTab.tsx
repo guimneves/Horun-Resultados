@@ -181,8 +181,8 @@ function BulkDeleteConfirm({
 }
 
 export function SamplesTab() {
-  const { project, canEdit, fractions, isTobacco } = useProject()
-  const { catalog, fractionLabel, paramLabel, techniqueLabel, me } = useApp()
+  const { project, canEdit, canCurate, fractions, isTobacco } = useProject()
+  const { catalog, fractionLabel, paramLabel, techniqueLabel } = useApp()
   const mobile = useIsMobile()
   const [mode, setMode] = useState<Mode>('padrao')
   const { samples, error, reload } = useSamples(project.id, mode)
@@ -196,9 +196,9 @@ export function SamplesTab() {
   const [creating, setCreating] = useState(false)
   const [bulk, setBulk] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
-  // Seleção (quem pode alterar, projeto aberto): excluir várias de uma vez; validar só coordenadores
-  const canSelect = canEdit
-  const canValidate = !!me?.can_edit
+  // Seleção (validar, unir e excluir várias de uma vez): níveis 1–3 com o projeto aberto
+  const canSelect = canCurate
+  const canValidate = canCurate
   const [selected, setSelected] = useState<Set<number>>(() => new Set())
   const [confirmDelete, setConfirmDelete] = useState<number[] | null>(null)
   const [bulkBusy, setBulkBusy] = useState(false)
@@ -355,7 +355,7 @@ export function SamplesTab() {
             <MenuItem onClick={() => (selecting ? stopSelecting() : setSelecting(true))}>{selecting ? 'Parar de selecionar' : 'Selecionar várias'}</MenuItem>
           )}
           {canEdit && <MenuItem onClick={() => setBulk(true)}>Criar várias</MenuItem>}
-          {canEdit && (
+          {canCurate && (
             <MenuItem
               onClick={() => {
                 setSelecting(true)
@@ -585,7 +585,7 @@ export function SamplesTab() {
               </Button>
             </>
           )}
-          {canEdit && (
+          {canCurate && (
             <Button
               disabled={bulkBusy || selectedIds.length < 2}
               title={selectedIds.length < 2 ? 'Marque 2 ou mais amostras que são a mesma' : undefined}
@@ -628,7 +628,7 @@ export function SamplesTab() {
           }}
         />
       )}
-      {showDups && <DuplicatesModal projectId={project.id} canEdit={canEdit} onClose={() => setShowDups(false)} onChanged={reload} />}
+      {showDups && <DuplicatesModal projectId={project.id} canEdit={canCurate} onClose={() => setShowDups(false)} onChanged={reload} />}
       {confirmDelete && (
         <BulkDeleteConfirm
           projectId={project.id}

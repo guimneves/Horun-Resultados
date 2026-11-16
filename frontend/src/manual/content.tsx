@@ -59,8 +59,10 @@ export const MANUAL_SECTIONS: ManualSection[] = [
         </p>
         <Bullets>
           <li>
-            <strong>Somente leitura</strong> (técnico e IC): vê tudo — tabelas, séries, gráficos, detalhe das amostras, condições experimentais — e exporta
-            CSV/XLSX, mas não importa nem altera nada. Os botões de importar, criar, editar e excluir não aparecem.
+            <strong>Técnico(a)/IC</strong>: vê tudo e exporta CSV/XLSX; <strong>importa arquivos</strong>, cria amostras e experimentos, corrige os dados
+            deles (inclusive as massas), cria e preenche variáveis, liga nomes lembrados e, nos projetos de Extração ASE, cria e edita os planejamentos (com o{' '}
+            <strong>método</strong>) e lança os resultados. Não valida nem invalida, não exclui e não une amostras — isso fica com pesquisadores e
+            coordenadores, que conferem o que entrou.
           </li>
           <li>
             <strong>Colaborador(a)</strong> (pesquisador): vê tudo, importa arquivos, cria amostras e experimentos, corrige os dados deles, liga nomes
@@ -160,7 +162,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
         </p>
         <Steps>
           <li>
-            <strong>+ Novo planejamento</strong> (pesquisadores e coordenadores): nome; de 2 a 4 <strong>fatores</strong>, cada um com nome, unidade, tipo e
+            <strong>+ Novo planejamento</strong> (qualquer pessoa do projeto, técnicos e ICs inclusive; excluir, só pesquisadores e coordenadores): nome; de 2 a 4 <strong>fatores</strong>, cada um com nome, unidade, tipo e
             os níveis baixo (−1) e alto (+1). Tipos: <strong>numérico contínuo</strong> (temperatura), <strong>numérico inteiro</strong> (nº de ciclos) ou{' '}
             <strong>categórico</strong> (solvente). <strong>Usar o exemplo do ASE (2³)</strong> preenche ciclos, solvente e temperatura da planilha de
             referência.
@@ -353,8 +355,8 @@ export const MANUAL_SECTIONS: ManualSection[] = [
       <>
         <Steps>
           <li>
-            Abra o projeto e toque em <strong>Importar resultados</strong> (no alto, à direita). Técnicos e ICs não veem esse botão — só pesquisadores e
-            coordenadores importam.
+            Abra o projeto e toque em <strong>Importar resultados</strong> (no alto, à direita). Todos os cargos importam — técnicos e ICs
+            também; quem valida o que entrou são os pesquisadores e coordenadores.
           </li>
           <li>
             Em <strong>1. Qual análise você vai importar?</strong>, toque no tipo: <strong>CHNSO</strong>, <strong>LECO</strong>,{' '}
@@ -601,7 +603,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
           Excluir <strong>não dá para desfazer</strong>: saem as amostras, as medições, os valores, as curvas e os nomes lembrados delas. Um arquivo original
           que também tem medições de outras amostras continua guardado; um arquivo que fica sem nenhuma medição sai do servidor e pode ser importado de novo. As
           ações valem só para as amostras selecionadas que estão aparecendo — mudou o filtro, confira o número na barra. Para sair, <strong>Mais</strong> →{' '}
-          <strong>Parar de selecionar</strong>. Técnicos e ICs não veem essa opção.
+          <strong>Parar de selecionar</strong>. Técnicos e ICs não veem essa opção (eles não validam nem excluem).
         </p>
       </>
     ),
@@ -628,9 +630,9 @@ export const MANUAL_SECTIONS: ManualSection[] = [
             resumida, abaixo da temperatura na lista de corridas.
           </li>
           <li>
-            Pesquisadores e coordenadores tocam em <strong>Editar massas</strong> e digitam as massas em gramas (vírgula ou ponto). No gás, o campo vazio usa o
+            Toque em <strong>Editar massas</strong> e digite as massas em gramas (vírgula ou ponto). No gás, o campo vazio usa o
             valor da planilha; o valor digitado substitui o da planilha, mesmo se ela for importada de novo. Para voltar ao valor da planilha, toque em{' '}
-            <strong>Usar planilha</strong> e salve. Cada mudança fica no Histórico. Técnicos e ICs veem as massas, mas não editam.
+            <strong>Usar planilha</strong> e salve. Cada mudança fica no Histórico.
           </li>
           <li>
             Mais abaixo, a ficha organizada como a planilha: massa inicial, gás por massa de rocha e fechamento do balanço; depois os blocos{' '}
@@ -657,7 +659,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
         </p>
         <Steps>
           <li>
-            <strong>Criar</strong> (pesquisadores e coordenadores): aba <strong>Variáveis</strong> → <strong>+ Nova variável</strong>. Dê um nome e escolha o
+            <strong>Criar</strong> (qualquer pessoa do projeto; apagar, só pesquisadores e coordenadores): aba <strong>Variáveis</strong> → <strong>+ Nova variável</strong>. Dê um nome e escolha o
             tipo: <strong>Número</strong> (com unidade, ex.: bar — vira linhas nas Séries) ou <strong>Categoria</strong> (uma lista de opções, ex.: L1, L2 —
             vira barras, na ordem da lista).
           </li>

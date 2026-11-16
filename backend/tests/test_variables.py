@@ -46,9 +46,14 @@ def test_create_edit_delete_and_fill(client, loaded):  # noqa: F811
     r = client.post(f"projects/{pid}/variables", json={"label": "Lote", "kind": "categoria", "options": ["L1", "L2", " "]}, headers=PESQ)
     lote = next(v for v in r.json()["variables"] if v["label"] == "Lote")
     assert [o["value"] for o in lote["options"]] == ["L1", "L2"]
-    # técnico e IC só olham
-    for who in (TEC, IC):
-        assert client.post(f"projects/{pid}/variables", json={"label": "X"}, headers=who).status_code == 403
+    # técnico(a) e IC criam e editam variáveis (16/11/2026), mas não apagam
+    for i, who in enumerate((TEC, IC)):
+        r = client.post(f"projects/{pid}/variables", json={"label": f"X{i}"}, headers=who)
+        assert r.status_code == 201, r.text
+        x = next(v for v in r.json()["variables"] if v["label"] == f"X{i}")
+        assert client.patch(f"projects/{pid}/variables/{x['id']}", json={"label": f"Y{i}"}, headers=who).status_code == 200
+        assert client.delete(f"projects/{pid}/variables/{x['id']}", headers=who).status_code == 403
+        assert client.delete(f"projects/{pid}/variables/{x['id']}", headers=PESQ).status_code == 204
 
     s = _samples(client, pid)
     vals = [

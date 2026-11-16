@@ -7,8 +7,10 @@ export interface Me {
   level_name: string
   role: 'coordenador' | 'colaborador'
   is_coordenador: boolean
-  /** Pode importar e alterar resultados (níveis 1–3); técnico(a) e IC só visualizam. */
+  /** Pode importar, criar e editar resultados e métodos — todos os níveis (técnico(a) e IC desde 16/11/2026). */
   can_edit: boolean
+  /** Pode validar/invalidar, excluir, unir amostras e escolher as vistas das Séries (níveis 1–3). */
+  can_curate: boolean
   can_delete_projects: boolean
   can_see_history: boolean
   /** Níveis 1–2 veem todos os projetos; os demais, só aqueles em que são membros. */

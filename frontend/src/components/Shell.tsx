@@ -74,7 +74,7 @@ export function RoleBadge() {
       title={`${me.username} — papel neste módulo, pelo seu cargo no Horun`}
     >
       <span className="hidden sm:inline">{me.username} · </span>
-      {me.is_coordenador ? 'Coordenador(a)' : me.can_edit ? 'Colaborador(a)' : 'Somente leitura'}
+      {me.is_coordenador ? 'Coordenador(a)' : me.can_curate ? 'Colaborador(a)' : 'Técnico(a)/IC'}
     </span>
   )
 }

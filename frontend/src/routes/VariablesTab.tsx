@@ -182,7 +182,7 @@ function ValueInput({ variable, value, onChange }: { variable: SampleVariable; v
 }
 
 export function VariablesTab() {
-  const { project, canEdit } = useProject()
+  const { project, canEdit, canCurate } = useProject()
   const { fractionLabel } = useApp()
   const { data, setData, error, reload } = useVariables(project.id)
   const { samples, reload: reloadSamples } = useSamples(project.id, 'todas')
@@ -294,7 +294,7 @@ export function VariablesTab() {
                     <Button variant="ghost" onClick={() => setEditing(v)}>
                       Editar
                     </Button>
-                    {v.can_delete && (
+                    {v.can_delete && canCurate && (
                       <Button variant="ghost" onClick={() => remove(v)}>
                         Apagar
                       </Button>

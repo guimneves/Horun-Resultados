@@ -60,11 +60,11 @@ def test_mass_validation(client, project):
 
 
 @pytest.mark.parametrize("who", [TEC, IC], ids=["tecnico", "ic"])
-def test_only_editors_change_masses(client, project, who):
+def test_tecnico_and_ic_change_masses(client, project, who):
     pid = project["id"]
     exp = client.post(f"projects/{pid}/experiments", json={"code": "HP300NA"}, headers=PESQ).json()
     url = f"projects/{pid}/experiments/{exp['id']}"
-    assert client.patch(url, json={"bitumen_mass_g": 1.0}, headers=who).status_code == 403
+    assert client.patch(url, json={"bitumen_mass_g": 1.0}, headers=who).status_code == 200  # desde 16/11/2026
     assert client.patch(url, json={"bitumen_mass_g": 1.0}, headers=PESQ).status_code == 200
     assert client.patch(url, json={"bitumen_mass_g": 2.0}, headers=COORD).status_code == 200
     masses = client.get(f"projects/{pid}/experiments/masses", headers=who)

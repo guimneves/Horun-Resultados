@@ -132,7 +132,9 @@ export function SampleDetailModal({
   })
   const [error, setError] = useState<string | null>(null)
   const [newAlias, setNewAlias] = useState('')
-  const canValidate = !!me?.can_edit && !readOnly
+  // validar e excluir: níveis 1–3; editar dados e nomes lembrados: todos (16/11/2026)
+  const canCurate = !!me?.can_curate && !readOnly
+  const canValidate = canCurate
   const [tab, setTabState] = useState<'resultados' | 'graficos' | 'validacao'>(() => {
     try {
       const v = localStorage.getItem('resultados.amostra.aba')
@@ -320,22 +322,24 @@ export function SampleDetailModal({
                 <>
                   <Dropdown label="Mais" ariaLabel="Mais ações da amostra">
                     <MenuItem onClick={() => setEditing(true)}>Editar dados</MenuItem>
-                    <MenuItem
-                      danger
-                      onClick={() => {
-                        if (window.confirm(`Excluir a amostra ${detail.code} e todas as medições dela?`)) {
-                          api
-                            .delete(`/projects/${projectId}/samples/${sampleId}`)
-                            .then(() => {
-                              onChanged()
-                              onClose()
-                            })
-                            .catch((err) => setError(errorText(err)))
-                        }
-                      }}
-                    >
-                      Excluir amostra
-                    </MenuItem>
+                    {canCurate && (
+                      <MenuItem
+                        danger
+                        onClick={() => {
+                          if (window.confirm(`Excluir a amostra ${detail.code} e todas as medições dela?`)) {
+                            api
+                              .delete(`/projects/${projectId}/samples/${sampleId}`)
+                              .then(() => {
+                                onChanged()
+                                onClose()
+                              })
+                              .catch((err) => setError(errorText(err)))
+                          }
+                        }}
+                      >
+                        Excluir amostra
+                      </MenuItem>
+                    )}
                   </Dropdown>
                 </>
               )}
@@ -552,7 +556,7 @@ export function SampleDetailModal({
                         analyses={detail.analyses.filter((a) => a.technique === t)}
                         projectId={projectId}
                         canValidate={canValidate}
-                        canDelete={!readOnly}
+                        canDelete={canCurate}
                         onChanged={async () => {
                           await load()
                           onChanged()

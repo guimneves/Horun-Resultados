@@ -1,8 +1,8 @@
 """Experimentos, amostras e medições (análises) de um projeto.
 
-Níveis 1–3 (administrador, coordenador/a, pesquisador/a) criam, editam e
-excluem amostras, experimentos e medições; técnico(a) e IC só visualizam;
-validar/invalidar: níveis 1–3, como as demais alterações (ESPECIFICACAO.md, seção 7)."""
+Criar e editar amostras e experimentos, massas e nomes lembrados: todos os
+níveis (`require_editor` — técnico(a) e IC desde 16/11/2026). Excluir, unir e
+validar/invalidar: níveis 1–3 (`require_curator`; ESPECIFICACAO.md, seção 7)."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from sqlmodel import Session, select
 
 from app.api.deps import ensure_open, get_project
 from app.core.identity import HorunIdentity, get_identity
-from app.core.permissions import require_editor
+from app.core.permissions import require_curator, require_editor
 from app.db.models import Analysis, AnalysisValue, DoePlan, DoeRun, Experiment, FractionType, Project, Sample, SampleAlias, utcnow
 from app.db.session import get_session
 from app.services import audit, deletion, importer, masses, profiles, results, variables
@@ -155,7 +155,7 @@ def patch_experiment(
 
 @router.delete("/projects/{project_id}/experiments/{experiment_id}", status_code=204)
 def delete_experiment(
-    experiment_id: int, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_editor)
+    experiment_id: int, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_curator)
 ):
     ensure_open(project)
     exp = _get_experiment(session, project, experiment_id)
@@ -303,7 +303,7 @@ class MergeIn(BaseModel):
 
 @router.post("/projects/{project_id}/samples/merge")
 def merge_samples(
-    body: MergeIn, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_editor)
+    body: MergeIn, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_curator)
 ):
     ensure_open(project)
     target = _get_sample(session, project, body.target_id)
@@ -399,7 +399,7 @@ def validate_sample(
     body: Validation,
     project: Project = Depends(get_project),
     session: Session = Depends(get_session),
-    identity: HorunIdentity = Depends(require_editor),
+    identity: HorunIdentity = Depends(require_curator),
 ):
     ensure_open(project)
     sample = _get_sample(session, project, sample_id)
@@ -416,7 +416,7 @@ def validate_sample(
 
 @router.delete("/projects/{project_id}/samples/{sample_id}", status_code=204)
 def delete_sample(
-    sample_id: int, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_editor)
+    sample_id: int, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_curator)
 ):
     ensure_open(project)
     sample = _get_sample(session, project, sample_id)
@@ -462,7 +462,7 @@ def _get_samples(session: Session, project: Project, ids: list[int]) -> list[Sam
 
 @router.post("/projects/{project_id}/samples/bulk-delete")
 def bulk_delete_samples(
-    body: BulkDelete, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_editor)
+    body: BulkDelete, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_curator)
 ):
     """Exclui várias amostras numa transação só. Com `dry_run`, só devolve o
     que sairia (medições por amostra, arquivos que saem/ficam)."""
@@ -496,7 +496,7 @@ def bulk_delete_samples(
 
 @router.post("/projects/{project_id}/samples/bulk-validation")
 def bulk_validate_samples(
-    body: BulkValidation, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_editor)
+    body: BulkValidation, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_curator)
 ):
     ensure_open(project)
     samples = _get_samples(session, project, body.sample_ids)
@@ -537,7 +537,7 @@ def validate_analysis(
     body: Validation,
     project: Project = Depends(get_project),
     session: Session = Depends(get_session),
-    identity: HorunIdentity = Depends(require_editor),
+    identity: HorunIdentity = Depends(require_curator),
 ):
     ensure_open(project)
     analysis = _get_analysis(session, project, analysis_id)
@@ -555,7 +555,7 @@ def validate_analysis(
 
 @router.delete("/projects/{project_id}/analyses/{analysis_id}", status_code=204)
 def delete_analysis(
-    analysis_id: int, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_editor)
+    analysis_id: int, project: Project = Depends(get_project), session: Session = Depends(get_session), identity: HorunIdentity = Depends(require_curator)
 ):
     ensure_open(project)
     analysis = _get_analysis(session, project, analysis_id)
