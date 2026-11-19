@@ -176,7 +176,9 @@ export const MANUAL_SECTIONS: ManualSection[] = [
           <li>
             Informe a <strong>rocha antes da extração</strong> (amostra já cadastrada, com Rock-Eval) e as <strong>condições fixas do método</strong>
             (célula, pressão, tempo estático, rinse, purge, massa nominal...) — são contexto, não fatores. O <strong>código das extrações</strong> (ex.:
-            HP320_{'{cond}'}_R{'{rep}'}) liga sozinho cada execução à amostra da rocha pós-ASE de mesmo nome.
+            HP320_{'{cond}'}_R{'{rep}'}) liga sozinho cada execução à amostra da rocha pós-ASE de mesmo nome. Se o Rock-Eval já foi importado
+            com outro padrão (ex.: <strong>F01R1</strong>, <strong>F01R2</strong>...), use <strong>Editar</strong> no planejamento e preencha o código
+            (ex.: {'{cond}'}R{'{rep}'}): ele é reaplicado a todas as execuções, e a janela mostra quantas casam com amostras já importadas.
           </li>
           <li>
             <strong>Planejamento</strong>: matriz com valores reais ou codificados (±1), execuções com ordem planejada e efetiva, o que já tem resultado e o

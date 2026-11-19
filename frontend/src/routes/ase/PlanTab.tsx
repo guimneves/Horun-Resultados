@@ -222,9 +222,15 @@ function PlanEditModal({ plan, onClose, onSaved }: { plan: DoePlan; onClose: () 
   const [centers, setCenters] = useState(plan.center_points)
   const [pre, setPre] = useState<number | ''>(plan.pre_sample?.id ?? '')
   const [method, setMethod] = useState<Record<string, string>>(plan.method)
+  const [template, setTemplate] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const { samples } = useSamples(project.id, 'todas')
+  // prévia do código das extrações: quantas execuções casam com uma amostra já importada
+  const norm = (c: string) => c.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, '')
+  const known = new Set((samples ?? []).map((s) => norm(s.code)))
+  const codeOf = (cond: string, rep: number) => template.trim().replaceAll('{cond}', cond).replaceAll('{rep}', String(rep))
+  const matched = template.trim() ? plan.runs.filter((r) => known.has(norm(codeOf(r.condition, r.replicate)))).length : 0
   async function save() {
     setBusy(true)
     setError(null)
@@ -237,6 +243,7 @@ function PlanEditModal({ plan, onClose, onSaved }: { plan: DoePlan; onClose: () 
           center_points: plan.center_possible ? centers : 0,
           pre_sample_id: pre || null,
           method,
+          ...(template.trim() ? { code_template: template.trim() } : {}),
         }),
       )
     } catch (err) {
@@ -273,6 +280,18 @@ function PlanEditModal({ plan, onClose, onSaved }: { plan: DoePlan; onClose: () 
             </select>
           </Field>
         </div>
+        <Field
+          label="Código das extrações (reaplicar a todas)"
+          hint='Modelo com {cond} e {rep}: "{cond}R{rep}" dá F01R1, F01R2…; "HP320_{cond}_R{rep}" dá HP320_F01_R1. Cada execução se liga sozinha à amostra de mesmo código (o Rock-Eval dela entra no DOE). Em branco, os códigos não mudam.'
+        >
+          <input className={inputClass} style={inputStyle} value={template} onChange={(e) => setTemplate(e.target.value)} placeholder="{cond}R{rep}" />
+          {template.trim() && plan.runs.length > 0 && (
+            <p className="mt-1 text-xs" style={muted}>
+              Ex.: {plan.runs[0].condition} R{plan.runs[0].replicate} → <strong>{codeOf(plan.runs[0].condition, plan.runs[0].replicate)}</strong> ·{' '}
+              <strong>{matched}</strong> de {plan.runs.length} execuções casam com amostras já importadas
+            </p>
+          )}
+        </Field>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
           {Object.entries(METHOD_LABELS).map(([key, label]) => (
             <Field key={key} label={label}>

@@ -193,6 +193,30 @@ def test_rockeval_post_and_pre_linked_without_retyping(client, ase_project):
     assert fields["re_S1"]["n"] == 1 and fields["m1_mg"]["n"] == 0
 
 
+def test_code_template_applied_later_links_imported_rockeval(client, ase_project):
+    """Pedido de 19/11/2026: o Rock-Eval já foi importado com as amostras
+    F01R1, F01R2… e o planejamento foi criado sem código — em Editar, o modelo
+    "{cond}R{rep}" liga todas as execuções de uma vez."""
+    pid = ase_project["id"]
+    htm = syn.rockeval_htm([
+        {**_rock("a1", "F01R1", 2.0), "s1": 0.5, "s2": 4.0},
+        {**_rock("a2", "F02R2", 2.0), "s1": 0.9, "s2": 4.0},
+    ])
+    confirm(client, pid, upload(client, pid, {"re.htm": htm}))
+    plan = _create(client, pid, code_template="")
+    assert all(r["sample_id"] is None for r in plan["runs"])
+    r = client.patch(f"projects/{pid}/doe/{plan['id']}", json={"code_template": "{cond}R{rep}", "replicates": 3}, headers=PESQ)
+    assert r.status_code == 200, r.text
+    runs = {(x["condition"], x["replicate"]): x for x in r.json()["runs"]}
+    assert runs[("F01", 1)]["code"] == "F01R1" and runs[("F01", 1)]["sample_linked_by"] == "código"
+    assert runs[("F01", 1)]["values"]["re_S1"] == pytest.approx(0.5)
+    assert runs[("F02", 2)]["values"]["re_S1"] == pytest.approx(0.9)
+    assert runs[("F03", 3)]["code"] == "F03R3"  # execução nova (R3) já nasce com o código
+    # sem o campo, editar não mexe nos códigos
+    r = client.patch(f"projects/{pid}/doe/{plan['id']}", json={"name": "outro nome"}, headers=PESQ)
+    assert {x["code"] for x in r.json()["runs"] if x["condition"] == "F01"} == {"F01R1", "F01R2", "F01R3"}
+
+
 def _consolidated_xlsx() -> bytes:
     import openpyxl
 

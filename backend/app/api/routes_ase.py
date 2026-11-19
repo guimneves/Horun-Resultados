@@ -79,6 +79,10 @@ class PlanPatch(BaseModel):
     center_points: int | None = None
     pre_sample_id: int | None = None
     method: dict[str, str] | None = None
+    # modelo do código das extrações ("{cond}R{rep}" → F01R1…): reaplicado a
+    # TODAS as execuções, que se ligam sozinhas à amostra de mesmo código
+    # (pedido de 19/11/2026: amostras do Rock-Eval já importadas como F01R1…)
+    code_template: str | None = Field(default=None, max_length=200)
 
 
 class RunPatch(BaseModel):
@@ -240,9 +244,16 @@ def patch_plan(plan_id: int, body: PlanPatch, project: Project = Depends(get_pro
     new_keys = sorted(k for k in wanted if k not in have)
     if plan.randomized:
         random.Random(plan.seed + len(runs)).shuffle(new_keys)
+    template = (body.code_template or "").strip()
+    if template:
+        for key, r in have.items():
+            if key in wanted:
+                r.code = _code_for(template, r.condition, r.replicate)
+                session.add(r)
     for c, rep in new_keys:
         nxt += 1
-        session.add(DoeRun(plan_id=plan.id, condition=c, replicate=rep, planned_order=nxt))  # type: ignore[arg-type]
+        session.add(DoeRun(plan_id=plan.id, condition=c, replicate=rep, planned_order=nxt,  # type: ignore[arg-type]
+                           code=_code_for(template, c, rep)))
     plan.replicates, plan.center_points = reps, centers
     plan.updated_at = utcnow()
     session.add(plan)
