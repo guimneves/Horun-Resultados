@@ -4,7 +4,9 @@ mantenedor de 22/10/2026 (projetos "Geoquímica — Extração ASE").
 * Fatores: nome, unidade, tipo e níveis baixo (−1) e alto (+1). Tipos:
   "continuo" (temperatura), "discreto" (nº de ciclos: só inteiros) e
   "categorico" (solvente). Letras A, B, C, D na ordem informada.
-* Condições na ordem padrão (Yates: A alterna mais rápido) — F01…F2ᵏ. Pontos
+* Condições na ordem padrão (Yates: A alterna mais rápido) — F01…F2ᵏ, ou a
+  partir de outro número (`start`): o segundo fatorial de uma série pode ser
+  F09…F16, como na planilha e nos nomes das amostras do laboratório. Pontos
   centrais (C01…) só quando o centro existe de verdade: todos os fatores
   contínuos, ou discretos com ponto médio inteiro. Fator categórico ou ponto
   médio não inteiro → o centro NÃO é criado e o motivo é mostrado.
@@ -27,6 +29,7 @@ from app.services import stats
 
 FACTOR_KINDS = ("continuo", "discreto", "categorico")
 LETTERS = "ABCD"
+MAX_START = 90  # numeração da primeira condição (F01…F90)
 MAX_REPLICATES = 10
 MAX_CENTER = 10
 
@@ -111,13 +114,13 @@ def terms(k: int) -> list[str]:
     return out
 
 
-def conditions(factors: list[dict]) -> list[dict]:
-    """Condições na ordem padrão (F01…), com níveis codificados e reais."""
+def conditions(factors: list[dict], start: int = 1) -> list[dict]:
+    """Condições na ordem padrão (F01… ou a partir de F`start`), com níveis codificados."""
     k = len(factors)
     out = []
     for i in range(2 ** k):
         coded = {f["letter"]: (1 if (i >> j) & 1 else -1) for j, f in enumerate(factors)}
-        out.append({"code": f"F{i + 1:02d}", "coded": coded, "center": False})
+        out.append({"code": f"F{i + start:02d}", "coded": coded, "center": False})
     return out
 
 
@@ -140,20 +143,22 @@ def level_text(f: dict, coded: int) -> str:
     return str(v)
 
 
-def plan_runs(factors: list[dict], replicates: int, center_points: int, randomize: bool, seed: int) -> list[dict]:
+def plan_runs(factors: list[dict], replicates: int, center_points: int, randomize: bool, seed: int, start: int = 1) -> list[dict]:
     """Execuções planejadas: cada condição × réplica (R1, R2…) e os pontos
     centrais; ordem planejada padrão ou aleatorizada (semente guardada)."""
     if not 1 <= replicates <= MAX_REPLICATES:
         raise DoeError(f"Execuções por condição: de 1 a {MAX_REPLICATES}.")
     if not 0 <= center_points <= MAX_CENTER:
         raise DoeError(f"Pontos centrais: de 0 a {MAX_CENTER}.")
+    if not 1 <= start <= MAX_START:
+        raise DoeError(f"A numeração da primeira condição vai de F01 a F{MAX_START}.")
     if center_points:
         ok, why = center_feasibility(factors)
         if not ok:
             raise DoeError(why)
     runs = []
     for r in range(1, replicates + 1):
-        for c in conditions(factors):
+        for c in conditions(factors, start):
             runs.append({"condition": c["code"], "replicate": r})
     for n in range(1, center_points + 1):
         runs.append({"condition": "C", "replicate": n})
@@ -165,10 +170,10 @@ def plan_runs(factors: list[dict], replicates: int, center_points: int, randomiz
     return runs
 
 
-def coded_of(factors: list[dict], condition: str) -> dict[str, int]:
+def coded_of(factors: list[dict], condition: str, start: int = 1) -> dict[str, int]:
     if condition == "C":
         return {f["letter"]: 0 for f in factors}
-    for c in conditions(factors):
+    for c in conditions(factors, start):
         if c["code"] == condition:
             return c["coded"]
     raise DoeError(f"Condição desconhecida: {condition}.")
@@ -185,7 +190,7 @@ def _mean(v: list[float]) -> float | None:
     return sum(v) / len(v) if v else None
 
 
-def analyze(factors: list[dict], observations: list[dict], confidence: float = 0.95) -> dict:
+def analyze(factors: list[dict], observations: list[dict], confidence: float = 0.95, start: int = 1) -> dict:
     """`observations` = [{"condition": "F01"|"C", "y": float, "run": "..."}]
     (uma por execução independente)."""
     if not 0.5 < confidence < 1:
@@ -196,7 +201,7 @@ def analyze(factors: list[dict], observations: list[dict], confidence: float = 0
     fact = [o for o in obs if o["condition"] != "C"]
     centers = [o for o in obs if o["condition"] == "C"]
     present = {o["condition"] for o in fact}
-    missing = [c["code"] for c in conditions(factors) if c["code"] not in present]
+    missing = [c["code"] for c in conditions(factors, start) if c["code"] not in present]
     base = {
         "terms": tm,
         "confidence": confidence,
@@ -212,7 +217,7 @@ def analyze(factors: list[dict], observations: list[dict], confidence: float = 0
     use_curv = bool(centers)
     x, y = [], []
     for o in obs:
-        coded = coded_of(factors, o["condition"])
+        coded = coded_of(factors, o["condition"], start)
         row = [1.0] + [float(_term_col(coded, t)) for t in tm]
         if use_curv:
             row.append(1.0 if o["condition"] == "C" else 0.0)
@@ -312,8 +317,8 @@ def analyze(factors: list[dict], observations: list[dict], confidence: float = 0
     # efeitos principais e interações (médias observadas; só fatoriais)
     main = []
     for f in factors:
-        lo = [o["y"] for o in fact if coded_of(factors, o["condition"])[f["letter"]] < 0]
-        hi = [o["y"] for o in fact if coded_of(factors, o["condition"])[f["letter"]] > 0]
+        lo = [o["y"] for o in fact if coded_of(factors, o["condition"], start)[f["letter"]] < 0]
+        hi = [o["y"] for o in fact if coded_of(factors, o["condition"], start)[f["letter"]] > 0]
         main.append({"letter": f["letter"], "name": f["name"], "low": level_text(f, -1), "high": level_text(f, 1),
                      "mean_low": _mean(lo), "mean_high": _mean(hi)})
     result["main_effects"] = main
@@ -322,8 +327,8 @@ def analyze(factors: list[dict], observations: list[dict], confidence: float = 0
         cells = {}
         for la in (-1, 1):
             for lb in (-1, 1):
-                vals = [o["y"] for o in fact if coded_of(factors, o["condition"])[a["letter"]] == la
-                        and coded_of(factors, o["condition"])[b["letter"]] == lb]
+                vals = [o["y"] for o in fact if coded_of(factors, o["condition"], start)[a["letter"]] == la
+                        and coded_of(factors, o["condition"], start)[b["letter"]] == lb]
                 cells[f"{la}{lb}"] = _mean(vals)
         inter.append({"a": a["letter"], "b": b["letter"], "a_name": a["name"], "b_name": b["name"],
                       "a_low": level_text(a, -1), "a_high": level_text(a, 1), "b_low": level_text(b, -1), "b_high": level_text(b, 1),

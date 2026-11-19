@@ -223,13 +223,15 @@ function PlanEditModal({ plan, onClose, onSaved }: { plan: DoePlan; onClose: () 
   const [pre, setPre] = useState<number | ''>(plan.pre_sample?.id ?? '')
   const [method, setMethod] = useState<Record<string, string>>(plan.method)
   const [template, setTemplate] = useState('')
+  const [start, setStart] = useState(plan.condition_start)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const { samples } = useSamples(project.id, 'todas')
   // prévia do código das extrações: quantas execuções casam com uma amostra já importada
   const norm = (c: string) => c.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, '')
   const known = new Set((samples ?? []).map((s) => norm(s.code)))
-  const codeOf = (cond: string, rep: number) => template.trim().replaceAll('{cond}', cond).replaceAll('{rep}', String(rep))
+  const relabel = (cond: string) => (cond === 'C' ? cond : `F${String(Number(cond.slice(1)) + start - plan.condition_start).padStart(2, '0')}`)
+  const codeOf = (cond: string, rep: number) => template.trim().replaceAll('{cond}', relabel(cond)).replaceAll('{rep}', String(rep))
   const matched = template.trim() ? plan.runs.filter((r) => known.has(norm(codeOf(r.condition, r.replicate)))).length : 0
   async function save() {
     setBusy(true)
@@ -244,6 +246,7 @@ function PlanEditModal({ plan, onClose, onSaved }: { plan: DoePlan; onClose: () 
           pre_sample_id: pre || null,
           method,
           ...(template.trim() ? { code_template: template.trim() } : {}),
+          ...(start !== plan.condition_start ? { condition_start: start } : {}),
         }),
       )
     } catch (err) {
@@ -266,6 +269,15 @@ function PlanEditModal({ plan, onClose, onSaved }: { plan: DoePlan; onClose: () 
           </Field>
           <Field label="Pontos centrais" hint={plan.center_possible ? undefined : plan.center_reason}>
             <input type="number" min={0} max={10} className={inputClass} style={inputStyle} value={plan.center_possible ? centers : 0} disabled={!plan.center_possible} onChange={(e) => setCenters(Math.max(0, Number(e.target.value) || 0))} />
+          </Field>
+          <Field label="Primeira condição" hint="Muda só o rótulo das condições (F01 → F09…); níveis e resultados ficam.">
+            <div className="flex items-center gap-1">
+              <span>F</span>
+              <input type="number" min={1} max={90} className={inputClass} style={inputStyle} value={start} onChange={(e) => setStart(Math.max(1, Math.min(90, Number(e.target.value) || 1)))} aria-label="Número da primeira condição" />
+              <span className="whitespace-nowrap text-xs" style={muted}>
+                → F{String(start).padStart(2, '0')}…F{String(start + 2 ** plan.factors.length - 1).padStart(2, '0')}
+              </span>
+            </div>
           </Field>
           <Field label="Rocha antes da extração (Rock-Eval pré)">
             <select className={inputClass} style={inputStyle} value={pre} onChange={(e) => setPre(e.target.value ? Number(e.target.value) : '')}>
@@ -314,7 +326,13 @@ function PlanEditModal({ plan, onClose, onSaved }: { plan: DoePlan; onClose: () 
   )
 }
 
-type ImportPreview = { dry_run: boolean; rows: { run: string; code: string; fields: string[]; code_changes: boolean }[]; not_in_plan: string[]; warnings: string[]; sheets: number }
+type ImportPreview = {
+  dry_run: boolean
+  rows: { run: string; code: string; fields: string[]; code_changes: boolean; uncorrected?: string[]; sheet?: string }[]
+  not_in_plan: string[]
+  warnings: string[]
+  sheets: number
+}
 
 function ImportModal({ plan, onClose, onDone }: { plan: DoePlan; onClose: () => void; onDone: (p: DoePlan) => void }) {
   const { project } = useProject()
@@ -345,10 +363,13 @@ function ImportModal({ plan, onClose, onDone }: { plan: DoePlan; onClose: () => 
     <Modal title="Importar resultados da planilha" onClose={onClose} wide>
       <div className="space-y-3 text-sm">
         <p style={muted}>
-          Planilha de resultados com as abas <strong>Consolidado R1</strong>, <strong>Consolidado R2</strong>… Cada coluna F01, F02… vira a execução da mesma
-          condição e réplica. Entram só os resultados finais (corrigidos pelo branco): M1, rendimento, M6, M3/M4 corrigidos, volume e consumo de solvente,
-          tempo, massa de rocha e rendimentos M3/M4/M6. Pesagens, brancos e valores sem correção não entram. A condição F01… da planilha precisa ser a mesma
-          da matriz deste planejamento.
+          Planilha de resultados do ASE — o modelo novo (abas <strong>Experimentos</strong>, <strong>Experimentos 2.0</strong>…, uma linha por extração) ou o
+          antigo (abas <strong>Consolidado R1</strong>, <strong>R2</strong>…). Cada linha vai para a execução de mesma <strong>condição</strong> e{' '}
+          <strong>réplica</strong>; linhas de condições que não são deste planejamento ficam de fora. No modelo novo, a temperatura, o solvente e os ciclos da
+          linha são conferidos com os da condição — se não baterem, a linha não entra e o motivo aparece. Entram os resultados finais: M1, rendimento, M6,
+          M3/M4 e seus rendimentos, volume e consumo de solvente, tempo e massa de rocha. Enquanto os brancos não foram feitos, entram M1, M3 e M4{' '}
+          <strong>sem correção</strong>, com um aviso na execução; quando a planilha trouxer o corrigido, ele substitui o bruto. Pesagens intermediárias não
+          entram, e o Rock-Eval vem das amostras importadas (não da planilha).
         </p>
         <input type="file" accept=".xlsx" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setPreview(null) }} />
         <label className="flex items-center gap-2">
@@ -364,11 +385,13 @@ function ImportModal({ plan, onClose, onDone }: { plan: DoePlan; onClose: () => 
               {preview.rows.map((r) => (
                 <li key={r.run}>
                   <strong>{r.run}</strong>
+                  {r.sheet ? <span style={muted}> ({r.sheet})</span> : ''}
                   {r.code && r.code_changes ? ` · código ${r.code}` : ''} — {r.fields.length ? r.fields.join(', ') : <span style={muted}>nada novo</span>}
+                  {r.uncorrected && r.uncorrected.length > 0 && <span style={{ color: '#a15c00' }}> · sem correção do branco: {r.uncorrected.join(', ')}</span>}
                 </li>
               ))}
             </ul>
-            {preview.not_in_plan.length > 0 && <p className="mt-1 text-xs">Fora deste planejamento (ignoradas): {preview.not_in_plan.join(', ')}.</p>}
+            {preview.not_in_plan.length > 0 && <p className="mt-1 text-xs">Fora deste planejamento (ignoradas): {preview.not_in_plan.join('; ')}.</p>}
             {preview.warnings.length > 0 && (
               <ul className="mt-1 list-disc pl-5 text-xs" style={{ color: '#a15c00' }}>
                 {preview.warnings.map((w, i) => (

@@ -43,6 +43,7 @@ export function PlanForm({ projectId, onClose, onCreated }: { projectId: number;
   const [preSample, setPreSample] = useState<number | ''>('')
   const [method, setMethod] = useState<Record<string, string>>({ equipment: 'ASE 350' })
   const [template, setTemplate] = useState('')
+  const [start, setStart] = useState(1)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { samples } = useSamples(projectId, 'todas')
@@ -67,6 +68,7 @@ export function PlanForm({ projectId, onClose, onCreated }: { projectId: number;
         pre_sample_id: preSample || null,
         method,
         code_template: template,
+        condition_start: start,
       })
       onCreated(p)
     } catch (err) {
@@ -138,7 +140,16 @@ export function PlanForm({ projectId, onClose, onCreated }: { projectId: number;
           </div>
         </section>
 
-        <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <section className="grid grid-cols-1 gap-3 md:grid-cols-4">
+          <Field label="Primeira condição" hint="F01 no primeiro fatorial; num segundo fatorial da mesma série, F09… (como na planilha e nos nomes das amostras).">
+            <div className="flex items-center gap-1">
+              <span>F</span>
+              <input type="number" min={1} max={90} className={inputClass} style={inputStyle} value={start} onChange={(e) => setStart(Math.max(1, Math.min(90, Number(e.target.value) || 1)))} aria-label="Número da primeira condição" />
+              <span className="whitespace-nowrap text-xs" style={muted}>
+                → F{String(start).padStart(2, '0')}…F{String(start + 2 ** k - 1).padStart(2, '0')}
+              </span>
+            </div>
+          </Field>
           <Field label="Execuções independentes por condição" hint="1 = sem réplica; 2 = duplicata; 3 = triplicata…">
             <input type="number" min={1} max={10} className={inputClass} style={inputStyle} value={replicates} onChange={(e) => setReplicates(Math.max(1, Math.min(10, Number(e.target.value) || 1)))} />
           </Field>

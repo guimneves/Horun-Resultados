@@ -532,6 +532,8 @@ export interface DoePlan {
   center_reason: string
   center_values: Record<string, number> | null
   randomized: boolean
+  /** número da primeira condição: 1 → F01…; 9 → F09… (2º fatorial de uma série) */
+  condition_start: number
   pre_sample: { id: number; code: string } | null
   method: Record<string, string>
   conditions_matrix: { code: string; coded: Record<string, number>; values: Record<string, number | string>; levels: Record<string, string> }[]

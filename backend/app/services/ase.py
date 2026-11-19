@@ -58,6 +58,8 @@ INPUT_FIELDS: tuple[Field, ...] = (
     Field("rock_mass_g", "Massa real de rocha na célula", "g", "complementar", "Massa de rocha"),
 )
 INPUT_KEYS = tuple(f.key for f in INPUT_FIELDS)
+# os que dependem do branco (corrigidos); sem branco, a planilha nova só tem o bruto
+BLANK_CORRECTED = ("m1_mg", "y_m1", "m3_mg", "y_m3", "m4_mg", "y_m4")
 SOLVENT_KINDS = ("medido", "estimado")
 
 # Calculados a partir dos digitados
@@ -124,6 +126,11 @@ def clean_results(raw: dict) -> dict:
         if kind not in SOLVENT_KINDS:
             raise AseError("Volume de solvente: diga se foi medido ou estimado.")
         out["solvent_ml_kind"] = kind
+    # campos que vieram SEM correção do branco (planilha nova, brancos ainda
+    # não feitos): o valor bruto entra, marcado, e o aviso aparece na execução
+    unc = [k for k in (raw.get("uncorrected") or []) if k in BLANK_CORRECTED and k in out]
+    if unc:
+        out["uncorrected"] = unc
     return out
 
 
@@ -148,6 +155,9 @@ def derived(r: dict) -> dict:
 def flags(r: dict, d: dict) -> list[str]:
     """Sinalizações de possíveis inconsistências — só avisam, nunca alteram."""
     out = []
+    unc = [k for k in (r.get("uncorrected") or []) if k in r]
+    if unc:
+        out.append("Sem correção do branco (brancos ainda não lançados): " + ", ".join(FIELD_BY_KEY[k].short for k in unc) + ".")
     for key in ("m1_mg", "m6_mg", "m3_mg", "m4_mg", "solvent_ml", "time_min", "rock_mass_g"):
         if _ok(r.get(key)) and r[key] < 0:
             out.append(f"{FIELD_BY_KEY[key].short} negativo ({r[key]:g}).")
@@ -247,7 +257,7 @@ def summary(session: Session, plan: DoePlan) -> dict:
     factors = plan_factors(plan)
     runs = runs_of(session, plan)
     values = run_values(session, plan, runs)
-    conds = doe.conditions(factors) + ([{"code": "C", "coded": {f["letter"]: 0 for f in factors}, "center": True}] if any(r.condition == "C" for r in runs) else [])
+    conds = doe.conditions(factors, plan.condition_start) + ([{"code": "C", "coded": {f["letter"]: 0 for f in factors}, "center": True}] if any(r.condition == "C" for r in runs) else [])
     cond_rows = []
     for c in conds:
         rs = [r for r in runs if r.condition == c["code"] and r.valid]
@@ -265,7 +275,7 @@ def summary(session: Session, plan: DoePlan) -> dict:
         })
     available = {f.key: sum(1 for r in runs if r.valid and _ok(values[r.id]["values"].get(f.key))) for f in ALL_FIELDS}
     return {
-        "runs": [run_out(r, values[r.id], factors) for r in runs],
+        "runs": [run_out(r, values[r.id], factors, plan.condition_start) for r in runs],
         "conditions": cond_rows,
         "fields": fields_out(available),
     }
@@ -275,8 +285,8 @@ def has_results(v: dict) -> bool:
     return any(_ok(v["values"].get(k)) for k in INPUT_KEYS)
 
 
-def run_out(r: DoeRun, v: dict, factors: list[dict]) -> dict:
-    coded = doe.coded_of(factors, r.condition)
+def run_out(r: DoeRun, v: dict, factors: list[dict], start: int = 1) -> dict:
+    coded = doe.coded_of(factors, r.condition, start)
     return {
         "id": r.id,
         "condition": r.condition,
@@ -426,3 +436,193 @@ def read_consolidated(content: bytes) -> dict:
     if not sheets:
         raise AseError('A planilha não tem abas "Consolidado R1", "Consolidado R2"….')
     return {"entries": found, "warnings": warnings, "sheets": sheets}
+
+
+# ------------------------------------------------------------- planilha nova (uma linha por extração)
+# Modelo de 19/11/2026 ("Planilha_ExtraçãoASE_Resultados"): abas "Experimentos",
+# "Experimentos 2.0"… com uma linha por extração — Condição, Réplica, Código do
+# experimento, os fatores (Temperatura, Solvente, Ciclos) e, na mesma linha, os
+# resultados. Lê pelo título da coluna. Os corrigidos pelo branco têm
+# prioridade; enquanto não há branco, entra o bruto, marcado (`uncorrected`).
+
+# título da coluna → (campo, "corrigido" | "bruto" | "")
+_EXP_COLUMNS = {
+    "Betume M1 corrigido (mg)": ("m1_mg", "corrigido"),
+    "Betume extraído — M1 (mg)": ("m1_mg", "bruto"),
+    "Rendimento M1 corrigido (mg/g)": ("y_m1", "corrigido"),
+    "Rendimento M1 (mg/g)": ("y_m1", "bruto"),
+    "M3 corrigido (mg)": ("m3_mg", "corrigido"),
+    "Perda papel + rocha — M3 (mg)": ("m3_mg", "bruto"),
+    "Rendimento M3 corrigido (mg/g)": ("y_m3", "corrigido"),
+    "Rendimento M3 (mg/g)": ("y_m3", "bruto"),
+    "M4 corrigido (mg)": ("m4_mg", "corrigido"),
+    "Perda célula + papel + rocha — M4 (mg)": ("m4_mg", "bruto"),
+    "Rendimento M4 corrigido (mg/g)": ("y_m4", "corrigido"),
+    "Rendimento M4 (mg/g)": ("y_m4", "bruto"),
+    "Massa removida da rocha pura — M6 (mg)": ("m6_mg", ""),
+    "Rendimento M6 (mg/g)": ("y_m6", ""),
+    "Volume lido no ASE (mL)": ("solvent_ml_measured", ""),
+    "Volume de solvente estimado (mL)": ("solvent_ml", ""),
+    "Consumo específico de solvente (mL/g)": ("solvent_specific", ""),
+    "Tempo total de extração (min)": ("time_min", ""),
+    "Massa de solvente coletado (g)": ("solvent_g", ""),
+    "Massa real da rocha (g)": ("rock_mass_g", ""),
+}
+_EXP_BY_PLAIN = {_plain(k): v for k, v in _EXP_COLUMNS.items()}
+_EXP_COND_RE = re.compile(r"^F\d{2}$")
+_EXP_ID_COLUMNS = {"condicao", "replica", "situacao"}
+_EXP_REP_RE = re.compile(r"^R?\s*(\d+)$", re.IGNORECASE)
+
+
+def _is_experiments_header(row: list) -> bool:
+    plains = {_plain(v) for v in row if isinstance(v, str)}
+    return "condicao" in plains and "replica" in plains
+
+
+def read_experiments(content: bytes) -> dict | None:
+    """Planilha nova → {"entries": {(cond, rep): {...}}, ...}; None se o
+    arquivo não tem nenhuma aba nesse formato (aí vale o formato antigo)."""
+    import openpyxl
+
+    try:
+        wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True, read_only=True)
+    except Exception as err:  # noqa: BLE001 — arquivo que não é xlsx
+        raise AseError("Não consegui abrir a planilha (.xlsx).") from err
+    found: dict[tuple[str, int], dict] = {}
+    warnings: list[str] = []
+    sheets = 0
+    for ws in wb.worksheets:
+        header: dict[int, str] | None = None
+        for raw_row in ws.iter_rows(values_only=True):
+            row = list(raw_row)
+            if header is None:
+                if _is_experiments_header(row):
+                    header = {j: _plain(v) for j, v in enumerate(row) if isinstance(v, str)}
+                    # colunas dos fatores: as de identificação antes do código
+                    # (Temperatura, Solvente, Ciclos) — só elas são conferidas
+                    code_col = next((j for j, n in header.items() if n.startswith("codigo")), max(header) + 1)
+                    factor_cols = [n for j, n in header.items() if j < code_col and n not in _EXP_ID_COLUMNS and len(n) > 3]
+                    sheets += 1
+                continue
+            cells = {name: (row[j] if j < len(row) else None) for j, name in header.items()}
+            cond = str(cells.get("condicao") or "").strip().upper()
+            m = _EXP_REP_RE.match(str(cells.get("replica") or "").strip())
+            if not _EXP_COND_RE.match(cond) or not m:
+                continue  # linha de fórmulas, vazia ou de total
+            rep = int(m.group(1))
+            if (cond, rep) in found:
+                warnings.append(f"{ws.title}, {cond} R{rep}: já veio da aba {found[(cond, rep)]['sheet']} — ficou de fora.")
+                continue
+            results: dict = {}
+            sources: dict[str, str] = {}
+            for name, v in cells.items():
+                key, kind = _EXP_BY_PLAIN.get(name, (None, ""))
+                if key is None:
+                    continue
+                if isinstance(v, str) and v.strip().startswith("#"):
+                    short = FIELD_BY_KEY[key.replace("_measured", "")].short
+                    warnings.append(f"{ws.title}, {cond} R{rep}: {short} com erro na planilha ({v.strip()}) — ficou de fora.")
+                    continue
+                if not _ok(v):
+                    continue
+                if key == "solvent_ml_measured":
+                    results["solvent_ml"], results["solvent_ml_kind"] = float(v), "medido"
+                elif key == "solvent_ml":
+                    if results.get("solvent_ml_kind") != "medido":
+                        results["solvent_ml"], results["solvent_ml_kind"] = float(v), "estimado"
+                elif kind == "bruto":
+                    if sources.get(key) != "corrigido":
+                        results[key], sources[key] = float(v), "bruto"
+                else:
+                    results[key] = float(v)
+                    if kind:
+                        sources[key] = kind
+            unc = [k for k in BLANK_CORRECTED if sources.get(k) == "bruto"]
+            if unc:
+                results["uncorrected"] = unc
+            code = cells.get("codigo do experimento")
+            found[(cond, rep)] = {
+                "code": str(code).strip() if code else "",
+                "results": results,
+                "sheet": ws.title,
+                "levels": {name: cells[name] for name in factor_cols if cells.get(name) is not None},
+            }
+    if not sheets:
+        return None
+    return {"entries": found, "warnings": warnings, "sheets": sheets}
+
+
+def read_results_workbook(content: bytes) -> dict:
+    """Planilha nova (abas "Experimentos…") ou a antiga ("Consolidado R1"…)."""
+    new = read_experiments(content)
+    if new is not None:
+        return new
+    try:
+        return read_consolidated(content)
+    except AseError as err:
+        if "Consolidado" in str(err):
+            raise AseError(
+                'A planilha não tem uma aba "Experimentos" (colunas Condição e Réplica) nem abas "Consolidado R1", "Consolidado R2"….'
+            ) from err
+        raise
+
+
+_NUM_RE = re.compile(r"-?\d+(?:[.,]\d+)?")
+
+
+def level_mismatch(factors: list[dict], coded: dict[str, int], levels: dict) -> str | None:
+    """A linha da planilha tem os níveis da condição do planejamento? Confere
+    cada fator que tem coluna com o mesmo nome (Temperatura, Solvente, Ciclos…);
+    devolve a primeira diferença, ou None."""
+    for f in factors:
+        name = _plain(f["name"])
+
+        def same(header: str) -> bool:  # "temperatura (°c)" ~ "Temperatura"; "ciclos" ~ "Número de ciclos"
+            base = header.split("(")[0].strip()
+            return bool(name and base) and (base == name or name.endswith(" " + base) or base.startswith(name + " "))
+
+        col = next((k for k in levels if same(k)), None)
+        if col is None:
+            continue
+        cell, want = levels[col], coded[f["letter"]]
+        if f["kind"] == "categorico":
+            side = {-1: (f["low"], f.get("low_label")), 1: (f["high"], f.get("high_label"))}[want]
+            if _plain(cell) not in {_plain(x) for x in side if x}:
+                return f'{f["name"]} = "{cell}" na planilha, mas o planejamento tem "{doe.level_text(f, want)}"'
+            continue
+        if _ok(cell):
+            num = float(cell)
+        else:
+            m = _NUM_RE.search(str(cell))
+            if not m:
+                continue
+            num = float(m.group(0).replace(",", "."))
+        if abs(num - float(doe.level_value(f, want))) > 1e-9:
+            return f'{f["name"]} = {cell} na planilha, mas o planejamento tem {doe.level_text(f, want)}'
+    return None
+
+
+def merge_results(current: dict, new: dict, overwrite: bool) -> tuple[dict, list[str]]:
+    """Junta o que veio da planilha com o que a execução já tem. Sem
+    `overwrite`, só preenche o vazio — mas um valor SEM correção do branco é
+    trocado pelo corrigido quando ele chega (e o aviso some)."""
+    cur_unc = set(current.get("uncorrected") or [])
+    new_unc = set(new.get("uncorrected") or [])
+    merged = {k: v for k, v in current.items() if k != "uncorrected"}
+    unc = set(cur_unc)
+    filled = []
+    for k in INPUT_KEYS:
+        if k not in new:
+            continue
+        replace_raw = k in cur_unc and k not in new_unc
+        if overwrite or k not in current or replace_raw:
+            merged[k] = new[k]
+            filled.append(k)
+            unc.discard(k)
+            if k in new_unc:
+                unc.add(k)
+            if k == "solvent_ml" and new.get("solvent_ml_kind"):
+                merged["solvent_ml_kind"] = new["solvent_ml_kind"]
+    if unc & set(merged):
+        merged["uncorrected"] = sorted(unc & set(merged))
+    return merged, filled

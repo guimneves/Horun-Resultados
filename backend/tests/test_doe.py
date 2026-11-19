@@ -267,3 +267,145 @@ def test_import_consolidated_sheet(client, ase_project):
     assert f01["values"]["m6_mg"] is None  # #REF! ficou de fora
     bad = client.post(f"projects/{pid}/doe/{plan['id']}/import", files={"file": ("x.xlsx", b"nada", "application/octet-stream")}, headers=PESQ)
     assert bad.status_code == 400
+
+
+# ---------------------------------------------------------------- planilha nova (19/11/2026)
+
+_NEW_HEADER = ["Nº", "Condição", "Réplica", "Situação", "Temperatura (°C)", "Solvente", "Ciclos", "Código do experimento",
+               "Massa real da rocha (g)", "Betume extraído — M1 (mg)", "Betume M1 corrigido (mg)", "Rendimento M1 (mg/g)",
+               "Rendimento M1 corrigido (mg/g)", "Volume lido no ASE (mL)", "Volume de solvente estimado (mL)",
+               "Tempo total de extração (min)", "Massa removida da rocha pura — M6 (mg)", "S1 (mg HC/g)"]
+
+
+def _new_xlsx(sheets: dict[str, list[list]]) -> bytes:
+    """Modelo novo: uma linha por extração (abas "Experimentos…"). Números inventados."""
+    import openpyxl
+
+    wb = openpyxl.Workbook()
+    wb.active.title = "LEIA-ME"
+    wb.active.append(["Planilha sintética"])
+    for title, rows in sheets.items():
+        ws = wb.create_sheet(title)
+        ws.append([f"{title} — dados brutos e resultados"])
+        ws.append(["Digite só nas células amarelas"])
+        ws.append([])
+        ws.append(["Identificação", None, None, None, None, None, None, None, "1 · Amostra"])
+        ws.append(_NEW_HEADER)
+        ws.append([None, None, None, "automática", None, None, None, None, "b", "(f2 − d2) × 1000", "M1 − branco"])
+        for i, r in enumerate(rows, start=1):
+            ws.append([i, *r])
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def _row(cond, rep, temp, solv, cyc, m1_raw, m1_corr=None, measured=None):
+    # condição, réplica, situação, T, solvente, ciclos, código, rocha, M1, M1 corr, Y1, Y1 corr, V lido, V est., tempo, M6, S1
+    return [cond, f"R{rep}", "OK", temp, solv, f"{cyc} × 10 min", f"COD_{cond}_R{rep}", 2.0, m1_raw, m1_corr,
+            m1_raw / 2, (m1_corr / 2 if m1_corr is not None else None), measured, 25.0, 40, 30.0, None]
+
+
+_LEVELS1 = [(3, "DCM", 100), (6, "DCM", 100), (3, "DCM/MeOH 93:7", 100), (6, "DCM/MeOH 93:7", 100),
+            (3, "DCM", 120), (6, "DCM", 120), (3, "DCM/MeOH 93:7", 120), (6, "DCM/MeOH 93:7", 120)]
+
+
+def _design1_rows():
+    rows = []
+    for i, (cyc, solv, temp) in enumerate(_LEVELS1, start=1):
+        for rep in (1, 2):
+            rows.append(_row(f"F{i:02d}", rep, temp, solv, cyc, 10.0 + i + rep))
+    return rows
+
+
+def _send(client, pid, plan_id, content, dry=True, overwrite=False):
+    files = {"file": ("nova.xlsx", content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
+    return client.post(f"projects/{pid}/doe/{plan_id}/import", files=files,
+                       data={"dry_run": str(dry).lower(), "overwrite": str(overwrite).lower()}, headers=PESQ)
+
+
+def test_new_sheet_one_row_per_extraction(client, ase_project):
+    pid = ase_project["id"]
+    plan = _create(client, pid, code_template="")
+    rows = _design1_rows()
+    rows[0][9] = 9.0  # F01 R1 já tem o M1 corrigido pelo branco
+    rows[0][11] = 4.5
+    rows[0][12] = 27.5  # e o volume lido no ASE (medido)
+    pv = _send(client, pid, plan["id"], _new_xlsx({"Experimentos": rows})).json()
+    assert pv["sheets"] == 1 and len(pv["rows"]) == 16 and not pv["not_in_plan"], pv
+    f01 = next(r for r in pv["rows"] if r["run"] == "F01 R1")
+    assert f01["uncorrected"] == [] and "Betume M1" in f01["fields"]
+    assert next(r for r in pv["rows"] if r["run"] == "F02 R1")["uncorrected"] == ["Betume M1", "Rendimento M1"]
+
+    r = _send(client, pid, plan["id"], _new_xlsx({"Experimentos": rows}), dry=False)
+    assert r.status_code == 200, r.text
+    got = {(x["condition"], x["replicate"]): x for x in client.get(f"projects/{pid}/doe/{plan['id']}", headers=PESQ).json()["runs"]}
+    a = got[("F01", 1)]
+    assert a["values"]["m1_mg"] == 9.0 and a["values"]["solvent_ml"] == 27.5 and a["solvent_ml_kind"] == "medido"
+    assert a["code"] == "COD_F01_R1" and not any("branco" in f for f in a["flags"])
+    b = got[("F02", 1)]
+    assert b["values"]["m1_mg"] == 13.0 and b["solvent_ml_kind"] == "estimado"
+    assert any("Sem correção do branco" in f for f in b["flags"])
+
+    # brancos feitos: o corrigido substitui o bruto mesmo sem "Substituir"
+    rows[2][9] = 12.5
+    rows[2][11] = 6.25
+    _send(client, pid, plan["id"], _new_xlsx({"Experimentos": rows}), dry=False)
+    b = next(x for x in client.get(f"projects/{pid}/doe/{plan['id']}", headers=PESQ).json()["runs"]
+             if x["condition"] == "F02" and x["replicate"] == 1)
+    assert b["values"]["m1_mg"] == 12.5 and b["values"]["y_m1"] == 6.25 and not any("branco" in f for f in b["flags"])
+    # editar outro campo na tela não apaga o aviso das que continuam sem branco
+    c = next(x for x in client.get(f"projects/{pid}/doe/{plan['id']}", headers=PESQ).json()["runs"]
+             if x["condition"] == "F03" and x["replicate"] == 1)
+    keep = {k: c["values"][k] for k in ("m1_mg", "y_m1", "rock_mass_g", "time_min", "m6_mg") if c["values"].get(k) is not None}
+    c2 = client.patch(f"projects/{pid}/doe/{plan['id']}/runs/{c['id']}", json={"results": {**keep, "time_min": 41}}, headers=PESQ).json()
+    c2 = next(x for x in c2["runs"] if x["id"] == c["id"])
+    assert any("Sem correção do branco" in f for f in c2["flags"])
+    # a análise roda com a resposta importada
+    an = client.get(f"projects/{pid}/doe/{plan['id']}/analysis?response=m1_mg", headers=PESQ).json()
+    assert an["ok"] and an["df_resid"] == 8
+
+
+def test_second_design_numbered_from_f09_and_level_check(client, ase_project):
+    """Duas abas, dois fatoriais: "Experimentos" (F01–F08) e "Experimentos 2.0"
+    (F09–F16, outros níveis). O 2º planejamento começa em F09."""
+    pid = ase_project["id"]
+    factors2 = [
+        {"name": "Número de ciclos", "kind": "discreto", "low": 6, "high": 9},
+        {"name": "Solvente", "kind": "categorico", "low": "DCM/MeOH 93:7", "high": "DCM/MeOH 86:14"},
+        {"name": "Temperatura", "unit": "°C", "kind": "continuo", "low": 120, "high": 140},
+    ]
+    plan = _create(client, pid, factors=factors2, code_template="{cond}R{rep}", condition_start=9)
+    assert [c["code"] for c in plan["conditions_matrix"]][:2] == ["F09", "F10"] and plan["condition_start"] == 9
+    assert plan["runs"][0]["code"] == "F09R1"
+    levels2 = [(6, "DCM/MeOH 93:7", 120), (9, "DCM/MeOH 93:7", 120), (6, "DCM/MeOH 86:14", 120), (9, "DCM/MeOH 86:14", 120),
+               (6, "DCM/MeOH 93:7", 140), (9, "DCM/MeOH 93:7", 140), (6, "DCM/MeOH 86:14", 140), (9, "DCM/MeOH 86:14", 140)]
+    rows2 = []
+    for i, (cyc, solv, temp) in enumerate(levels2, start=9):
+        for rep in (1, 2):
+            rows2.append(_row(f"F{i:02d}", rep, temp, solv, cyc, 20.0 + i))
+    rows2[3][4] = "DCM/MeOH 86:14"  # F10 R2 com o solvente trocado na planilha
+    content = _new_xlsx({"Experimentos": _design1_rows(), "Experimentos 2.0": rows2})
+    pv = _send(client, pid, plan["id"], content).json()
+    assert len(pv["rows"]) == 15, pv
+    assert any("F10 R2" in w and "Solvente" in w for w in pv["warnings"]), pv["warnings"]
+    assert pv["not_in_plan"] == ["Experimentos: 16 linha(s) de condições que não são deste planejamento (F01 R1 … F08 R2)"]
+    # o código F09R1 liga a amostra do Rock-Eval: a planilha não o troca por COD_F09_R1 (que não liga)
+    htm = syn.rockeval_htm([{**_rock("z1", "F09R1", 2.0), "s1": 0.4, "s2": 3.0}])
+    confirm(client, pid, upload(client, pid, {"re.htm": htm}))
+    pv = _send(client, pid, plan["id"], content, overwrite=True).json()
+    assert next(r for r in pv["rows"] if r["run"] == "F09 R1")["code_changes"] is False
+    assert next(r for r in pv["rows"] if r["run"] == "F11 R1")["code_changes"] is True
+
+
+def test_condition_start_renumbers_existing_runs(client, ase_project):
+    pid = ase_project["id"]
+    plan = _create(client, pid, code_template="")
+    run = next(r for r in plan["runs"] if r["condition"] == "F03" and r["replicate"] == 2)
+    client.patch(f"projects/{pid}/doe/{plan['id']}/runs/{run['id']}", json={"results": {"m1_mg": 5}}, headers=PESQ)
+    r = client.patch(f"projects/{pid}/doe/{plan['id']}", json={"condition_start": 9}, headers=PESQ)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert sorted({x["condition"] for x in body["runs"]}) == [f"F{i:02d}" for i in range(9, 17)]
+    moved = next(x for x in body["runs"] if x["id"] == run["id"])
+    assert moved["condition"] == "F11" and moved["values"]["m1_mg"] == 5 and moved["coded"] == run["coded"]
+    assert client.patch(f"projects/{pid}/doe/{plan['id']}", json={"condition_start": 0}, headers=PESQ).status_code == 400

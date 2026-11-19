@@ -65,6 +65,8 @@ def _run_migrations() -> None:
     _ensure_column("experiment", "bitumen_mass_g", "FLOAT")
     # 19/10/2026 — frações por tipo de amostra (rocha × tabaco)
     _ensure_column("fractiontype", "sample_type", "VARCHAR", default_sql="''")
+    # 19/11/2026 — DOE: numeração da primeira condição (F09… no 2º fatorial)
+    _ensure_column("doeplan", "condition_start", "INTEGER", default_sql="1")
     # 08/10/2026 — tabelas novas `projectmember` e `knownuser` (acesso por
     # projeto): nascem inteiras pelo create_all, sem coluna a acrescentar.
     # 22/10/2026 — tabelas novas `samplevariable` e `samplevariablevalue`

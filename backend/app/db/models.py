@@ -283,6 +283,9 @@ class DoePlan(SQLModel, table=True):
     center_points: int = 0
     randomized: bool = False
     seed: int = 0
+    # número da primeira condição: 1 → F01…; 9 → F09…F16 (o 2º fatorial de uma
+    # série, como na planilha e nos nomes das amostras do laboratório)
+    condition_start: int = 1
     # rocha antes da extração (Rock-Eval "pré") — opcional
     pre_sample_id: int | None = Field(default=None, foreign_key="sample.id")
     method_json: str = Field(default="{}", sa_column=Column(Text, nullable=False, default="{}"))

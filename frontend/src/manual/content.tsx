@@ -168,7 +168,9 @@ export const MANUAL_SECTIONS: ManualSection[] = [
             referência.
           </li>
           <li>
-            Escolha quantas <strong>execuções independentes</strong> por condição (1, duplicata, triplicata...) e, se fizer sentido, os{' '}
+            <strong>Primeira condição</strong>: F01 no primeiro fatorial; num segundo fatorial da mesma série, comece em F09 (F09...F16), como na
+            planilha e nos nomes das amostras — o código {'{cond}'}R{'{rep}'} então dá F09R1... (dá para mudar depois em Editar; só o rótulo muda). Escolha
+            quantas <strong>execuções independentes</strong> por condição (1, duplicata, triplicata...) e, se fizer sentido, os{' '}
             <strong>pontos centrais</strong>. O site só deixa criar o centro quando ele existe de verdade: com fator categórico, ou com um ponto médio
             impossível (4,5 ciclos), ele explica por que não. A ordem planejada pode ser <strong>aleatorizada</strong>; a efetiva é anotada em cada
             execução (vem sozinha na ordem em que os resultados chegam e pode ser corrigida).
@@ -193,8 +195,12 @@ export const MANUAL_SECTIONS: ManualSection[] = [
             sozinho (não se redigita); execução marcada como inválida sai das médias e da análise.
           </li>
           <li>
-            <strong>Importar planilha de resultados</strong>: lê as abas "Consolidado R1", "Consolidado R2"... e preenche as execuções de mesma condição
-            (F01...) e réplica. Mostra antes o que entra; sem "Substituir", só preenche o que está vazio. Células com erro (#REF!) ficam de fora, com aviso.
+            <strong>Importar planilha de resultados</strong>: aceita o modelo novo (abas "Experimentos", "Experimentos 2.0"..., uma linha por extração)
+            e o antigo ("Consolidado R1", "Consolidado R2"...). Cada linha vai para a execução de mesma condição (F01...) e réplica; condições de outro
+            planejamento ficam de fora. No modelo novo, temperatura, solvente e ciclos da linha são conferidos com os da condição: se não baterem, a linha não
+            entra e o motivo aparece. Enquanto os brancos não foram feitos, M1, M3 e M4 entram <strong>sem correção</strong>, com um aviso na execução; quando a
+            planilha trouxer o corrigido, ele substitui o bruto. Mostra antes o que entra; sem "Substituir", só preenche o que está vazio. Células com erro
+            (#REF!) ficam de fora, com aviso. O código da planilha não substitui um código que já liga a execução à amostra do Rock-Eval.
           </li>
           <li>
             <strong>Médias</strong>: para cada condição e indicador, nº de resultados válidos, média, desvio-padrão e RSD % (como a aba "Médias"). Ausente
@@ -203,7 +209,8 @@ export const MANUAL_SECTIONS: ManualSection[] = [
           <li>
             <strong>Análise DOE</strong>: escolha a <strong>variável-resposta</strong> (qualquer resultado do ASE, eficiência, diagnóstico ou Rock-Eval
             pós-ASE e as reduções de S1, S2, COT e ΔTmax em relação à rocha pré) e o <strong>nível de confiança</strong> (90, 95, 99 % ou outro, ex.: 97,5 %).
-            Aparecem o <strong>Pareto</strong> (efeitos padronizados e linha crítica), a tabela de efeitos e interações (A, B, C, AB, AC, BC, ABC) com valores-p,
+            Aparecem o <strong>Pareto</strong> (efeitos padronizados |t|, com a linha tracejada de <strong>p = 0,05</strong> no nível de 95 %: barra que passa
+            dela é significativa — é o mesmo que |t| maior que o t crítico), a tabela de efeitos e interações (A, B, C, AB, AC, BC, ABC) com valores-p,
             a ANOVA, R², R² ajustado e de previsão, os gráficos de efeitos principais, de interações e de resíduos. Com uma execução por condição não há
             como estimar o erro: os efeitos aparecem, sem valor-p, com a explicação e um gráfico meio-normal (apoio visual, não teste). Só execuções
             independentes entram; leituras repetidas da mesma rocha viram a média dela.

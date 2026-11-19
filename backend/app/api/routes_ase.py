@@ -17,11 +17,13 @@ from sqlalchemy import delete as sa_delete
 from sqlmodel import Session, select
 
 from app.api.deps import ensure_open, get_project
+from app.core.config import settings
 from app.core.identity import HorunIdentity, get_identity
 from app.core.permissions import require_curator, require_editor
 from app.db.models import DoePlan, DoeRun, Project, Sample, utcnow
 from app.db.session import get_session
 from app.services import ase, audit, doe, profiles
+from app.services.codes import normalize_code
 
 router = APIRouter(tags=["ase"])
 
@@ -69,6 +71,8 @@ class PlanIn(BaseModel):
     pre_sample_id: int | None = None
     method: dict[str, str] = Field(default_factory=dict)
     code_template: str = Field(default="", max_length=200)  # ex.: "HP320_{cond}_R{rep}"
+    # número da primeira condição (1 → F01…; 9 → F09…, o 2º fatorial de uma série)
+    condition_start: int = 1
 
 
 class PlanPatch(BaseModel):
@@ -83,6 +87,7 @@ class PlanPatch(BaseModel):
     # TODAS as execuções, que se ligam sozinhas à amostra de mesmo código
     # (pedido de 19/11/2026: amostras do Rock-Eval já importadas como F01R1…)
     code_template: str | None = Field(default=None, max_length=200)
+    condition_start: int | None = None  # renumera as condições (F01… → F09…), com resultados e tudo
 
 
 class RunPatch(BaseModel):
@@ -124,7 +129,7 @@ def _plan_out(session: Session, plan: DoePlan) -> dict:
     factors = ase.plan_factors(plan)
     ok, why = doe.center_feasibility(factors)
     conds = []
-    for c in doe.conditions(factors):
+    for c in doe.conditions(factors, plan.condition_start):
         conds.append({"code": c["code"], "coded": c["coded"], "values": {f["letter"]: doe.level_value(f, c["coded"][f["letter"]]) for f in factors},
                       "levels": {f["letter"]: doe.level_text(f, c["coded"][f["letter"]]) for f in factors}})
     pre = session.get(Sample, plan.pre_sample_id) if plan.pre_sample_id else None
@@ -142,6 +147,7 @@ def _plan_out(session: Session, plan: DoePlan) -> dict:
         "center_reason": why,
         "center_values": doe.center_values(factors) if ok else None,
         "randomized": plan.randomized,
+        "condition_start": plan.condition_start,
         "pre_sample": {"id": pre.id, "code": pre.code} if pre else None,
         "method": json.loads(plan.method_json or "{}"),
         "conditions_matrix": conds,
@@ -175,12 +181,12 @@ def create_plan(body: PlanIn, project: Project = Depends(get_project), session: 
     try:
         factors = doe.clean_factors([f.model_dump() for f in body.factors])
         seed = random.SystemRandom().randint(1, 10**9) if body.randomized else 0
-        runs = doe.plan_runs(factors, body.replicates, body.center_points, body.randomized, seed)
+        runs = doe.plan_runs(factors, body.replicates, body.center_points, body.randomized, seed, body.condition_start)
     except doe.DoeError as err:
         raise _bad(err) from err
     plan = DoePlan(project_id=project.id, name=body.name.strip(), description=body.description.strip(),  # type: ignore[arg-type]
                    factors_json=json.dumps(factors, ensure_ascii=False), replicates=body.replicates, center_points=body.center_points,
-                   randomized=body.randomized, seed=seed, pre_sample_id=body.pre_sample_id,
+                   randomized=body.randomized, seed=seed, pre_sample_id=body.pre_sample_id, condition_start=body.condition_start,
                    method_json=json.dumps(_clean_method(body.method), ensure_ascii=False), created_by=identity.username)
     session.add(plan)
     session.flush()
@@ -229,7 +235,18 @@ def patch_plan(plan_id: int, body: PlanPatch, project: Project = Depends(get_pro
             plan.factors_json = json.dumps(factors, ensure_ascii=False)
         reps = body.replicates if body.replicates is not None else plan.replicates
         centers = body.center_points if body.center_points is not None else plan.center_points
-        wanted = {(r["condition"], r["replicate"]) for r in doe.plan_runs(factors, reps, centers, False, 0)}
+        start = body.condition_start if body.condition_start is not None else plan.condition_start
+        wanted = {(r["condition"], r["replicate"]) for r in doe.plan_runs(factors, reps, centers, False, 0, start)}
+        if start != plan.condition_start:
+            # só muda o rótulo (F01 → F09): a posição na ordem padrão, os
+            # níveis e os resultados ficam
+            shift = start - plan.condition_start
+            for r in runs:
+                if r.condition != "C":
+                    r.condition = f"F{int(r.condition[1:]) + shift:02d}"
+                    session.add(r)
+            with_data = {(r.condition, r.replicate) for r in runs if json.loads(r.results_json or "{}")}
+            plan.condition_start = start
         losing = [k for k in with_data if k not in wanted]
         if losing:
             raise doe.DoeError("Estas execuções já têm resultado e não podem sair: " + ", ".join(f"{c} R{r}" for c, r in sorted(losing)) + ".")
@@ -320,7 +337,12 @@ def patch_run(plan_id: int, run_id: int, body: RunPatch, project: Project = Depe
             clean = ase.clean_results(body.results)
         except ase.AseError as err:
             raise _bad(err) from err
-        had = bool(json.loads(run.results_json or "{}"))
+        old = json.loads(run.results_json or "{}")
+        had = bool(old)
+        # valor sem correção do branco que a pessoa não mexeu continua marcado
+        unc = [k for k in old.get("uncorrected") or [] if k in clean and clean[k] == old.get(k)]
+        if unc:
+            clean["uncorrected"] = unc
         run.results_json = json.dumps(clean)
         if clean and not had and run.actual_order is None:
             # ordem efetiva: a próxima, na ordem em que os resultados chegam
@@ -343,7 +365,7 @@ def analysis(plan_id: int, response: str, confidence: float = 0.95, project: Pro
     plan = _get_plan(session, project, plan_id)
     try:
         obs = ase.observations(session, plan, response)
-        result = doe.analyze(ase.plan_factors(plan), obs, confidence)
+        result = doe.analyze(ase.plan_factors(plan), obs, confidence, plan.condition_start)
     except (ase.AseError, doe.DoeError) as err:
         raise _bad(err) from err
     f = ase.FIELD_BY_KEY[response]
@@ -355,39 +377,67 @@ def analysis(plan_id: int, response: str, confidence: float = 0.95, project: Pro
 async def import_consolidated(plan_id: int, file: UploadFile = File(...), dry_run: bool = Form(True), overwrite: bool = Form(False),
                               project: Project = Depends(get_project), session: Session = Depends(get_session),
                               identity: HorunIdentity = Depends(require_editor)):
-    """Planilha de resultados (abas "Consolidado R1/R2…") → resultados finais
-    das execuções, casando condição (F01…) e réplica (R1…). Sem `overwrite`,
-    só preenche o que está vazio."""
+    """Planilha de resultados → resultados finais das execuções, casando
+    condição (F01…) e réplica (R1…). Dois modelos: o novo (abas "Experimentos…",
+    uma linha por extração — 19/11/2026) e o antigo ("Consolidado R1/R2…").
+    No novo, os níveis de cada linha (Temperatura, Solvente, Ciclos…) são
+    conferidos com os da condição; linha que não bate fica de fora, com o
+    motivo. Sem `overwrite`, só preenche o que está vazio (um valor sem
+    correção do branco é trocado pelo corrigido quando ele chega)."""
     ensure_open(project)
     plan = _get_plan(session, project, plan_id)
+    limit = settings.max_upload_mb * 1024 * 1024
+    content = await file.read(limit + 1)
+    if len(content) > limit:
+        raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, f"A planilha passa do limite de {settings.max_upload_mb} MB.")
     try:
-        parsed = ase.read_consolidated(await file.read())
+        parsed = ase.read_results_workbook(content)
     except ase.AseError as err:
         raise _bad(err) from err
+    factors = ase.plan_factors(plan)
     runs = {(r.condition, r.replicate): r for r in ase.runs_of(session, plan)}
+    by_code = {s.code_norm for s in session.exec(select(Sample).where(Sample.project_id == project.id))}
+
+    def links(code: str) -> bool:
+        return bool(code) and normalize_code(code) in by_code
+
+    warnings = list(parsed["warnings"])
     rows, missing = [], []
+    outside: dict[str, list[str]] = {}  # aba → condições fora deste planejamento
     for (cond, rep), entry in sorted(parsed["entries"].items()):
         run = runs.get((cond, rep))
         if run is None:
-            missing.append(f"{cond} R{rep}")
+            if entry.get("sheet"):
+                outside.setdefault(entry["sheet"], []).append(f"{cond} R{rep}")
+            else:
+                missing.append(f"{cond} R{rep}")
             continue
+        if entry.get("levels"):
+            why = ase.level_mismatch(factors, doe.coded_of(factors, cond, plan.condition_start), entry["levels"])
+            if why:
+                warnings.append(f"{entry['sheet']}, {cond} R{rep}: {why} — ficou de fora (confira a numeração das condições).")
+                continue
         current = json.loads(run.results_json or "{}")
-        new = entry["results"]
-        merged = {**current, **new} if overwrite else {**new, **current}
-        filled = [k for k in new if k in ase.INPUT_KEYS and (overwrite or k not in current)]
+        merged, filled = ase.merge_results(current, entry["results"], overwrite)
+        # o código só muda se não desfizer a ligação com a amostra do Rock-Eval
+        code_changes = (bool(entry["code"]) and entry["code"] != run.code and (overwrite or not run.code)
+                        and not (links(run.code) and not links(entry["code"])))
+        unc = [ase.FIELD_BY_KEY[k].short for k in merged.get("uncorrected", []) if k in filled]
         rows.append({"run": f"{cond} R{rep}", "code": entry["code"], "fields": [ase.FIELD_BY_KEY[k].short for k in filled],
-                     "code_changes": bool(entry["code"]) and entry["code"] != run.code and (overwrite or not run.code)})
+                     "code_changes": code_changes, "uncorrected": unc, "sheet": entry.get("sheet", "")})
         if not dry_run:
             run.results_json = json.dumps(ase.clean_results(merged))
-            if entry["code"] and (overwrite or not run.code):
+            if code_changes:
                 run.code = entry["code"]
             run.updated_by = identity.username
             run.updated_at = utcnow()
             session.add(run)
+    for sheet, conds in outside.items():
+        missing.append(f"{sheet}: {len(conds)} linha(s) de condições que não são deste planejamento ({conds[0]} … {conds[-1]})")
     if not dry_run:
         plan.updated_at = utcnow()
         session.add(plan)
         audit.record(session, identity, "doe_importado", f'Importou resultados da planilha "{file.filename}" em "{plan.name}".', project.id,
                      "doeplan", plan.id, {"execucoes": len(rows)})
         session.commit()
-    return {"dry_run": dry_run, "rows": rows, "not_in_plan": missing, "warnings": parsed["warnings"], "sheets": parsed["sheets"]}
+    return {"dry_run": dry_run, "rows": rows, "not_in_plan": missing, "warnings": warnings, "sheets": parsed["sheets"]}

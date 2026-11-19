@@ -146,11 +146,21 @@ export function AnalysisTab({ plan }: { plan: DoePlan }) {
   )
 }
 
+/** Topo "redondo" do eixo (1, 2, 3, 4, 5, 6, 8 × 10ⁿ): as 4 divisões ficam redondas. */
+function niceMax(v: number): number {
+  if (!(v > 0) || !Number.isFinite(v)) return 1
+  const p = 10 ** Math.floor(Math.log10(v))
+  const step = [1, 2, 3, 4, 5, 6, 8, 10].find((s) => s * p >= v - 1e-12) ?? 10
+  return step * p
+}
+
 function Results({ data, plan }: { data: DoeAnalysis; plan: DoePlan }) {
   const effects = data.effects ?? []
   const hasP = data.df_resid != null && data.df_resid > 0 && data.t_crit != null
   const unit = data.response.unit
   const pct = `${fmt(data.confidence * 100)} %`
+  // a linha do Pareto é a de p = α (1 − confiança): |t| > t crítico ⇔ p < α
+  const alpha = fmt(1 - data.confidence)
   const pareto = useMemo(
     () =>
       [...effects]
@@ -159,6 +169,7 @@ function Results({ data, plan }: { data: DoeAnalysis; plan: DoePlan }) {
     [effects, hasP],
   )
   const title = data.response.short
+  const xTop = niceMax(Math.max(...pareto.map((e) => e.size), hasP ? (data.t_crit ?? 0) * 1.08 : 0))
   return (
     <div className="space-y-4">
       {data.significance_note && (
@@ -171,7 +182,7 @@ function Results({ data, plan }: { data: DoeAnalysis; plan: DoePlan }) {
           title={`Pareto dos efeitos — ${title}`}
           subtitle={
             hasP
-              ? `Efeitos padronizados (|t|) · linha crítica t = ${fmt(data.t_crit)} (${pct}, ${data.df_resid} gl do erro) · cor = sinal do efeito`
+              ? `Efeitos padronizados (|t|) · a linha tracejada é p = ${alpha}: barra que passa dela é significativa com ${pct} de confiança (equivale a |t| > ${fmt(data.t_crit)}, ${data.df_resid} gl do erro) · cor = sinal do efeito`
               : `|efeito| em ${unit} — sem erro estimável, sem linha de significância`
           }
           filename={`pareto_${data.response.key}`}
@@ -183,9 +194,17 @@ function Results({ data, plan }: { data: DoeAnalysis; plan: DoePlan }) {
           }
         >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={pareto} layout="vertical" margin={{ top: 8, right: 24, bottom: 8, left: 8 }}>
+            <BarChart data={pareto} layout="vertical" margin={{ top: 22, right: 24, bottom: 8, left: 8 }}>
               <CartesianGrid {...gridProps} horizontal={false} vertical />
-              <XAxis type="number" {...axisProps} tickFormatter={(v: number) => fmt(v)} />
+              {/* o eixo vai até a linha crítica, mesmo quando nenhuma barra chega
+                  nela (antes ela ficava fora do gráfico — pedido de 19/11/2026) */}
+              <XAxis
+                type="number"
+                {...axisProps}
+                domain={[0, xTop]}
+                ticks={[0, xTop / 4, xTop / 2, (3 * xTop) / 4, xTop]}
+                tickFormatter={(v: number) => fmt(v)}
+              />
               <YAxis type="category" dataKey="term" {...axisProps} width={44} interval={0} />
               <Tooltip
                 {...tooltipStyle}
@@ -197,7 +216,7 @@ function Results({ data, plan }: { data: DoeAnalysis; plan: DoePlan }) {
                   ]
                 }}
               />
-              {hasP && <ReferenceLine x={data.t_crit ?? 0} stroke="var(--color-text)" strokeDasharray="4 3" label={{ value: `t crítico (${pct})`, position: 'top', fill: 'var(--color-text-muted)', fontSize: 11 }} />}
+              {hasP && <ReferenceLine x={data.t_crit ?? 0} ifOverflow="extendDomain" stroke="var(--color-text)" strokeDasharray="4 3" label={{ value: `p = ${alpha}`, position: 'top', fill: 'var(--color-text-muted)', fontSize: 11 }} />}
               <Bar dataKey="size" name={hasP ? '|t| (efeito padronizado)' : '|efeito|'} isAnimationActive={false} radius={[0, 4, 4, 0]}>
                 {pareto.map((e) => (
                   <Cell key={e.term} fill={e.effect >= 0 ? POS : NEG} fillOpacity={!hasP || e.significant ? 1 : 0.4} />
