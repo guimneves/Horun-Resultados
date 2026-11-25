@@ -235,6 +235,10 @@ export function PyroSection({ projectId, samples, mode, initial }: { projectId: 
     api.get<AnalysisData<PyroData>[]>(`/projects/${projectId}/analysis-data?technique=rockeval&mode=${mode}&sample_ids=${selected.join(',')}`).then(setCurves)
   }, [projectId, selected, mode])
   const signals = Array.from(new Set(curves.flatMap((c) => c.data.pyro?.legend ?? []))).filter((k) => !['Time', 'Temp', 'T°'].includes(k))
+  // relatório sem "HC" (ex.: multiheating do tabaco): mostra o 1º sinal que houver
+  useEffect(() => {
+    if (signals.length && !signals.includes(signal)) setSignal(signals[0])
+  }, [signals, signal])
   return (
     <div className="space-y-2">
       {!initial && <SamplePicker samples={withRe} selected={selected} onChange={setSelected} />}

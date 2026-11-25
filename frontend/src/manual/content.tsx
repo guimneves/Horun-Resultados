@@ -700,7 +700,8 @@ export const MANUAL_SECTIONS: ManualSection[] = [
         <Steps>
           <li>
             No alto da aba <strong>Séries</strong>, escolha a <strong>Variável</strong> do eixo (aparece quando o projeto tem mais de uma). Na temperatura de
-            hidropirólise, a aba fica como sempre (vistas Parâmetros, Balanço de massas, Artigo...); no Tipo do tabaco, uma aba por tipo de produto. Numa
+            hidropirólise, a aba fica como sempre (vistas Parâmetros, Balanço de massas, Artigo...); no Tipo do tabaco, uma aba por tipo de produto (tabela, barras por
+            parâmetro e, quando houver, os <strong>pirogramas</strong> do Rock-Eval, os cromatogramas e as curvas de TG). Numa
             variável criada por vocês, escolha os <strong>Parâmetros</strong> (Todos, Matéria orgânica, Elementar... na rocha; por análise nos outros tipos) e
             cada parâmetro vira um gráfico em função da variável: <strong>número</strong> → uma linha por fração; <strong>categoria</strong> → barras lado a
             lado. Amostras sem valor na variável ficam de fora.

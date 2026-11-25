@@ -12,6 +12,7 @@ import { fmt, fmtMeanSd } from '../lib/format'
 import { useSamples } from '../lib/useSamples'
 import { useProject } from './ProjectLayout'
 import { MODE_OPTIONS } from './SamplesTab'
+import { PyroSection } from './SeriesTab'
 
 // Séries dos projetos de tabaco (pedido do usuário, 19/10/2026): uma aba por
 // tipo de produto — Charutos, Cigarros, Essências de Narguilé — com a tabela
@@ -108,6 +109,7 @@ export function TobaccoSeriesTab() {
   }, [columns])
   const tgIds = useMemo(() => shown.filter(hasTg).map((s) => s.id), [shown])
   const gcIds = useMemo(() => shown.filter((s) => hasGc(s)).map((s) => s.id), [shown])
+  const hasRockEval = shown.some((s) => s.techniques?.includes('rockeval'))
   const color = fractionColor(type)
   const typeOptions = [
     ...TYPES.map((t) => ({ value: t.code, label: `${t.label} (${count(t.code)})` })),
@@ -203,6 +205,14 @@ export function TobaccoSeriesTab() {
               </div>
             </section>
           ))}
+
+          {/* pirogramas do Rock-Eval (faltavam aqui; pedido do usuário, 25/11/2026) — key: troca de tipo recomeça a seleção */}
+          {hasRockEval && (
+            <section className="space-y-2">
+              <h3 className="font-semibold">{techniqueLabel('rockeval')} — pirogramas</h3>
+              <PyroSection key={type} projectId={project.id} samples={shown} mode={mode} />
+            </section>
+          )}
 
           {gcIds.length > 0 && (
             <section className="space-y-2">

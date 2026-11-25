@@ -1,5 +1,13 @@
 # Changelog — Horun · Resultados
 
+## Não lançado — 25/11/2026
+### Tabaco: pirogramas do Rock-Eval nas Séries
+- A aba Séries dos projetos de tabaco (`TobaccoSeriesTab`) não tinha a seção
+  de pirogramas (só cromatogramas e TG). Agora usa o mesmo `PyroSection` da
+  rocha, com as amostras do tipo de produto aberto.
+- `PyroSection`: se o relatório não tiver o sinal "HC", mostra o primeiro sinal
+  que houver (antes o gráfico ficava vazio).
+
 ## Não lançado — 16/11/2026
 ### Técnicos e ICs importam e editam
 - Pedido do mantenedor: `can_edit`/`require_editor` passa a valer para todos
